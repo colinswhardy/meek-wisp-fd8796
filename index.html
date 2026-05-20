@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0d0e12">
+  <title>ColinsChartsMacros - Weight & Macro Tracker</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Apple Mobile Web App tags for iOS PWA installation -->
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Libraries (CDNs) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-logo">
+      <svg class="logo-icon" viewBox="0 0 100 100" width="36" height="36">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#logo-grad)" stroke-width="8" />
+        <circle cx="50" cy="50" r="24" fill="none" stroke="#ffb300" stroke-width="6" />
+        <path d="M50 36 v28" stroke="#00e676" stroke-width="8" stroke-linecap="round" />
+        <defs>
+          <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#00f2fe" />
+            <stop offset="100%" stop-color="#00c6ff" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <h1>ColinsChartsMacros</h1>
+    </div>
+    <div class="calendar-selector">
+      <button id="btn-prev-day" aria-label="Previous day">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span id="current-day-label">Today</span>
+      <button id="btn-next-day" aria-label="Next day">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="app-viewport">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="panel-dashboard" class="app-panel active">
+      <!-- Radial Gauge Calorie Card -->
+      <div class="glass-card calorie-card">
+        <div class="circular-progress-container">
+          <svg class="circular-progress" viewBox="0 0 100 100">
+            <circle class="bg-circle" cx="50" cy="50" r="40" />
+            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
+          </svg>
+          <div class="progress-text">
+            <span class="progress-val-main" id="val-calories-eaten">0</span>
+            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
+          </div>
+        </div>
+        <div class="calorie-quick-stats">
+          <div class="quick-stat-item">
+            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
+            <span class="stat-lbl">Remaining</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat-item">
+            <span class="stat-num" id="val-burn-status">0%</span>
+            <span class="stat-lbl">Completed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macro Progress Bars Card -->
+      <div class="glass-card macros-card">
+        <h3>Macro Budgets</h3>
+        
+        <!-- Protein Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
+            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Carbs Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs</span>
+            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Fats Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-fats"></span>Fats</span>
+            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Logs Section -->
+      <div class="logs-section">
+        <div class="section-header">
+          <h3>Eaten Today</h3>
+          <span class="meals-count" id="meals-count-badge">0 items</span>
+        </div>
+        <div class="meals-list" id="meals-list-container">
+          <!-- Dynamically filled meal items -->
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <p>No food logged for this day yet.</p>
+            <button class="btn btn-secondary btn-sm" onclick="appRouter.navigate('scanner')">Scan Food Now</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- TAB 2: FOOD LOGGING & SCANNER -->
+    <section id="panel-scanner" class="app-panel">
+      <!-- Active Barcode Scanner Section -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container">
+        <div class="scanner-header">
+          <h3>Barcode Scan</h3>
+          <p>Scan a product's barcode to auto-import macros</p>
+        </div>
+
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan" class="btn btn-primary btn-iconic">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Scan Barcode</span>
+          </button>
+          <button id="btn-stop-scan" class="btn btn-danger hidden">Stop Camera</button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field" placeholder="Enter barcode number (e.g. 737628011243)" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card (Shown when product is fetched successfully) -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name">Product Name</h3>
+            <p id="preview-food-brand">Brand</p>
+          </div>
+          <button id="btn-close-preview" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input">Weight Eaten (grams)</label>
+            <div class="weight-input-container">
+              <input type="number" id="food-weight-input" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
+              <span class="weight-unit">g</span>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Custom Food Add Form (fallback if not found in API) -->
+      <div class="glass-card custom-food-card" id="custom-food-card">
+        <div class="card-header-toggle" id="toggle-custom-form-btn">
+          <h3>Log Custom Food / Quick Macro</h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <form id="custom-food-form" class="custom-form-body hidden">
+          <div class="form-group">
+            <label for="custom-name">Food / Meal Name</label>
+            <input type="text" id="custom-name" placeholder="e.g. Chicken breast or Custom Shake" required>
+          </div>
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="custom-calories">Calories (kcal)</label>
+              <input type="number" id="custom-calories" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="custom-protein">Protein (g)</label>
+              <input type="number" id="custom-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="custom-carbs">Carbs (g)</label>
+              <input type="number" id="custom-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="custom-fats">Fats (g)</label>
+              <input type="number" id="custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Custom Log</button>
+        </form>
+      </div>
+    </section>
+
+
+    <!-- TAB 3: WEIGHT TRACKER -->
+    <section id="panel-weight" class="app-panel">
+      <!-- Daily Weight Logger -->
+      <div class="glass-card weight-logger-card">
+        <h3>Log Weight</h3>
+        <p class="card-subtitle">Log your weight for the currently selected day</p>
+        
+        <form id="weight-log-form">
+          <div class="form-row-weight">
+            <div class="weight-input-wrapper">
+              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder="e.g. 182.4" required inputmode="decimal">
+              <span class="weight-unit-label" id="lbl-weight-unit">lbs</span>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-log-weight">Log Weight</button>
+          </div>
+        </form>
+
+        <div class="today-weight-status" id="today-weight-status-container">
+          <span class="status-icon">✓</span>
+          <span id="today-weight-text">Logged weight for today: <strong>--</strong></span>
+        </div>
+      </div>
+
+      <!-- History Chart Card -->
+      <div class="glass-card chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Weight History</h3>
+            <p class="card-subtitle">Past 7 days trend with best-fit trendline</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot dot-actual"></span>Actual
+            <span class="legend-dot dot-trend"></span>Trend
+          </div>
+        </div>
+
+        <div class="chart-canvas-wrapper">
+          <canvas id="weightHistoryChart"></canvas>
+        </div>
+
+        <div class="chart-stats-grid">
+          <div class="c-stat-box">
+            <label>Weekly Average</label>
+            <span id="val-weight-avg">--</span>
+          </div>
+          <div class="c-stat-box">
+            <label>Weekly Net Change</label>
+            <span id="val-weight-change" class="neutral">--</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- TAB 4: SETTINGS & TARGETS -->
+    <section id="panel-settings" class="app-panel">
+      <!-- Edit Daily Budget Goals -->
+      <div class="glass-card targets-config-card">
+        <h3>Set Budgets & Target Goals</h3>
+        <p class="card-subtitle">Adjust your standard targets. You can modify daily limits for high-carb/refeed days manually.</p>
+
+        <form id="targets-form">
+          <div class="form-group">
+            <label for="target-calories">Calorie Budget (kcal)</label>
+            <input type="number" id="target-calories" value="2000" min="500" max="10000" required pattern="[0-9]*" inputmode="numeric">
+          </div>
+
+          <div class="form-grid-3x">
+            <div class="form-group">
+              <label for="target-protein">Protein (g)</label>
+              <input type="number" id="target-protein" value="150" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-carbs">Carbs (g)</label>
+              <input type="number" id="target-carbs" value="250" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-fats">Fats (g)</label>
+              <input type="number" id="target-fats" value="65" min="0" max="500" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-success btn-block">Save Target Budgets</button>
+        </form>
+      </div>
+
+      <!-- App Preferences (Units & Mock Data) -->
+      <div class="glass-card preferences-card">
+        <h3>App Options</h3>
+        
+        <!-- Unit preferences -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Weight Units</label>
+            <p class="pref-desc">Toggle between imperial (lbs) and metric (kg)</p>
+          </div>
+          <div class="unit-toggle-control">
+            <button id="btn-unit-lbs" class="unit-btn active">lbs</button>
+            <button id="btn-unit-kg" class="unit-btn">kg</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Load Mock Data -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Load 7-Day Demo Logs</label>
+            <p class="pref-desc">Populate sample weights and meals to preview the trendline chart instantly</p>
+          </div>
+          <button id="btn-load-mock" class="btn btn-secondary">Load Demo</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Clear all stored local data -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title color-danger">Clear Stored Data</label>
+            <p class="pref-desc">Erase all weights, calories, and goals from local storage</p>
+          </div>
+          <button id="btn-clear-data" class="btn btn-danger btn-sm">Clear All</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Tab Bar -->
+  <nav class="app-navbar">
+    <button class="nav-item active" data-tab="dashboard" aria-label="Dashboard">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-tab="scanner" aria-label="Scan Food">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span>Log Food</span>
+    </button>
+    <button class="nav-item" data-tab="weight" aria-label="Weight Tracker">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Weight</span>
+    </button>
+    <button class="nav-item" data-tab="settings" aria-label="Settings">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Service Worker Registration script -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then((reg) => console.log("[PWA] Service Worker registered:", reg.scope))
+          .catch((err) => console.error("[PWA] Registration failed:", err));
+      });
+    }
+  </script>
+
+  <!-- Application Modules -->
+  <script src="database.js"></script>
+  <script src="scanner.js"></script>
+  <script src="charts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
