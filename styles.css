@@ -1641,28 +1641,22 @@ select:focus {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Refeed Day Badge Animation underneath progress ring */
+/* Re-Feed Day Badge - Premium Glassmorphic Notice */
 .refeed-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: rgba(255, 80, 0, 0.1);
-  border: 1px solid rgba(255, 179, 0, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: #ffa726;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
   margin-top: 4px;
-  box-shadow: 0 4px 12px rgba(255, 80, 0, 0.15);
-  animation: pulseScale 2s infinite ease-in-out;
-}
-
-@keyframes pulseScale {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); box-shadow: 0 4px 18px rgba(255, 80, 0, 0.25); }
-  100% { transform: scale(1); }
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.3px;
 }
 
 /* Tactile Switch Toggle Styles */
@@ -1764,4 +1758,109 @@ select:focus {
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: 0.1px;
+}
+
+/* Header Spacer, Container, and Settings Gear button */
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.header-spacer {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.btn-settings-icon {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.btn-settings-icon:active {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(0.9);
+}
+
+.btn-settings-icon:hover {
+  color: var(--color-text-primary);
+}
+
+/* Strategy Panel Cycling Day rows */
+.cycling-days-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cycling-day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  gap: 10px;
+  transition: all var(--transition-fast);
+}
+
+.cycling-day-row:focus-within {
+  border-color: rgba(0, 136, 255, 0.4);
+}
+
+.cycling-day-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.cycling-day-meta .day-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.cycling-day-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn var(--transition-fast);
+  max-width: 170px;
+}
+
+.cycling-day-inputs.hidden {
+  display: none !important;
+}
+
+.cycling-day-type {
+  width: 80px;
+  font-size: 0.85rem;
+  padding: 8px 24px 8px 10px;
+  border-radius: 8px;
+  height: 38px;
+}
+
+.cycling-day-val {
+  width: 72px !important;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  height: 38px;
+  text-align: center;
 }

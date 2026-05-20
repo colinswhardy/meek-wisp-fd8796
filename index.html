@@ -30,27 +30,19 @@
 
   <!-- App Header -->
   <header class="app-header">
-    <div class="header-logo">
-      <svg class="logo-icon" viewBox="0 0 100 100" width="36" height="36">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#logo-grad)" stroke-width="8" />
-        <circle cx="50" cy="50" r="24" fill="none" stroke="#ffb300" stroke-width="6" />
-        <path d="M50 36 v28" stroke="#00e676" stroke-width="8" stroke-linecap="round" />
-        <defs>
-          <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#00f2fe" />
-            <stop offset="100%" stop-color="#00c6ff" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <h1>ColinsChartsMacros</h1>
-    </div>
-    <div class="calendar-selector">
-      <button id="btn-prev-day" aria-label="Previous day">
-        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-      <span id="current-day-label">Today</span>
-      <button id="btn-next-day" aria-label="Next day">
-        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+    <div class="header-container">
+      <div class="header-spacer"></div>
+      <div class="calendar-selector">
+        <button id="btn-prev-day" aria-label="Previous day">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span id="current-day-label">Today</span>
+        <button id="btn-next-day" aria-label="Next day">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <button id="btn-header-settings" class="btn-settings-icon" aria-label="Open Settings" onclick="appRouter.navigate('settings')">
+        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
   </header>
@@ -61,60 +53,60 @@
     <!-- TAB 1: DASHBOARD -->
     <section id="panel-dashboard" class="app-panel active">
       <!-- Active Barcode Scanner Section -->
-      <div class="glass-card scanner-activation-card" id="scanner-view-container">
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-dashboard">
         <div class="scanner-header">
           <h3>Barcode Scan</h3>
           <p>Scan a product's barcode to auto-import macros</p>
         </div>
 
         <!-- Camera scanning display box -->
-        <div id="camera-scanner" class="camera-viewport hidden"></div>
+        <div id="camera-scanner-dashboard" class="camera-viewport hidden"></div>
 
         <!-- Scan action triggers -->
         <div class="scanner-controls">
-          <button id="btn-start-scan" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
+          <button id="btn-start-scan-dashboard" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Scan Barcode</span>
           </button>
-          <button id="btn-stop-scan" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-stop-scan-dashboard" class="btn btn-danger hidden">Stop Camera</button>
         </div>
 
         <!-- Fallback manual barcode search -->
         <div class="manual-barcode-input">
           <span class="divider-text">OR ENTER MANUALLY</span>
           <div class="input-inline">
-            <input type="number" id="manual-barcode-field" placeholder="Enter barcode number (e.g. 737628011243)" pattern="[0-9]*" inputmode="numeric">
-            <button id="btn-lookup-barcode" class="btn btn-secondary">Search</button>
+            <input type="number" id="manual-barcode-field-dashboard" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-dashboard" class="btn btn-secondary">Search</button>
           </div>
         </div>
       </div>
 
-      <!-- Scanned Food Detail Card (Shown when product is fetched successfully) -->
-      <div class="glass-card food-preview-card hidden" id="food-detail-card">
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-dashboard">
         <div class="food-details-header">
           <div class="details-name">
-            <h3 id="preview-food-name">Product Name</h3>
-            <p id="preview-food-brand">Brand</p>
+            <h3 id="preview-food-name-dashboard">Product Name</h3>
+            <p id="preview-food-brand-dashboard">Brand</p>
           </div>
-          <button id="btn-close-preview" class="btn-close">&times;</button>
+          <button id="btn-close-preview-dashboard" class="btn-close">&times;</button>
         </div>
 
         <!-- Nutrient info per 100g badge displays -->
         <div class="nutrition-pill-grid">
           <div class="nutri-pill highlight-kcal">
-            <span id="preview-100g-kcal">0</span>
+            <span id="preview-100g-kcal-dashboard">0</span>
             <label>kcal</label>
           </div>
           <div class="nutri-pill highlight-protein">
-            <span id="preview-100g-protein">0</span>
+            <span id="preview-100g-protein-dashboard">0</span>
             <label>Protein</label>
           </div>
           <div class="nutri-pill highlight-carbs">
-            <span id="preview-100g-carbs">0</span>
+            <span id="preview-100g-carbs-dashboard">0</span>
             <label>Carbs</label>
           </div>
           <div class="nutri-pill highlight-fats">
-            <span id="preview-100g-fats">0</span>
+            <span id="preview-100g-fats-dashboard">0</span>
             <label>Fats</label>
           </div>
           <div class="nutri-label-100g">Values shown per 100g</div>
@@ -123,9 +115,9 @@
         <!-- User serving size weight input & macro scaling display -->
         <div class="serving-scaling-form">
           <div class="form-group">
-            <label for="food-weight-input">Weight Eaten (grams)</label>
+            <label for="food-weight-input-dashboard">Weight Eaten (grams)</label>
             <div class="weight-input-container">
-              <input type="number" id="food-weight-input" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
+              <input type="number" id="food-weight-input-dashboard" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
               <span class="weight-unit">g</span>
             </div>
           </div>
@@ -134,24 +126,24 @@
           <div class="scaling-summary">
             <div class="scale-item">
               <label>Calories</label>
-              <strong id="scaled-kcal">0</strong>
+              <strong id="scaled-kcal-dashboard">0</strong>
             </div>
             <div class="scale-item">
               <label>Protein</label>
-              <strong id="scaled-protein">0g</strong>
+              <strong id="scaled-protein-dashboard">0g</strong>
             </div>
             <div class="scale-item">
               <label>Carbs</label>
-              <strong id="scaled-carbs">0g</strong>
+              <strong id="scaled-carbs-dashboard">0g</strong>
             </div>
             <div class="scale-item">
               <label>Fats</label>
-              <strong id="scaled-fats">0g</strong>
+              <strong id="scaled-fats-dashboard">0g</strong>
             </div>
           </div>
 
           <!-- Add Button -->
-          <button id="btn-add-scaled-food" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+          <button id="btn-add-scaled-food-dashboard" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
         </div>
       </div>
 
@@ -217,6 +209,104 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- TAB 2: FOOD LOG -->
+    <section id="panel-food" class="app-panel">
+      <!-- Active Barcode Scanner Section (Duplicate context for Food Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-food">
+        <div class="scanner-header">
+          <h3>Barcode Scan</h3>
+          <p>Scan a product's barcode to auto-import macros</p>
+        </div>
+
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-food" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-food" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Scan Barcode</span>
+          </button>
+          <button id="btn-stop-scan-food" class="btn btn-danger hidden">Stop Camera</button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-food" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-food" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-food">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-food">Product Name</h3>
+            <p id="preview-food-brand-food">Brand</p>
+          </div>
+          <button id="btn-close-preview-food" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-food">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-food">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-food">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-food">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-food">Weight Eaten (grams)</label>
+            <div class="weight-input-container">
+              <input type="number" id="food-weight-input-food" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
+              <span class="weight-unit">g</span>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-food">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-food">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-food" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
 
       <!-- Today's Logs Section -->
       <div class="logs-section">
@@ -225,16 +315,14 @@
           <span class="meals-count" id="meals-count-badge">0 items</span>
         </div>
         <div class="meals-list" id="meals-list-container">
-          <!-- Dynamically filled meal items -->
           <div class="empty-state">
             <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
             <p>No food logged for this day yet.</p>
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('btn-start-scan').scrollIntoView({behavior: 'smooth'})">Scan Food Now</button>
           </div>
         </div>
       </div>
 
-      <!-- Custom Food Add Form (fallback if not found in API) -->
+      <!-- Custom Food Add Form -->
       <div class="glass-card custom-food-card" id="custom-food-card">
         <div class="card-header-toggle" id="toggle-custom-form-btn">
           <h3>Log Custom Food / Quick Macro</h3>
@@ -267,11 +355,17 @@
           <button type="submit" class="btn btn-primary btn-block">Add Custom Log</button>
         </form>
       </div>
+
+      <!-- 7-Day Calorie History -->
+      <div class="glass-card history-calorie-card" id="history-calorie-card">
+        <h3>7-Day Calorie History</h3>
+        <p class="card-subtitle">Intake logs and budgets over the last 7 days</p>
+        
+        <div class="calorie-history-list" id="calorie-history-container">
+          <div class="loading-state">Loading calorie history...</div>
+        </div>
+      </div>
     </section>
-
-
-
-
 
     <!-- TAB 3: WEIGHT TRACKER -->
     <section id="panel-weight" class="app-panel">
@@ -324,8 +418,11 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Planning & Target Goals Clickable Menu -->
+    <!-- TAB 4: STRATEGY (PLANNER & BUDGETS + RE-FEED SCHEDULER) -->
+    <section id="panel-strategy" class="app-panel">
+      <!-- Calculators & Target Goals Clickable Menu -->
       <div class="glass-card tools-config-card">
         <h3>Calculators & Target Goals</h3>
         <p class="card-subtitle">Configure your dynamic goals and macro budgets</p>
@@ -357,14 +454,150 @@
         </div>
       </div>
 
-      <!-- 7-Day Calorie History (MacroFactor style) -->
-      <div class="glass-card history-calorie-card">
-        <h3>7-Day Calorie History</h3>
-        <p class="card-subtitle">Intake logs and budgets over the last 7 days</p>
+      <!-- Calorie Cycling & Re-Feed Scheduler -->
+      <div class="glass-card calorie-cycling-card">
+        <h3>Calorie Cycling & Re-Feed</h3>
+        <p class="card-subtitle">Schedule high-calorie days to support training and recovery.</p>
         
-        <div class="calorie-history-list" id="calorie-history-container">
-          <!-- Dynamically populated via WeightController -->
-          <div class="loading-state">Loading calorie history...</div>
+        <div class="pref-row" style="margin-bottom: 20px;">
+          <div>
+            <label class="pref-title">Enable Calorie Cycling</label>
+          </div>
+          <label class="switch-toggle">
+            <input type="checkbox" id="cycling-enabled">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+
+        <div class="cycling-settings-body hidden" id="cycling-settings-body">
+          <label class="pref-title" style="display: block; margin-bottom: 12px;">High Calorie / Re-Feed Schedule</label>
+          <div class="cycling-days-list">
+            <!-- Monday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-monday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Monday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-monday">
+                <select class="cycling-day-type" id="cycling-type-monday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-monday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Tuesday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-tuesday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Tuesday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-tuesday">
+                <select class="cycling-day-type" id="cycling-type-tuesday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-tuesday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Wednesday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-wednesday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Wednesday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-wednesday">
+                <select class="cycling-day-type" id="cycling-type-wednesday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-wednesday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Thursday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-thursday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Thursday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-thursday">
+                <select class="cycling-day-type" id="cycling-type-thursday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-thursday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Friday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-friday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Friday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-friday">
+                <select class="cycling-day-type" id="cycling-type-friday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-friday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Saturday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-saturday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Saturday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-saturday">
+                <select class="cycling-day-type" id="cycling-type-saturday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-saturday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Sunday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-sunday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Sunday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-sunday">
+                <select class="cycling-day-type" id="cycling-type-sunday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-sunday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -372,13 +605,13 @@
     <!-- SUBPAGE: CALORIE PLANNER -->
     <section id="panel-weight-planner" class="app-panel">
       <div class="subpage-header">
-        <button class="btn-back" onclick="appRouter.navigate('weight')">
+        <button class="btn-back" onclick="appRouter.navigate('strategy')">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
-          <span>Back to Weight</span>
+          <span>Back to Strategy</span>
         </button>
       </div>
 
-      <!-- Interactive Weight Goal & TDEE Calorie Planner -->
+      <!-- Weight Goal & Calorie Planner -->
       <div class="glass-card planner-card">
         <h3>Weight Goal & Calorie Planner</h3>
         <p class="card-subtitle">Calculate dynamic daily targets based on your biological statistics and safe weekly rate.</p>
@@ -434,7 +667,6 @@
           </div>
         </form>
 
-        <!-- Dynamic Results summary block -->
         <div class="planner-results-block" id="planner-results-card">
           <div class="planner-main-metric">
             <label>Calculated Calorie Target</label>
@@ -468,16 +700,16 @@
     <!-- SUBPAGE: SET TARGET BUDGETS -->
     <section id="panel-weight-budgets" class="app-panel">
       <div class="subpage-header">
-        <button class="btn-back" onclick="appRouter.navigate('weight')">
+        <button class="btn-back" onclick="appRouter.navigate('strategy')">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
-          <span>Back to Weight</span>
+          <span>Back to Strategy</span>
         </button>
       </div>
 
       <!-- Edit Daily Budget Goals -->
       <div class="glass-card targets-config-card">
         <h3>Set Budgets & Target Goals</h3>
-        <p class="card-subtitle">Adjust your standard targets. You can modify daily limits for high-carb/refeed days manually.</p>
+        <p class="card-subtitle">Adjust your standard targets. You can modify daily limits for high-carb/re-feed days manually.</p>
 
         <form id="targets-form">
           <div class="form-group">
@@ -505,79 +737,14 @@
       </div>
     </section>
 
-
-    <!-- TAB 4: SETTINGS & TARGETS -->
+    <!-- SUBPAGE: SETTINGS -->
     <section id="panel-settings" class="app-panel">
-      <!-- Calorie Cycling & High Calorie Days Refeeds -->
-      <div class="glass-card calorie-cycling-card">
-        <h3>Calorie Cycling & Refeeds</h3>
-        <p class="card-subtitle">Schedule high-calorie days to boost metabolic flexibility and support intense training.</p>
-        
-        <div class="pref-row" style="margin-bottom: 20px;">
-          <div>
-            <label class="pref-title">Enable Calorie Cycling</label>
-            <p class="pref-desc">Automatically cycle daily calorie targets based on the day of the week</p>
-          </div>
-          <label class="switch-toggle">
-            <input type="checkbox" id="cycling-enabled">
-            <span class="slider-round"></span>
-          </label>
-        </div>
-
-        <div class="cycling-settings-body hidden" id="cycling-settings-body">
-          <label class="pref-title" style="display: block; margin-bottom: 12px;">High Calorie Days Schedule</label>
-          <div class="weekday-checkbox-grid">
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-monday">
-              <span>Mon</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-tuesday">
-              <span>Tue</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-wednesday">
-              <span>Wed</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-thursday">
-              <span>Thu</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-friday">
-              <span>Fri</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-saturday">
-              <span>Sat</span>
-            </label>
-            <label class="weekday-pill">
-              <input type="checkbox" id="cycling-day-sunday">
-              <span>Sun</span>
-            </label>
-          </div>
-
-          <div class="divider" style="margin: 16px 0;"></div>
-
-          <div class="form-grid-2x2">
-            <div class="form-group">
-              <label for="cycling-surplus-type">Surplus Calculations</label>
-              <select id="cycling-surplus-type">
-                <option value="flat">Flat Calories (kcal over)</option>
-                <option value="percent">Percentage (% over base)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="cycling-surplus-value">Surplus Amount</label>
-              <div class="input-inline">
-                <input type="number" id="cycling-surplus-value" min="0" max="2000" value="300" pattern="[0-9]*" inputmode="numeric">
-                <span class="weight-unit-label" id="cycling-surplus-unit-label">kcal</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('dashboard')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Dashboard</span>
+        </button>
       </div>
-
       <!-- App Preferences (Units & Mock Data) -->
       <div class="glass-card preferences-card">
         <h3>App Options</h3>
@@ -599,7 +766,7 @@
         <div class="pref-row">
           <div>
             <label class="pref-title">Import Renpho Weights</label>
-            <p class="pref-desc">Sync historical weights instantly via exported Renpho CSV</p>
+            <p class="pref-desc">Sync weight history instantly via exported Renpho CSV</p>
           </div>
           <label class="btn btn-secondary btn-sm btn-file-wrapper" id="btn-import-csv-wrapper">
             <span>Import CSV</span>
@@ -608,7 +775,44 @@
         </div>
       </div>
 
-      <!-- Advanced Options / Danger Zone Collapsible Card -->
+      <!-- Backup & Restore Data Card -->
+      <div class="glass-card backup-restore-card">
+        <h3>Backup & Export Data</h3>
+        <p class="card-subtitle">Protect your tracker records from clearing. All data is saved strictly on your local device.</p>
+        
+        <div class="pref-row" style="margin-bottom: 12px;">
+          <div>
+            <label class="pref-title">Export Google Sheets (CSV)</label>
+            <p class="pref-desc">Download a spreadsheet compatible table of all daily logs</p>
+          </div>
+          <button id="btn-export-csv" class="btn btn-secondary btn-sm">Export CSV</button>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+
+        <div class="pref-row" style="margin-bottom: 12px;">
+          <div>
+            <label class="pref-title">Backup App Database (JSON)</label>
+            <p class="pref-desc">Save a complete raw backup file of your entire database</p>
+          </div>
+          <button id="btn-export-json" class="btn btn-secondary btn-sm">Backup JSON</button>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Restore Database</label>
+            <p class="pref-desc">Upload a previously saved .json backup file to restore records</p>
+          </div>
+          <label class="btn btn-secondary btn-sm btn-file-wrapper">
+            <span>Restore Backup</span>
+            <input type="file" id="json-file-input" accept=".json">
+          </label>
+        </div>
+      </div>
+
+      <!-- Advanced Options / Collapsible Danger Zone -->
       <div class="glass-card danger-zone-card" id="danger-zone-card">
         <div class="card-header-toggle" id="toggle-danger-zone-btn">
           <h3 class="color-danger" style="margin-bottom: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
@@ -622,14 +826,14 @@
           <div class="pref-row">
             <div>
               <label class="pref-title">Load 7-Day Demo Logs</label>
-              <p class="pref-desc">Populate sample weights and meals to preview the trendline chart instantly</p>
+              <p class="pref-desc">Populate sample weights and meals to preview charts instantly</p>
             </div>
             <button id="btn-load-mock" class="btn btn-secondary">Load Demo</button>
           </div>
 
           <div class="divider"></div>
 
-          <!-- Clear all stored local data -->
+          <!-- Clear stored data -->
           <div class="pref-row">
             <div>
               <label class="pref-title color-danger">Clear Stored Data</label>
@@ -649,13 +853,17 @@
       <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Dashboard</span>
     </button>
+    <button class="nav-item" data-tab="food" aria-label="Food Log">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Food</span>
+    </button>
     <button class="nav-item" data-tab="weight" aria-label="Weight Tracker">
       <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span>Weight</span>
     </button>
-    <button class="nav-item" data-tab="settings" aria-label="Settings">
-      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>Settings</span>
+    <button class="nav-item" data-tab="strategy" aria-label="Strategy & Planning">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Strategy</span>
     </button>
   </nav>
 

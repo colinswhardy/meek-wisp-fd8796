@@ -22,16 +22,14 @@ const AppState = {
       unit: "lbs",   // "lbs" or "kg"
       highCalorieDaysEnabled: false,
       highCalorieDays: {
-        monday: false,
-        tuesday: false,
-        wednesday: false,
-        thursday: false,
-        friday: false,
-        saturday: false,
-        sunday: false
-      },
-      highCalorieSurplusType: "flat",
-      highCalorieSurplusValue: 300
+        monday: { enabled: false, type: "flat", value: 300 },
+        tuesday: { enabled: false, type: "flat", value: 300 },
+        wednesday: { enabled: false, type: "flat", value: 300 },
+        thursday: { enabled: false, type: "flat", value: 300 },
+        friday: { enabled: false, type: "flat", value: 300 },
+        saturday: { enabled: false, type: "flat", value: 300 },
+        sunday: { enabled: false, type: "flat", value: 300 }
+      }
     },
     profile: {
       sex: "male",
@@ -63,7 +61,45 @@ const AppState = {
         if (parsed.dailyGoals) this.data.dailyGoals = { ...this.data.dailyGoals, ...parsed.dailyGoals };
         if (parsed.meals) this.data.meals = { ...this.data.meals, ...parsed.meals };
         if (parsed.weights) this.data.weights = { ...this.data.weights, ...parsed.weights };
-        if (parsed.settings) this.data.settings = { ...this.data.settings, ...parsed.settings };
+        if (parsed.settings) {
+          this.data.settings = { ...this.data.settings, ...parsed.settings };
+          
+          // Legacy migration for highCalorieDays (from boolean/missing to day-by-day object format)
+          const oldDays = this.data.settings.highCalorieDays || {};
+          const oldType = this.data.settings.highCalorieSurplusType || "flat";
+          const oldValue = this.data.settings.highCalorieSurplusValue !== undefined ? this.data.settings.highCalorieSurplusValue : 300;
+          
+          const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+          const migratedDays = {};
+          
+          weekdays.forEach(day => {
+            if (typeof oldDays[day] === "boolean") {
+              migratedDays[day] = {
+                enabled: oldDays[day],
+                type: oldType,
+                value: oldValue
+              };
+            } else if (oldDays[day] && typeof oldDays[day] === "object") {
+              migratedDays[day] = {
+                enabled: oldDays[day].enabled !== undefined ? oldDays[day].enabled : false,
+                type: oldDays[day].type || "flat",
+                value: oldDays[day].value !== undefined ? oldDays[day].value : 300
+              };
+            } else {
+              migratedDays[day] = {
+                enabled: false,
+                type: "flat",
+                value: 300
+              };
+            }
+          });
+          
+          this.data.settings.highCalorieDays = migratedDays;
+          
+          // Clean up legacy root-level calorie cycling variables
+          delete this.data.settings.highCalorieSurplusType;
+          delete this.data.settings.highCalorieSurplusValue;
+        }
         if (parsed.profile) this.data.profile = { ...this.data.profile, ...parsed.profile };
       } catch (e) {
         console.error("[Storage] Corrupt save file. Initializing standard defaults...", e);
@@ -94,13 +130,15 @@ const AppState = {
       const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
       const dayName = weekdays[date.getDay()];
       
-      if (this.data.settings.highCalorieDays[dayName]) {
+      const dayConfig = this.data.settings.highCalorieDays[dayName];
+      
+      if (dayConfig && dayConfig.enabled) {
         // Calculate surplus
         let surplus = 0;
-        if (this.data.settings.highCalorieSurplusType === "flat") {
-          surplus = Number(this.data.settings.highCalorieSurplusValue) || 0;
-        } else if (this.data.settings.highCalorieSurplusType === "percent") {
-          const pct = Number(this.data.settings.highCalorieSurplusValue) || 0;
+        if (dayConfig.type === "flat") {
+          surplus = Number(dayConfig.value) || 0;
+        } else if (dayConfig.type === "percent") {
+          const pct = Number(dayConfig.value) || 0;
           surplus = baseGoals.calories * (pct / 100);
         }
         
@@ -113,7 +151,9 @@ const AppState = {
           carbs: Math.max(Math.round(baseGoals.carbs * scalingFactor), 10),
           fats: Math.max(Math.round(baseGoals.fats * scalingFactor), 5),
           isHighCalorieDay: true,
-          surplusApplied: Math.round(surplus)
+          surplusApplied: Math.round(surplus),
+          surplusType: dayConfig.type,
+          surplusValue: dayConfig.value
         };
       }
     }
@@ -121,7 +161,9 @@ const AppState = {
     return {
       ...baseGoals,
       isHighCalorieDay: false,
-      surplusApplied: 0
+      surplusApplied: 0,
+      surplusType: "flat",
+      surplusValue: 0
     };
   },
 
@@ -148,7 +190,7 @@ const AppState = {
   }
 };
 
-// Simple Single Page App Router
+// Simple Single Page App Router with popstate back gestures
 const appRouter = {
   panels: {},
   navItems: [],
@@ -156,7 +198,9 @@ const appRouter = {
   init() {
     this.panels = {
       dashboard: document.getElementById("panel-dashboard"),
+      food: document.getElementById("panel-food"),
       weight: document.getElementById("panel-weight"),
+      strategy: document.getElementById("panel-strategy"),
       weight_planner: document.getElementById("panel-weight-planner"),
       weight_budgets: document.getElementById("panel-weight-budgets"),
       settings: document.getElementById("panel-settings")
@@ -169,16 +213,26 @@ const appRouter = {
         this.navigate(tab);
       });
     });
+
+    // Popstate back gesture / browser back listener
+    window.addEventListener("popstate", (event) => {
+      const tabName = (event.state && event.state.tab) ? event.state.tab : "dashboard";
+      this.navigate(tabName, false);
+    });
+
+    // Set initial default browser state
+    history.replaceState({ tab: "dashboard" }, "", "#dashboard");
   },
 
-  navigate(tabName) {
+  navigate(tabName, pushState = true) {
     if (!this.panels[tabName]) return;
     
-    // Close camera scanner stream cleanly if leaving the dashboard tab
-    if (AppState.activeTab === "dashboard" && tabName !== "dashboard") {
+    // Close camera scanner stream cleanly if leaving the active camera tabs
+    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food") && tabName !== AppState.activeTab) {
       BarcodeScannerManager.stop();
     }
 
+    const previousTab = AppState.activeTab;
     AppState.activeTab = tabName;
 
     // Toggle panels
@@ -190,16 +244,22 @@ const appRouter = {
       }
     });
 
-    // Toggle navigation buttons
+    // Toggle bottom navigation active buttons
     this.navItems.forEach((btn) => {
       const btnTab = btn.getAttribute("data-tab");
       const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets");
-      if (btnTab === tabName || (btnTab === "weight" && isWeightRelated)) {
+      const isStrategyRelated = (tabName === "strategy");
+      if (btnTab === tabName || (btnTab === "weight" && isWeightRelated) || (btnTab === "strategy" && isStrategyRelated)) {
         btn.classList.add("active");
       } else {
         btn.classList.remove("active");
       }
     });
+
+    // Push new history state for back button gestures
+    if (pushState && tabName !== previousTab) {
+      history.pushState({ tab: tabName }, "", "#" + tabName);
+    }
 
     // Render contents specific to active tabs
     this.refreshCurrentView();
@@ -208,17 +268,19 @@ const appRouter = {
   refreshCurrentView() {
     if (AppState.activeTab === "dashboard") {
       DashboardController.render();
+    } else if (AppState.activeTab === "food") {
+      FoodController.render();
     } else if (AppState.activeTab === "weight") {
       WeightController.render();
-    } else if (AppState.activeTab === "weight_planner" || AppState.activeTab === "weight_budgets") {
-      SettingsController.render();
-    } else if (AppState.activeTab === "settings") {
+    } else if (AppState.activeTab === "strategy") {
+      StrategyController.render();
+    } else if (AppState.activeTab === "weight_planner" || AppState.activeTab === "weight_budgets" || AppState.activeTab === "settings") {
       SettingsController.render();
     }
   }
 };
 
-// Dashboard Controller (Progress circles, Bars, Eaten meal items)
+// Dashboard Controller (Progress circles, Macro bars, Scanner)
 const DashboardController = {
   render() {
     const dateKey = AppState.selectedDateISO;
@@ -258,16 +320,18 @@ const DashboardController = {
 
     // Animate circular progress ring
     const ring = document.getElementById("calorie-progress-ring");
-    const strokeDash = 251.2; // 2 * PI * r (40)
-    let offset = strokeDash;
-    
-    if (goals.calories > 0) {
-      const clampedPct = Math.min(eatenKcal / goals.calories, 1.0);
-      offset = strokeDash - (strokeDash * clampedPct);
+    if (ring) {
+      const strokeDash = 251.2; // 2 * PI * r (40)
+      let offset = strokeDash;
+      
+      if (goals.calories > 0) {
+        const clampedPct = Math.min(eatenKcal / goals.calories, 1.0);
+        offset = strokeDash - (strokeDash * clampedPct);
+      }
+      ring.style.strokeDashoffset = offset;
     }
-    ring.style.strokeDashoffset = offset;
 
-    // Show/hide high calorie day refeed badge
+    // Show/hide high calorie day re-feed badge with silver-gray formatting
     let badgeEl = document.getElementById("refeed-badge");
     if (!badgeEl) {
       badgeEl = document.createElement("div");
@@ -280,7 +344,10 @@ const DashboardController = {
     }
     
     if (goals.isHighCalorieDay && badgeEl) {
-      badgeEl.textContent = `🔥 +${goals.surplusApplied} kcal Refeed Day`;
+      const text = goals.surplusType === "percent" 
+        ? `${goals.surplusValue}% re-feed day` 
+        : `${goals.surplusValue} kcal re-feed day`;
+      badgeEl.textContent = text;
       badgeEl.classList.remove("hidden");
     } else if (badgeEl) {
       badgeEl.classList.add("hidden");
@@ -290,29 +357,50 @@ const DashboardController = {
     this.updateMacroRow("protein", eatenProtein, goals.protein);
     this.updateMacroRow("carbs", eatenCarbs, goals.carbs);
     this.updateMacroRow("fats", eatenFats, goals.fats);
-
-    // List meals eaten today
-    this.renderMealList(meals);
   },
 
   updateMacroRow(macroName, eaten, target) {
-    document.getElementById(`val-${macroName}-eaten`).textContent = Math.round(eaten);
-    document.getElementById(`val-${macroName}-target`).textContent = Math.round(target);
+    const eatenEl = document.getElementById(`val-${macroName}-eaten`);
+    const targetEl = document.getElementById(`val-${macroName}-target`);
+    const barEl = document.getElementById(`bar-${macroName}`);
+
+    if (eatenEl) eatenEl.textContent = Math.round(eaten);
+    if (targetEl) targetEl.textContent = Math.round(target);
     
-    const pct = target > 0 ? Math.min((eaten / target) * 100, 100) : 0;
-    document.getElementById(`bar-${macroName}`).style.width = `${pct}%`;
+    if (barEl) {
+      const pct = target > 0 ? Math.min((eaten / target) * 100, 100) : 0;
+      barEl.style.width = `${pct}%`;
+    }
+  }
+};
+
+// Food Controller - Detailed logs, custom log form, 7-day calorie history
+const FoodController = {
+  render() {
+    const dateKey = AppState.selectedDateISO;
+    const meals = AppState.data.meals[dateKey] || [];
+    
+    // 1. Render Meals list eaten today
+    this.renderMealList(meals);
+    
+    // 2. Render 7-day calorie history list
+    this.renderCalorieHistory();
   },
 
   renderMealList(meals) {
     const container = document.getElementById("meals-list-container");
-    document.getElementById("meals-count-badge").textContent = `${meals.length} item${meals.length === 1 ? '' : 's'}`;
+    if (!container) return;
+
+    const countBadge = document.getElementById("meals-count-badge");
+    if (countBadge) {
+      countBadge.textContent = `${meals.length} item${meals.length === 1 ? '' : 's'}`;
+    }
 
     if (meals.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           <p>No food logged for this day yet.</p>
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('btn-start-scan').scrollIntoView({behavior: 'smooth'})">Scan Food Now</button>
         </div>
       `;
       return;
@@ -362,286 +450,6 @@ const DashboardController = {
 
     AppState.saveToStorage();
     this.render();
-  }
-};
-
-// Scanner & Barcode View Controller
-const ScannerViewController = {
-  currentFetchedProduct: null, // Temporary store for the active query result
-
-  init() {
-    // 1. Collapsible custom form toggle
-    const toggleHeader = document.getElementById("toggle-custom-form-btn");
-    const customForm = document.getElementById("custom-food-form");
-    const customCard = document.getElementById("custom-food-card");
-
-    toggleHeader.addEventListener("click", () => {
-      const isHidden = customForm.classList.contains("hidden");
-      if (isHidden) {
-        customForm.classList.remove("hidden");
-        customCard.classList.add("active");
-      } else {
-        customForm.classList.add("hidden");
-        customCard.classList.remove("active");
-      }
-    });
-
-    // 2. Camera Trigger Actions
-    document.getElementById("btn-start-scan").addEventListener("click", () => {
-      BarcodeScannerManager.start((barcode) => {
-        this.triggerProductLookup(barcode);
-      });
-    });
-
-    document.getElementById("btn-stop-scan").addEventListener("click", () => {
-      BarcodeScannerManager.stop();
-    });
-
-    // 3. Manual code entry search click
-    document.getElementById("btn-lookup-barcode").addEventListener("click", () => {
-      const code = document.getElementById("manual-barcode-field").value;
-      if (code) {
-        this.triggerProductLookup(code);
-      }
-    });
-
-    // Close preview card trigger
-    document.getElementById("btn-close-preview").addEventListener("click", () => {
-      this.closePreview();
-    });
-
-    // 4. Serving Gram Scaler Input Listener
-    const weightInput = document.getElementById("food-weight-input");
-    weightInput.addEventListener("input", () => {
-      this.updateScaledMacros();
-    });
-    weightInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        this.addScaledProductToLog();
-      }
-    });
-
-    // 5. Scaled add button
-    document.getElementById("btn-add-scaled-food").addEventListener("click", () => {
-      this.addScaledProductToLog();
-    });
-
-    // 6. Custom manual food log form submission
-    document.getElementById("custom-food-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      this.addCustomFoodLog();
-    });
-
-    // 7. Auto-calculate custom calories from custom macros
-    const customProtein = document.getElementById("custom-protein");
-    const customCarbs = document.getElementById("custom-carbs");
-    const customFats = document.getElementById("custom-fats");
-    const customCalInput = document.getElementById("custom-calories");
-
-    const updateCalculatedCalories = () => {
-      let p = parseFloat(customProtein.value) || 0;
-      let c = parseFloat(customCarbs.value) || 0;
-      let f = parseFloat(customFats.value) || 0;
-      let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
-      customCalInput.value = kcal > 0 ? kcal : "";
-    };
-
-    customProtein.addEventListener("input", updateCalculatedCalories);
-    customCarbs.addEventListener("input", updateCalculatedCalories);
-    customFats.addEventListener("input", updateCalculatedCalories);
-  },
-
-  async triggerProductLookup(barcode) {
-    const inputField = document.getElementById("manual-barcode-field");
-    const searchBtn = document.getElementById("btn-lookup-barcode");
-    
-    inputField.disabled = true;
-    searchBtn.disabled = true;
-    searchBtn.textContent = "Loading...";
-
-    try {
-      const product = await FoodDatabase.lookupBarcode(barcode);
-      this.currentFetchedProduct = product;
-      
-      // Populate elements
-      document.getElementById("preview-food-name").textContent = product.name;
-      document.getElementById("preview-food-brand").textContent = product.brand;
-      
-      document.getElementById("preview-100g-kcal").textContent = product.nutrients.calories;
-      document.getElementById("preview-100g-protein").textContent = product.nutrients.protein;
-      document.getElementById("preview-100g-carbs").textContent = product.nutrients.carbs;
-      document.getElementById("preview-100g-fats").textContent = product.nutrients.fats;
-
-      // Set standard weight scale to 100g
-      document.getElementById("food-weight-input").value = 100;
-      this.updateScaledMacros();
-
-      // Show preview card, hide loader
-      document.getElementById("food-detail-card").classList.remove("hidden");
-      
-      // Scroll to detail preview card on small mobile browsers
-      document.getElementById("food-detail-card").scrollIntoView({ behavior: 'smooth' });
-
-    } catch (err) {
-      alert("Product details could not be found or barcode is invalid. Try adding it below as a Custom Food.");
-    } finally {
-      inputField.disabled = false;
-      searchBtn.disabled = false;
-      searchBtn.textContent = "Search";
-      inputField.value = "";
-    }
-  },
-
-  updateScaledMacros() {
-    if (!this.currentFetchedProduct) return;
-    
-    let weight = parseFloat(document.getElementById("food-weight-input").value);
-    if (isNaN(weight) || weight <= 0) weight = 0;
-
-    const raw = this.currentFetchedProduct.nutrients;
-    const factor = weight / 100;
-
-    document.getElementById("scaled-kcal").textContent = Math.round(raw.calories * factor);
-    document.getElementById("scaled-protein").textContent = `${(raw.protein * factor).toFixed(1)}g`;
-    document.getElementById("scaled-carbs").textContent = `${(raw.carbs * factor).toFixed(1)}g`;
-    document.getElementById("scaled-fats").textContent = `${(raw.fats * factor).toFixed(1)}g`;
-  },
-
-  addScaledProductToLog() {
-    if (!this.currentFetchedProduct) return;
-
-    let weight = parseFloat(document.getElementById("food-weight-input").value);
-    if (isNaN(weight) || weight <= 0) {
-      alert("Please enter a valid weight in grams.");
-      return;
-    }
-
-    const raw = this.currentFetchedProduct.nutrients;
-    const factor = weight / 100;
-
-    const newLogItem = {
-      id: "food_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-      name: this.currentFetchedProduct.name,
-      brand: this.currentFetchedProduct.brand,
-      weight: weight,
-      calories: Math.round(raw.calories * factor),
-      protein: parseFloat((raw.protein * factor).toFixed(1)),
-      carbs: parseFloat((raw.carbs * factor).toFixed(1)),
-      fats: parseFloat((raw.fats * factor).toFixed(1))
-    };
-
-    const dateKey = AppState.selectedDateISO;
-    if (!AppState.data.meals[dateKey]) {
-      AppState.data.meals[dateKey] = [];
-    }
-    
-    AppState.data.meals[dateKey].push(newLogItem);
-    AppState.saveToStorage();
-
-    // Close preview card cleanly, reset state
-    this.closePreview();
-    
-    // Rerender dashboard directly
-    DashboardController.render();
-    AppState.showToast("Food item added to log!");
-  },
-
-  addCustomFoodLog() {
-    const name = document.getElementById("custom-name").value;
-    const kcal = Math.round(Number(document.getElementById("custom-calories").value));
-    const protein = parseFloat(Number(document.getElementById("custom-protein").value).toFixed(1));
-    const carbs = parseFloat(Number(document.getElementById("custom-carbs").value).toFixed(1));
-    const fats = parseFloat(Number(document.getElementById("custom-fats").value).toFixed(1));
-
-    const newLogItem = {
-      id: "food_custom_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-      name: name,
-      brand: "Custom Entry",
-      weight: 100, // Static serving placeholder
-      calories: kcal,
-      protein: protein,
-      carbs: carbs,
-      fats: fats
-    };
-
-    const dateKey = AppState.selectedDateISO;
-    if (!AppState.data.meals[dateKey]) {
-      AppState.data.meals[dateKey] = [];
-    }
-    
-    AppState.data.meals[dateKey].push(newLogItem);
-    AppState.saveToStorage();
-
-    // Reset forms
-    document.getElementById("custom-food-form").reset();
-    document.getElementById("custom-food-form").classList.add("hidden");
-    document.getElementById("custom-food-card").classList.remove("active");
-
-    DashboardController.render();
-    AppState.showToast("Custom food item added!");
-  },
-
-  closePreview() {
-    this.currentFetchedProduct = null;
-    document.getElementById("food-detail-card").classList.add("hidden");
-  }
-};
-
-// Weight Log View Controller
-const WeightController = {
-  init() {
-    document.getElementById("weight-log-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      this.logWeight();
-    });
-  },
-
-  render() {
-    const dateKey = AppState.selectedDateISO;
-    const loggedVal = AppState.data.weights[dateKey] || null;
-    const unit = AppState.data.settings.unit;
-
-    // Set standard unit label
-    document.getElementById("lbl-weight-unit").textContent = unit;
-
-    const inputField = document.getElementById("weight-input");
-    const statusBox = document.getElementById("today-weight-status-container");
-    const statusText = document.getElementById("today-weight-text");
-
-    if (loggedVal !== null) {
-      inputField.value = loggedVal.toFixed(1);
-      statusBox.classList.add("active");
-      statusText.innerHTML = `Logged weight for today: <strong>${loggedVal.toFixed(1)} ${unit}</strong>`;
-    } else {
-      inputField.value = "";
-      statusBox.classList.remove("active");
-    }
-
-    // Refresh history chart and calculations
-    WeightChartManager.renderChart(AppState.data.weights, dateKey, unit);
-    
-    // Render 7-Day Calorie History
-    this.renderCalorieHistory();
-  },
-
-  logWeight() {
-    const weightRaw = parseFloat(document.getElementById("weight-input").value);
-    
-    if (isNaN(weightRaw) || weightRaw < 20 || weightRaw > 500) {
-      alert("Please log a valid weight measurement (20 to 500).");
-      return;
-    }
-
-    // Round weight strictly to 1 decimal place
-    const cleanedWeight = parseFloat(weightRaw.toFixed(1));
-    const dateKey = AppState.selectedDateISO;
-
-    AppState.data.weights[dateKey] = cleanedWeight;
-    AppState.saveToStorage();
-    
-    this.render();
-    AppState.showToast("Weight logged successfully!");
   },
 
   renderCalorieHistory() {
@@ -707,27 +515,478 @@ const WeightController = {
   }
 };
 
+// Scanner & Barcode View Controller (Dual Context aware)
+const ScannerViewController = {
+  currentFetchedProduct: {
+    dashboard: null,
+    food: null
+  },
+
+  init() {
+    // 1. Collapsible custom form toggle (Only on the Food tab)
+    const toggleHeader = document.getElementById("toggle-custom-form-btn");
+    const customForm = document.getElementById("custom-food-form");
+    const customCard = document.getElementById("custom-food-card");
+
+    if (toggleHeader && customForm && customCard) {
+      toggleHeader.addEventListener("click", () => {
+        const isHidden = customForm.classList.contains("hidden");
+        if (isHidden) {
+          customForm.classList.remove("hidden");
+          customCard.classList.add("active");
+        } else {
+          customForm.classList.add("hidden");
+          customCard.classList.remove("active");
+        }
+      });
+    }
+
+    // Auto-calculate custom calories from custom macros on the custom form
+    const customProtein = document.getElementById("custom-protein");
+    const customCarbs = document.getElementById("custom-carbs");
+    const customFats = document.getElementById("custom-fats");
+    const customCalInput = document.getElementById("custom-calories");
+
+    if (customProtein && customCarbs && customFats && customCalInput) {
+      const updateCalculatedCalories = () => {
+        let p = parseFloat(customProtein.value) || 0;
+        let c = parseFloat(customCarbs.value) || 0;
+        let f = parseFloat(customFats.value) || 0;
+        let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+        customCalInput.value = kcal > 0 ? kcal : "";
+      };
+
+      customProtein.addEventListener("input", updateCalculatedCalories);
+      customCarbs.addEventListener("input", updateCalculatedCalories);
+      customFats.addEventListener("input", updateCalculatedCalories);
+    }
+
+    const customFoodForm = document.getElementById("custom-food-form");
+    if (customFoodForm) {
+      customFoodForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.addCustomFoodLog();
+      });
+    }
+
+    // Initialize listeners for both scanner viewports
+    this.initContext("dashboard");
+    this.initContext("food");
+  },
+
+  initContext(context) {
+    // Start scan
+    const btnStart = document.getElementById(`btn-start-scan-${context}`);
+    if (btnStart) {
+      btnStart.addEventListener("click", () => {
+        BarcodeScannerManager.start(context, (barcode) => {
+          this.triggerProductLookup(context, barcode);
+        });
+      });
+    }
+
+    // Stop scan
+    const btnStop = document.getElementById(`btn-stop-scan-${context}`);
+    if (btnStop) {
+      btnStop.addEventListener("click", () => {
+        BarcodeScannerManager.stop();
+      });
+    }
+
+    // Lookup manual barcode
+    const btnLookup = document.getElementById(`btn-lookup-barcode-${context}`);
+    if (btnLookup) {
+      btnLookup.addEventListener("click", () => {
+        const code = document.getElementById(`manual-barcode-field-${context}`).value;
+        if (code) {
+          this.triggerProductLookup(context, code);
+        }
+      });
+    }
+
+    // Close preview card
+    const btnClose = document.getElementById(`btn-close-preview-${context}`);
+    if (btnClose) {
+      btnClose.addEventListener("click", () => {
+        this.closePreview(context);
+      });
+    }
+
+    // Serving weight scaling
+    const weightInput = document.getElementById(`food-weight-input-${context}`);
+    if (weightInput) {
+      weightInput.addEventListener("input", () => {
+        this.updateScaledMacros(context);
+      });
+      weightInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.addScaledProductToLog(context);
+        }
+      });
+    }
+
+    // Add scaled button
+    const btnAdd = document.getElementById(`btn-add-scaled-food-${context}`);
+    if (btnAdd) {
+      btnAdd.addEventListener("click", () => {
+        this.addScaledProductToLog(context);
+      });
+    }
+  },
+
+  async triggerProductLookup(context, barcode) {
+    const inputField = document.getElementById(`manual-barcode-field-${context}`);
+    const searchBtn = document.getElementById(`btn-lookup-barcode-${context}`);
+    
+    if (inputField) inputField.disabled = true;
+    if (searchBtn) {
+      searchBtn.disabled = true;
+      searchBtn.textContent = "Loading...";
+    }
+
+    try {
+      const product = await FoodDatabase.lookupBarcode(barcode);
+      this.currentFetchedProduct[context] = product;
+      
+      // Populate elements
+      document.getElementById(`preview-food-name-${context}`).textContent = product.name;
+      document.getElementById(`preview-food-brand-${context}`).textContent = product.brand;
+      
+      document.getElementById(`preview-100g-kcal-${context}`).textContent = product.nutrients.calories;
+      document.getElementById(`preview-100g-protein-${context}`).textContent = product.nutrients.protein;
+      document.getElementById(`preview-100g-carbs-${context}`).textContent = product.nutrients.carbs;
+      document.getElementById(`preview-100g-fats-${context}`).textContent = product.nutrients.fats;
+
+      // Set standard weight scale to 100g
+      const wtInput = document.getElementById(`food-weight-input-${context}`);
+      if (wtInput) wtInput.value = 100;
+      this.updateScaledMacros(context);
+
+      // Show preview card
+      const previewCard = document.getElementById(`food-detail-card-${context}`);
+      if (previewCard) {
+        previewCard.classList.remove("hidden");
+        previewCard.scrollIntoView({ behavior: 'smooth' });
+      }
+
+    } catch (err) {
+      alert("Product details could not be found or barcode is invalid. Try adding it below as a Custom Food.");
+    } finally {
+      if (inputField) {
+        inputField.disabled = false;
+        inputField.value = "";
+      }
+      if (searchBtn) {
+        searchBtn.disabled = false;
+        searchBtn.textContent = "Search";
+      }
+    }
+  },
+
+  updateScaledMacros(context) {
+    const product = this.currentFetchedProduct[context];
+    if (!product) return;
+    
+    let weight = parseFloat(document.getElementById(`food-weight-input-${context}`).value);
+    if (isNaN(weight) || weight <= 0) weight = 0;
+
+    const raw = product.nutrients;
+    const factor = weight / 100;
+
+    document.getElementById(`scaled-kcal-${context}`).textContent = Math.round(raw.calories * factor);
+    document.getElementById(`scaled-protein-${context}`).textContent = `${(raw.protein * factor).toFixed(1)}g`;
+    document.getElementById(`scaled-carbs-${context}`).textContent = `${(raw.carbs * factor).toFixed(1)}g`;
+    document.getElementById(`scaled-fats-${context}`).textContent = `${(raw.fats * factor).toFixed(1)}g`;
+  },
+
+  addScaledProductToLog(context) {
+    const product = this.currentFetchedProduct[context];
+    if (!product) return;
+
+    let weight = parseFloat(document.getElementById(`food-weight-input-${context}`).value);
+    if (isNaN(weight) || weight <= 0) {
+      alert("Please enter a valid weight in grams.");
+      return;
+    }
+
+    const raw = product.nutrients;
+    const factor = weight / 100;
+
+    const newLogItem = {
+      id: "food_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+      name: product.name,
+      brand: product.brand,
+      weight: weight,
+      calories: Math.round(raw.calories * factor),
+      protein: parseFloat((raw.protein * factor).toFixed(1)),
+      carbs: parseFloat((raw.carbs * factor).toFixed(1)),
+      fats: parseFloat((raw.fats * factor).toFixed(1))
+    };
+
+    const dateKey = AppState.selectedDateISO;
+    if (!AppState.data.meals[dateKey]) {
+      AppState.data.meals[dateKey] = [];
+    }
+    
+    AppState.data.meals[dateKey].push(newLogItem);
+    AppState.saveToStorage();
+
+    // Close preview card cleanly
+    this.closePreview(context);
+    
+    // Refresh current view
+    appRouter.refreshCurrentView();
+    AppState.showToast("Food item added to log!");
+  },
+
+  addCustomFoodLog() {
+    const name = document.getElementById("custom-name").value;
+    const kcal = Math.round(Number(document.getElementById("custom-calories").value));
+    const protein = parseFloat(Number(document.getElementById("custom-protein").value).toFixed(1));
+    const carbs = parseFloat(Number(document.getElementById("custom-carbs").value).toFixed(1));
+    const fats = parseFloat(Number(document.getElementById("custom-fats").value).toFixed(1));
+
+    const newLogItem = {
+      id: "food_custom_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+      name: name,
+      brand: "Custom Entry",
+      weight: 100, // Static serving placeholder
+      calories: kcal,
+      protein: protein,
+      carbs: carbs,
+      fats: fats
+    };
+
+    const dateKey = AppState.selectedDateISO;
+    if (!AppState.data.meals[dateKey]) {
+      AppState.data.meals[dateKey] = [];
+    }
+    
+    AppState.data.meals[dateKey].push(newLogItem);
+    AppState.saveToStorage();
+
+    // Reset forms
+    const form = document.getElementById("custom-food-form");
+    if (form) {
+      form.reset();
+      form.classList.add("hidden");
+    }
+    const card = document.getElementById("custom-food-card");
+    if (card) {
+      card.classList.remove("active");
+    }
+
+    appRouter.refreshCurrentView();
+    AppState.showToast("Custom food item added!");
+  },
+
+  closePreview(context) {
+    this.currentFetchedProduct[context] = null;
+    const preview = document.getElementById(`food-detail-card-${context}`);
+    if (preview) preview.classList.add("hidden");
+  }
+};
+
+// Weight Log View Controller
+const WeightController = {
+  init() {
+    document.getElementById("weight-log-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.logWeight();
+    });
+  },
+
+  render() {
+    const dateKey = AppState.selectedDateISO;
+    const loggedVal = AppState.data.weights[dateKey] || null;
+    const unit = AppState.data.settings.unit;
+
+    // Set standard unit label
+    const unitLbl = document.getElementById("lbl-weight-unit");
+    if (unitLbl) unitLbl.textContent = unit;
+
+    const inputField = document.getElementById("weight-input");
+    const statusBox = document.getElementById("today-weight-status-container");
+    const statusText = document.getElementById("today-weight-text");
+
+    if (inputField && statusBox && statusText) {
+      if (loggedVal !== null) {
+        inputField.value = loggedVal.toFixed(1);
+        statusBox.classList.add("active");
+        statusText.innerHTML = `Logged weight for today: <strong>${loggedVal.toFixed(1)} ${unit}</strong>`;
+      } else {
+        inputField.value = "";
+        statusBox.classList.remove("active");
+      }
+    }
+
+    // Refresh history chart and calculations
+    WeightChartManager.renderChart(AppState.data.weights, dateKey, unit);
+  },
+
+  logWeight() {
+    const weightRaw = parseFloat(document.getElementById("weight-input").value);
+    
+    if (isNaN(weightRaw) || weightRaw < 20 || weightRaw > 500) {
+      alert("Please log a valid weight measurement (20 to 500).");
+      return;
+    }
+
+    // Round weight strictly to 1 decimal place
+    const cleanedWeight = parseFloat(weightRaw.toFixed(1));
+    const dateKey = AppState.selectedDateISO;
+
+    AppState.data.weights[dateKey] = cleanedWeight;
+    AppState.saveToStorage();
+    
+    this.render();
+    AppState.showToast("Weight logged successfully!");
+  }
+};
+
+// Strategy Controller - Manages the weekday cycling scheduler
+const StrategyController = {
+  init() {
+    // Enable/Disable Calorie Cycling
+    const cyclingToggle = document.getElementById("cycling-enabled");
+    if (cyclingToggle) {
+      cyclingToggle.addEventListener("change", (e) => {
+        AppState.data.settings.highCalorieDaysEnabled = e.target.checked;
+        AppState.saveToStorage();
+        this.toggleCyclingBodyVisibility();
+        DashboardController.render();
+        AppState.showToast(e.target.checked ? "Calorie cycling enabled" : "Calorie cycling disabled");
+      });
+    }
+
+    // Set up day-by-day checkbox, dropdown, and value input listeners
+    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    weekdays.forEach(day => {
+      // Toggle day enabled
+      const dayCheckbox = document.getElementById(`cycling-day-${day}`);
+      if (dayCheckbox) {
+        dayCheckbox.addEventListener("change", (e) => {
+          if (!AppState.data.settings.highCalorieDays[day]) {
+            AppState.data.settings.highCalorieDays[day] = { enabled: false, type: "flat", value: 300 };
+          }
+          AppState.data.settings.highCalorieDays[day].enabled = e.target.checked;
+          AppState.saveToStorage();
+          this.toggleDayInputsVisibility(day, e.target.checked);
+          DashboardController.render();
+        });
+      }
+
+      // Dropdown type (+ kcal vs + %)
+      const typeSelect = document.getElementById(`cycling-type-${day}`);
+      if (typeSelect) {
+        typeSelect.addEventListener("change", (e) => {
+          if (!AppState.data.settings.highCalorieDays[day]) {
+            AppState.data.settings.highCalorieDays[day] = { enabled: true, type: "flat", value: 300 };
+          }
+          AppState.data.settings.highCalorieDays[day].type = e.target.value;
+          AppState.saveToStorage();
+          DashboardController.render();
+        });
+      }
+
+      // Value input
+      const valInput = document.getElementById(`cycling-val-${day}`);
+      if (valInput) {
+        valInput.addEventListener("input", (e) => {
+          if (!AppState.data.settings.highCalorieDays[day]) {
+            AppState.data.settings.highCalorieDays[day] = { enabled: true, type: "flat", value: 300 };
+          }
+          AppState.data.settings.highCalorieDays[day].value = Number(e.target.value) || 0;
+          AppState.saveToStorage();
+          DashboardController.render();
+        });
+      }
+    });
+  },
+
+  render() {
+    const cyclingEnabled = AppState.data.settings.highCalorieDaysEnabled;
+    const cyclingToggle = document.getElementById("cycling-enabled");
+    if (cyclingToggle) {
+      cyclingToggle.checked = cyclingEnabled;
+    }
+    this.toggleCyclingBodyVisibility();
+
+    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    weekdays.forEach(day => {
+      const dayConfig = AppState.data.settings.highCalorieDays[day] || { enabled: false, type: "flat", value: 300 };
+      const el = document.getElementById(`cycling-day-${day}`);
+      if (el) {
+        el.checked = dayConfig.enabled;
+      }
+      this.toggleDayInputsVisibility(day, dayConfig.enabled);
+
+      const typeEl = document.getElementById(`cycling-type-${day}`);
+      if (typeEl) {
+        typeEl.value = dayConfig.type;
+      }
+      const valEl = document.getElementById(`cycling-val-${day}`);
+      if (valEl) {
+        valEl.value = dayConfig.value;
+      }
+    });
+  },
+
+  toggleCyclingBodyVisibility() {
+    const enabled = AppState.data.settings.highCalorieDaysEnabled;
+    const body = document.getElementById("cycling-settings-body");
+    if (body) {
+      if (enabled) {
+        body.classList.remove("hidden");
+      } else {
+        body.classList.add("hidden");
+      }
+    }
+  },
+
+  toggleDayInputsVisibility(day, enabled) {
+    const inputsEl = document.getElementById(`cycling-inputs-${day}`);
+    if (inputsEl) {
+      if (enabled) {
+        inputsEl.classList.remove("hidden");
+      } else {
+        inputsEl.classList.add("hidden");
+      }
+    }
+  }
+};
+
 // App Settings & Configuration Controller
 const SettingsController = {
   init() {
     // 1. Config form updates
-    document.getElementById("targets-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      this.saveStandardTargets();
-    });
+    const targetForm = document.getElementById("targets-form");
+    if (targetForm) {
+      targetForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.saveStandardTargets();
+      });
+    }
 
     // 2. Unit selector adjustments
     const btnLbs = document.getElementById("btn-unit-lbs");
     const btnKg = document.getElementById("btn-unit-kg");
 
-    btnLbs.addEventListener("click", () => this.toggleWeightUnit("lbs"));
-    btnKg.addEventListener("click", () => this.toggleWeightUnit("kg"));
+    if (btnLbs) btnLbs.addEventListener("click", () => this.toggleWeightUnit("lbs"));
+    if (btnKg) btnKg.addEventListener("click", () => this.toggleWeightUnit("kg"));
 
     // 3. Mock Data trigger
-    document.getElementById("btn-load-mock").addEventListener("click", () => this.injectDemoLogs());
+    const loadMockBtn = document.getElementById("btn-load-mock");
+    if (loadMockBtn) {
+      loadMockBtn.addEventListener("click", () => this.injectDemoLogs());
+    }
 
     // 4. Data Wipe actions
-    document.getElementById("btn-clear-data").addEventListener("click", () => this.purgeStorageData());
+    const clearBtn = document.getElementById("btn-clear-data");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => this.purgeStorageData());
+    }
 
     // 5. Renpho CSV Import
     const csvInput = document.getElementById("csv-file-input");
@@ -777,67 +1036,20 @@ const SettingsController = {
       btnApply.addEventListener("click", () => this.applyPlannerTarget());
     }
 
-    // 9. Calorie Cycling Event Listeners
-    const cyclingToggle = document.getElementById("cycling-enabled");
-    if (cyclingToggle) {
-      cyclingToggle.addEventListener("change", (e) => {
-        AppState.data.settings.highCalorieDaysEnabled = e.target.checked;
-        AppState.saveToStorage();
-        this.toggleCyclingBodyVisibility();
-        DashboardController.render();
-        AppState.showToast(e.target.checked ? "Calorie cycling enabled" : "Calorie cycling disabled");
-      });
+    // 9. Backup & Restore Events
+    const btnExportCSV = document.getElementById("btn-export-csv");
+    if (btnExportCSV) {
+      btnExportCSV.addEventListener("click", () => this.exportCSV());
     }
 
-    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    weekdays.forEach(day => {
-      const el = document.getElementById(`cycling-day-${day}`);
-      if (el) {
-        el.addEventListener("change", (e) => {
-          AppState.data.settings.highCalorieDays[day] = e.target.checked;
-          AppState.saveToStorage();
-          DashboardController.render();
-        });
-      }
-    });
-
-    const surplusType = document.getElementById("cycling-surplus-type");
-    if (surplusType) {
-      surplusType.addEventListener("change", (e) => {
-        AppState.data.settings.highCalorieSurplusType = e.target.value;
-        AppState.saveToStorage();
-        this.updateSurplusUnitLabel();
-        DashboardController.render();
-      });
+    const btnExportJSON = document.getElementById("btn-export-json");
+    if (btnExportJSON) {
+      btnExportJSON.addEventListener("click", () => this.exportJSON());
     }
 
-    const surplusValue = document.getElementById("cycling-surplus-value");
-    if (surplusValue) {
-      surplusValue.addEventListener("input", (e) => {
-        AppState.data.settings.highCalorieSurplusValue = Number(e.target.value) || 0;
-        AppState.saveToStorage();
-        DashboardController.render();
-      });
-    }
-  },
-
-  toggleCyclingBodyVisibility() {
-    const enabled = AppState.data.settings.highCalorieDaysEnabled;
-    const body = document.getElementById("cycling-settings-body");
-    if (body) {
-      if (enabled) {
-        body.classList.remove("hidden");
-      } else {
-        body.classList.add("hidden");
-      }
-    }
-  },
-
-  updateSurplusUnitLabel() {
-    const type = AppState.data.settings.highCalorieSurplusType;
-    const label = document.getElementById("cycling-surplus-unit-label");
-    if (label) {
-      label.textContent = type === "flat" ? "kcal" : "%";
+    const jsonFileInput = document.getElementById("json-file-input");
+    if (jsonFileInput) {
+      jsonFileInput.addEventListener("change", (e) => this.importJSON(e));
     }
   },
 
@@ -946,33 +1158,6 @@ const SettingsController = {
       }
     }
 
-    // Calorie Cycling UI Populating
-    const cyclingEnabled = AppState.data.settings.highCalorieDaysEnabled;
-    const cyclingToggle = document.getElementById("cycling-enabled");
-    if (cyclingToggle) {
-      cyclingToggle.checked = cyclingEnabled;
-    }
-    this.toggleCyclingBodyVisibility();
-
-    const cyclingWeekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    cyclingWeekdays.forEach(day => {
-      const el = document.getElementById(`cycling-day-${day}`);
-      if (el) {
-        el.checked = AppState.data.settings.highCalorieDays[day] || false;
-      }
-    });
-
-    const surplusType = document.getElementById("cycling-surplus-type");
-    if (surplusType) {
-      surplusType.value = AppState.data.settings.highCalorieSurplusType || "flat";
-    }
-    this.updateSurplusUnitLabel();
-
-    const surplusValue = document.getElementById("cycling-surplus-value");
-    if (surplusValue) {
-      surplusValue.value = AppState.data.settings.highCalorieSurplusValue !== undefined ? AppState.data.settings.highCalorieSurplusValue : 300;
-    }
-
     // Run calculations to populate standard results on render load
     this.calculateTargetPlanner();
   },
@@ -1004,7 +1189,7 @@ const SettingsController = {
     const currentUnit = AppState.data.settings.unit;
     const currentWeight = this.getCurrentWeight();
 
-    // Persist variables immediately so they don't wipe on tab switches
+    // Persist profile variables immediately
     AppState.data.profile = {
       sex,
       age,
@@ -1066,31 +1251,33 @@ const SettingsController = {
     const warningBox = document.getElementById("planner-warning-box");
     const warningText = document.getElementById("planner-warning-text");
 
-    let isDangerous = false;
-    let warningMsg = "";
+    if (warningBox && warningText) {
+      let isDangerous = false;
+      let warningMsg = "";
 
-    if (weeklyRateLbs > 2.0) {
-      isDangerous = true;
-      warningMsg = `Aggressive rate selected. Safe weight change rate is up to 2.0 lbs (${currentUnit === "kg" ? "0.9 kg" : "0.9 kg"} equivalent) per week.`;
-    }
-
-    const minKcal = sex === "male" ? 1500 : 1200;
-    if (targetCalories < minKcal) {
-      isDangerous = true;
-      if (warningMsg) warningMsg += " Also, ";
-      warningMsg += `Target calories (${targetCalories} kcal) are below the recommended safe daily minimum (${minKcal} kcal for biological ${sex}s).`;
-    }
-
-    if (isDangerous) {
-      warningText.textContent = warningMsg;
-      warningBox.classList.remove("hidden");
-      if (weeklyRateLbs <= 2.0 && targetCalories >= minKcal - 200) {
-        warningBox.classList.add("caution");
-      } else {
-        warningBox.classList.remove("caution");
+      if (weeklyRateLbs > 2.0) {
+        isDangerous = true;
+        warningMsg = `Aggressive rate selected. Safe weight change rate is up to 2.0 lbs (${currentUnit === "kg" ? "0.9 kg" : "0.9 kg"} equivalent) per week.`;
       }
-    } else {
-      warningBox.classList.add("hidden");
+
+      const minKcal = sex === "male" ? 1500 : 1200;
+      if (targetCalories < minKcal) {
+        isDangerous = true;
+        if (warningMsg) warningMsg += " Also, ";
+        warningMsg += `Target calories (${targetCalories} kcal) are below the recommended safe daily minimum (${minKcal} kcal for biological ${sex}s).`;
+      }
+
+      if (isDangerous) {
+        warningText.textContent = warningMsg;
+        warningBox.classList.remove("hidden");
+        if (weeklyRateLbs <= 2.0 && targetCalories >= minKcal - 200) {
+          warningBox.classList.add("caution");
+        } else {
+          warningBox.classList.remove("caution");
+        }
+      } else {
+        warningBox.classList.add("hidden");
+      }
     }
   },
 
@@ -1129,7 +1316,7 @@ const SettingsController = {
     const carbs = Math.round(Number(document.getElementById("target-carbs").value));
     const fats = Math.round(Number(document.getElementById("target-fats").value));
 
-    // Support flexible overrides for the currently selected calendar day
+    // Support flexible overrides for currently selected date
     const dateKey = AppState.selectedDateISO;
     
     // Save to daily goals override list
@@ -1140,7 +1327,7 @@ const SettingsController = {
       fats: fats
     };
 
-    // Save as standard default templates as well
+    // Save as standard defaults
     AppState.data.standardGoals = {
       calories: kcal,
       protein: protein,
@@ -1159,20 +1346,18 @@ const SettingsController = {
     const currentUnit = AppState.data.settings.unit;
     if (currentUnit === targetUnit) return;
 
-    // Convert existing weight records automatically so data isn't broken
+    // Convert weight logs
     const weights = AppState.data.weights;
     Object.keys(weights).forEach((dateKey) => {
       const original = weights[dateKey];
       if (targetUnit === "kg") {
-        // lbs -> kg
         weights[dateKey] = parseFloat((original / 2.20462).toFixed(1));
       } else {
-        // kg -> lbs
         weights[dateKey] = parseFloat((original * 2.20462).toFixed(1));
       }
     });
 
-    // Proactively convert goal profile target weight and weekly rates
+    // Convert goal profile targets
     if (AppState.data.profile) {
       const profile = AppState.data.profile;
       if (targetUnit === "kg") {
@@ -1202,7 +1387,7 @@ const SettingsController = {
     const startWeight = unit === "lbs" ? 184.2 : 83.5;
     const dailyStep = unit === "lbs" ? 0.35 : 0.16;
 
-    // Mock meal ingredients
+    // Mock meals
     const mealTemplates = [
       { name: "Egg & Cheese English Muffin", brand: "Homemade Breakfast", calories: 340, protein: 18.0, carbs: 29.0, fats: 14.5 },
       { name: "Oatmeal with Blueberries & Honey", brand: "Quaker Oats", calories: 220, protein: 6.0, carbs: 42.0, fats: 3.0 },
@@ -1217,12 +1402,12 @@ const SettingsController = {
       d.setDate(today.getDate() - i);
       const dateISO = WeightChartManager.formatISODate(d);
 
-      // 1. Decrementing Weight trend (ideal line of best fit demonstration)
+      // Decrementing Weight trend
       AppState.data.weights[dateISO] = parseFloat((startWeight - (6 - i) * dailyStep + (Math.random() * 0.4 - 0.2)).toFixed(1));
 
-      // 2. Dynamic daily macro food inputs
+      // Dynamic daily meals
       const dayMeals = [];
-      const mealIndices = i % 2 === 0 ? [0, 2, 4] : [1, 3, 5]; // alternates meals
+      const mealIndices = i % 2 === 0 ? [0, 2, 4] : [1, 3, 5];
       
       mealIndices.forEach((idx) => {
         const templ = mealTemplates[idx];
@@ -1230,7 +1415,7 @@ const SettingsController = {
           id: `food_demo_${i}_${idx}_` + Math.random().toString(36).substr(2, 5),
           name: templ.name,
           brand: templ.brand,
-          weight: 150, // gram scale
+          weight: 150,
           calories: templ.calories,
           protein: templ.protein,
           carbs: templ.carbs,
@@ -1267,7 +1452,6 @@ const SettingsController = {
         return;
       }
 
-      // Helper to parse standard CSV row taking care of double quotes
       function parseCSVRow(line) {
         const result = [];
         let current = "";
@@ -1291,7 +1475,6 @@ const SettingsController = {
       let timeIdx = -1;
       let weightIdx = -1;
 
-      // Scan headers for target metrics
       for (let i = 0; i < headers.length; i++) {
         const h = headers[i].toLowerCase();
         if (h.includes("time of measurement") || h.includes("time") || h.includes("date")) {
@@ -1302,13 +1485,11 @@ const SettingsController = {
         }
       }
 
-      // Check if critical columns were discovered
       if (timeIdx === -1 || weightIdx === -1) {
         alert("Could not identify Date/Time and Weight columns in the CSV. Please make sure this is a Renpho CSV export.");
         return;
       }
 
-      // Check weight unit from header if possible
       const headerWeightStr = headers[weightIdx].toLowerCase();
       let fileUnit = null;
       if (headerWeightStr.includes("kg")) {
@@ -1320,7 +1501,6 @@ const SettingsController = {
       const activeUnit = AppState.data.settings.unit;
       let importCount = 0;
 
-      // Loop and parse each data row
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
@@ -1332,13 +1512,11 @@ const SettingsController = {
         const rawWeight = cells[weightIdx];
         if (!rawDate || !rawWeight) continue;
 
-        // Parse date safely
         let dateKey = null;
         const d = new Date(rawDate);
         if (!isNaN(d.getTime())) {
           dateKey = WeightChartManager.formatISODate(d);
         } else {
-          // Fallback match for YYYY-MM-DD
           const match = rawDate.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
           if (match) {
             dateKey = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
@@ -1347,26 +1525,20 @@ const SettingsController = {
 
         if (!dateKey) continue;
 
-        // Clean weight characters (remove units, parse float)
         const weightClean = rawWeight.replace(/[^\d.]/g, "");
         let weightVal = parseFloat(weightClean);
         if (isNaN(weightVal) || weightVal <= 0) continue;
 
-        // Convert weight units automatically if file and app units mismatch
         if (fileUnit && fileUnit !== activeUnit) {
           if (activeUnit === "kg" && fileUnit === "lbs") {
-            // lbs -> kg
             weightVal = parseFloat((weightVal / 2.20462).toFixed(1));
           } else if (activeUnit === "lbs" && fileUnit === "kg") {
-            // kg -> lbs
             weightVal = parseFloat((weightVal * 2.20462).toFixed(1));
           }
         } else {
-          // Round weight strictly to 1 decimal place
           weightVal = parseFloat(weightVal.toFixed(1));
         }
 
-        // Save entry
         AppState.data.weights[dateKey] = weightVal;
         importCount++;
       }
@@ -1374,14 +1546,9 @@ const SettingsController = {
       if (importCount > 0) {
         AppState.saveToStorage();
         alert(`Success! Imported ${importCount} weight records from Renpho.`);
-        // Reset file selector so same file can be reloaded
         event.target.value = "";
         
-        // Refresh view/charts
         appRouter.refreshCurrentView();
-        if (AppState.activeTab === "dashboard") {
-          DashboardController.render();
-        }
       } else {
         alert("No valid weight data points were found in the selected file.");
       }
@@ -1391,6 +1558,97 @@ const SettingsController = {
       alert("Error reading the CSV file.");
     };
 
+    reader.readAsText(file);
+  },
+
+  // Export database logs in CSV format suited for Google Sheets copy-pasting
+  exportCSV() {
+    const allDates = new Set([
+      ...Object.keys(AppState.data.weights),
+      ...Object.keys(AppState.data.meals)
+    ]);
+    const sortedDates = Array.from(allDates).sort(); // oldest first is best for sheets
+    
+    let csvContent = "Date,Weight (" + AppState.data.settings.unit + "),Calories Eaten (kcal),Protein Eaten (g),Carbs Eaten (g),Fats Eaten (g),Calorie Target (kcal)\n";
+    
+    sortedDates.forEach(dateISO => {
+      const weight = AppState.data.weights[dateISO] !== undefined ? AppState.data.weights[dateISO] : "";
+      const meals = AppState.data.meals[dateISO] || [];
+      const goals = AppState.getGoalsForDate(dateISO);
+      
+      let eatenKcal = 0;
+      let eatenProtein = 0;
+      let eatenCarbs = 0;
+      let eatenFats = 0;
+      
+      meals.forEach(m => {
+        eatenKcal += m.calories;
+        eatenProtein += m.protein;
+        eatenCarbs += m.carbs;
+        eatenFats += m.fats;
+      });
+      
+      csvContent += `${dateISO},${weight},${Math.round(eatenKcal)},${eatenProtein.toFixed(1)},${eatenCarbs.toFixed(1)},${eatenFats.toFixed(1)},${goals.calories}\n`;
+    });
+    
+    // Download trigger
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `colins_macros_backup_${AppState.getTodayISODate()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    AppState.showToast("Google Sheets CSV Exported!");
+  },
+
+  // Export raw JSON backup of entire database
+  exportJSON() {
+    const dataStr = JSON.stringify(AppState.data, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `colins_macros_db_${AppState.getTodayISODate()}.json`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    AppState.showToast("JSON Database Backup downloaded!");
+  },
+
+  // Restore database from raw JSON backup file
+  importJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        
+        // Critical structure validation checks
+        if (!parsed.standardGoals || !parsed.meals || !parsed.weights || !parsed.settings) {
+          alert("Invalid backup file structure. Ensure this is a valid ColinsChartsMacros database export.");
+          return;
+        }
+        
+        if (confirm("This will completely replace all your current settings and history records with this backup file. Proceed?")) {
+          AppState.data = parsed;
+          AppState.saveToStorage();
+          AppState.showToast("App database restored!");
+          
+          // Force hard reload of application to reload memory states cleanly
+          window.location.reload();
+        }
+      } catch (err) {
+        alert("Failed to parse the backup file: " + err.message);
+      } finally {
+        event.target.value = ""; // Reset file selector
+      }
+    };
     reader.readAsText(file);
   }
 };
@@ -1436,7 +1694,6 @@ const CalendarSelectorController = {
     } else if (diffDays === 1) {
       this.labelEl.textContent = "Tomorrow";
     } else {
-      // General form: Wed, May 20
       this.labelEl.textContent = selected.toLocaleDateString("en-US", { 
         weekday: "short", 
         month: "short", 
@@ -1453,9 +1710,10 @@ window.addEventListener("DOMContentLoaded", () => {
   appRouter.init();
   CalendarSelectorController.init();
   
-  // Tab-specific initializations
+  // Tab-specific controllers initialization
   ScannerViewController.init();
   WeightController.init();
+  StrategyController.init();
   SettingsController.init();
 
   // Run initial dashboard view render
@@ -1464,7 +1722,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // Track and monitor active midnight resets while app is running
   setInterval(() => {
     const todayStr = AppState.getTodayISODate();
-    // If local date has drifted past our logged active date and we are viewing "Today"
     if (todayStr !== AppState.getTodayISODate()) {
       console.log("[Rollover] Midnight crossed. Refreshing calendar context...");
       AppState.selectedDateISO = todayStr;

@@ -6,22 +6,29 @@
 const BarcodeScannerManager = {
   html5QrcodeInstance: null,
   isScanning: false,
+  activeContext: null, // "dashboard" or "food"
 
   /**
-   * Initializes and starts camera scanning in #camera-scanner container.
+   * Initializes and starts camera scanning in the container for the specified context.
+   * @param {string} context "dashboard" or "food"
    * @param {Function} onScanSuccessCallback Callback when a barcode is scanned. Receives barcode string.
    * @param {Function} onErrorCallback Optional error reporter for camera permissions.
    */
-  async start(onScanSuccessCallback, onErrorCallback) {
-    if (this.isScanning) return;
+  async start(context, onScanSuccessCallback, onErrorCallback) {
+    if (this.isScanning) {
+      if (this.activeContext === context) return;
+      await this.stop();
+    }
     
-    const scannerEl = document.getElementById("camera-scanner");
+    this.activeContext = context;
+    const scannerId = `camera-scanner-${context}`;
+    const scannerEl = document.getElementById(scannerId);
     if (!scannerEl) return;
     
     scannerEl.classList.remove("hidden");
     
     try {
-      this.html5QrcodeInstance = new Html5Qrcode("camera-scanner");
+      this.html5QrcodeInstance = new Html5Qrcode(scannerId);
       
       const config = {
         fps: 10,
@@ -43,7 +50,7 @@ const BarcodeScannerManager = {
         { facingMode: "environment" },
         config,
         (decodedText) => {
-          console.log(`[Scanner] Barcode decoded: ${decodedText}`);
+          console.log(`[Scanner-${context}] Barcode decoded: ${decodedText}`);
           this.stop(); // Stop camera upon successful reading
           onScanSuccessCallback(decodedText);
         },
@@ -52,12 +59,13 @@ const BarcodeScannerManager = {
         }
       );
 
-      document.getElementById("btn-start-scan").classList.add("hidden");
-      document.getElementById("btn-stop-scan").classList.remove("hidden");
+      document.getElementById(`btn-start-scan-${context}`).classList.add("hidden");
+      document.getElementById(`btn-stop-scan-${context}`).classList.remove("hidden");
 
     } catch (err) {
-      console.error("[Scanner] Camera failed to start:", err);
+      console.error(`[Scanner-${context}] Camera failed to start:`, err);
       this.isScanning = false;
+      this.activeContext = null;
       scannerEl.classList.add("hidden");
       if (onErrorCallback) {
         onErrorCallback(err);
@@ -71,7 +79,9 @@ const BarcodeScannerManager = {
    * Stops camera stream and clears scanner state.
    */
   async stop() {
-    if (!this.isScanning) return;
+    if (!this.isScanning || !this.activeContext) return;
+    
+    const context = this.activeContext;
 
     try {
       if (this.html5QrcodeInstance) {
@@ -79,12 +89,20 @@ const BarcodeScannerManager = {
         this.html5QrcodeInstance = null;
       }
     } catch (err) {
-      console.warn("[Scanner] Clean stop failed:", err);
+      console.warn(`[Scanner-${context}] Clean stop failed:`, err);
     } finally {
       this.isScanning = false;
-      document.getElementById("camera-scanner").classList.add("hidden");
-      document.getElementById("btn-start-scan").classList.remove("hidden");
-      document.getElementById("btn-stop-scan").classList.add("hidden");
+      this.activeContext = null;
+      
+      const scannerEl = document.getElementById(`camera-scanner-${context}`);
+      if (scannerEl) scannerEl.classList.add("hidden");
+      
+      const startBtn = document.getElementById(`btn-start-scan-${context}`);
+      if (startBtn) startBtn.classList.remove("hidden");
+      
+      const stopBtn = document.getElementById(`btn-stop-scan-${context}`);
+      if (stopBtn) stopBtn.classList.add("hidden");
     }
   }
 };
+
