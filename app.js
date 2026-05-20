@@ -944,7 +944,7 @@ const ScannerViewController = {
     const preview = document.getElementById(`food-detail-card-${context}`);
     if (preview) preview.classList.add("hidden");
   }
-};};
+};
 
 // Weight Log View Controller
 const WeightController = {
