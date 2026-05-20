@@ -1,4 +1,4 @@
-const CACHE_NAME = "colins-charts-macros-v4";
+const CACHE_NAME = "colins-charts-macros-v6";
 const ASSETS_TO_CACHE = [
   "./index.html",
   "./styles.css",
@@ -47,8 +47,8 @@ self.addEventListener("fetch", (event) => {
   // Only cache GET requests
   if (event.request.method !== "GET") return;
 
-  // Skip Open Food Facts API calls (should always be live)
-  if (event.request.url.includes("openfoodfacts.org")) {
+  // Skip external API calls (should always be live)
+  if (event.request.url.includes("openfoodfacts.org") || event.request.url.includes("api.nal.usda.gov")) {
     return;
   }
 

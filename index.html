@@ -977,6 +977,7 @@
         <div class="selector-tabs-header" id="selector-tabs-header">
           <button class="tab-btn active" id="btn-tab-recipes">My Recipes</button>
           <button class="tab-btn" id="btn-tab-history">Food History</button>
+          <button class="tab-btn" id="btn-tab-search">Search Online</button>
         </div>
 
         <!-- Recipes Tab Content -->
@@ -995,6 +996,20 @@
           
           <div class="history-foods-list" id="selector-history-list">
             <!-- Dynamically rendered historical foods -->
+          </div>
+        </div>
+
+        <!-- Search Online Tab Content -->
+        <div class="selector-tab-content hidden" id="tab-content-search">
+          <div class="search-box-container input-inline" style="gap: 8px;">
+            <input type="text" id="online-search-input" placeholder="e.g. Cooked chicken breast, oats..." style="flex: 1;">
+            <button id="btn-online-search" class="btn btn-primary" style="white-space: nowrap;">Search</button>
+          </div>
+          <div class="loading-state hidden" id="online-search-loading" style="padding: 20px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
+            Searching databases…
+          </div>
+          <div class="history-foods-list" id="online-search-results">
+            <!-- Dynamically rendered search results -->
           </div>
         </div>
       </div>
@@ -1341,8 +1356,32 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
-          .then((reg) => console.log("[PWA] Service Worker registered:", reg.scope))
+          .then((reg) => {
+            console.log("[PWA] Service Worker registered:", reg.scope);
+            
+            // Check for updates
+            reg.addEventListener("updatefound", () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.addEventListener("statechange", () => {
+                  if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                    console.log("[PWA] New version detected, updating...");
+                  }
+                });
+              }
+            });
+          })
           .catch((err) => console.error("[PWA] Registration failed:", err));
+      });
+
+      // Reload the page when the new active service worker takes control
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!refreshing) {
+          console.log("[PWA] New controller active. Reloading PWA...");
+          window.location.reload();
+          refreshing = true;
+        }
       });
     }
   </script>

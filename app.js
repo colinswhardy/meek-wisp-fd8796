@@ -999,7 +999,77 @@ const WeightController = {
     AppState.saveToStorage();
     
     this.render();
-    AppState.showToast("Weight logged successfully!");
+    
+    // Silently recalculate daily calorie target based on new weight
+    this.silentRecalcAndApply(cleanedWeight);
+    
+    AppState.showToast("Weight logged & calorie target updated!");
+  },
+
+  /**
+   * Recalculates TDEE/target calories using the stored profile and the newly-logged weight,
+   * then proportionally scales macros and saves. Never redirects or shows an alert.
+   */
+  silentRecalcAndApply(newWeightInActiveUnit) {
+    const profile = AppState.data.profile;
+    if (!profile) return;
+
+    const unit = AppState.data.settings.unit;
+    const sex = profile.sex || "male";
+    const age = parseInt(profile.age) || 30;
+    const heightFt = parseFloat(profile.heightFt) || 5;
+    const heightIn = parseFloat(profile.heightIn) || 10;
+    const activity = profile.activity || "light";
+    const targetWeight = parseFloat(profile.targetWeight) || (unit === "lbs" ? 170 : 77);
+    const weeklyRate = parseFloat(profile.weeklyRate) || (unit === "lbs" ? 1.0 : 0.5);
+
+    const currentWeightKg = unit === "lbs" ? newWeightInActiveUnit / 2.20462 : newWeightInActiveUnit;
+    const targetWeightKg = unit === "lbs" ? targetWeight / 2.20462 : targetWeight;
+    const heightCm = (heightFt * 12 + heightIn) * 2.54;
+
+    // BMR via Mifflin-St Jeor
+    let bmr = 0;
+    if (sex === "male") {
+      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) + 5;
+    } else {
+      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) - 161;
+    }
+
+    const activityMultipliers = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 };
+    const tdee = bmr * (activityMultipliers[activity] || 1.2);
+
+    // Calorie adjustment for deficit or surplus
+    const weeklyRateLbs = unit === "kg" ? weeklyRate * 2.20462 : weeklyRate;
+    const dailyCalorieDelta = weeklyRateLbs * 500;
+
+    let targetCalories = tdee;
+    if (targetWeightKg < currentWeightKg) {
+      targetCalories = tdee - dailyCalorieDelta;
+    } else if (targetWeightKg > currentWeightKg) {
+      targetCalories = tdee + dailyCalorieDelta;
+    }
+    targetCalories = Math.max(Math.round(targetCalories), 500);
+
+    // Proportionally scale macros from old calorie base
+    const oldCalories = AppState.data.standardGoals.calories || 2000;
+    const scale = oldCalories > 0 ? targetCalories / oldCalories : 1;
+
+    AppState.data.standardGoals.calories = targetCalories;
+    AppState.data.standardGoals.protein = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+    AppState.data.standardGoals.carbs = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+    AppState.data.standardGoals.fats = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+
+    // Also update today's daily goal override so today reflects the new target immediately
+    const dateKey = AppState.selectedDateISO;
+    AppState.data.dailyGoals[dateKey] = {
+      calories: AppState.data.standardGoals.calories,
+      protein: AppState.data.standardGoals.protein,
+      carbs: AppState.data.standardGoals.carbs,
+      fats: AppState.data.standardGoals.fats
+    };
+
+    AppState.saveToStorage();
+    console.log(`[Weight] Recalculated calorie target: ${targetCalories} kcal (TDEE: ${Math.round(tdee)})`);
   }
 };
 
@@ -2142,11 +2212,55 @@ const FoodSelectorController = {
       });
     }
 
-    // Search bar filtering
+    // Search bar filtering (history tab)
     const searchInput = document.getElementById("history-search-input");
     if (searchInput) {
       searchInput.addEventListener("input", () => {
         this.renderList();
+      });
+    }
+
+    // --- Search Online Tab ---
+    const btnTabSearch = document.getElementById("btn-tab-search");
+    const tabSearch = document.getElementById("tab-content-search");
+    const tabRecipesEl = document.getElementById("tab-content-recipes");
+    const tabHistoryEl = document.getElementById("tab-content-history");
+
+    if (btnTabSearch) {
+      btnTabSearch.addEventListener("click", () => {
+        this.activeTab = "search";
+        // Update tab buttons
+        document.getElementById("btn-tab-recipes").classList.remove("active");
+        document.getElementById("btn-tab-history").classList.remove("active");
+        btnTabSearch.classList.add("active");
+        // Toggle panels
+        if (tabRecipesEl) tabRecipesEl.classList.add("hidden");
+        if (tabHistoryEl) tabHistoryEl.classList.add("hidden");
+        if (tabSearch) tabSearch.classList.remove("hidden");
+        // Clear previous results when switching to tab
+        const resultsEl = document.getElementById("online-search-results");
+        if (resultsEl && resultsEl.innerHTML === "") {
+          resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above and press Search.</p></div>`;
+        }
+      });
+    }
+
+    // Search button click
+    const btnOnlineSearch = document.getElementById("btn-online-search");
+    if (btnOnlineSearch) {
+      btnOnlineSearch.addEventListener("click", () => {
+        this.performOnlineSearch();
+      });
+    }
+
+    // Enter key triggers search
+    const onlineSearchInput = document.getElementById("online-search-input");
+    if (onlineSearchInput) {
+      onlineSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.performOnlineSearch();
+        }
       });
     }
 
@@ -2230,19 +2344,28 @@ const FoodSelectorController = {
     if (context === "recipe_ingredient") {
       // Hide Recipes tab header entirely
       if (btnRecipes) btnRecipes.classList.add("hidden");
+      // Also hide the Search Online tab button when in recipe ingredient context (since context switches are recipe-specific)
+      const btnTabSearch = document.getElementById("btn-tab-search");
+      if (btnTabSearch) btnTabSearch.classList.add("hidden");
       // Force active tab to history
       this.activeTab = "history";
       btnHistory.classList.add("active");
       document.getElementById("tab-content-recipes").classList.add("hidden");
+      document.getElementById("tab-content-search").classList.add("hidden");
       document.getElementById("tab-content-history").classList.remove("hidden");
     } else {
       // Show Recipes tab header
       if (btnRecipes) btnRecipes.classList.remove("hidden");
+      const btnTabSearch = document.getElementById("btn-tab-search");
+      if (btnTabSearch) btnTabSearch.classList.remove("hidden");
       this.activeTab = "recipes";
       btnRecipes.classList.add("active");
       btnHistory.classList.remove("active");
+      const btnSearch = document.getElementById("btn-tab-search");
+      if (btnSearch) btnSearch.classList.remove("active");
       document.getElementById("tab-content-recipes").classList.remove("hidden");
       document.getElementById("tab-content-history").classList.add("hidden");
+      document.getElementById("tab-content-search").classList.add("hidden");
     }
 
     // Update back label
@@ -2312,6 +2435,8 @@ const FoodSelectorController = {
   renderList() {
     if (this.activeTab === "recipes") {
       this.renderRecipesList();
+    } else if (this.activeTab === "search") {
+      // Search tab manages its own render via performOnlineSearch(); don't clobber results
     } else {
       this.renderHistoryList();
     }
@@ -2575,6 +2700,84 @@ const FoodSelectorController = {
     this.selectedFoodItem = null;
     const preview = document.getElementById("selector-preview-card");
     if (preview) preview.classList.add("hidden");
+  },
+
+  // --- Online Food Search ---
+
+  async performOnlineSearch() {
+    const input = document.getElementById("online-search-input");
+    const btnSearch = document.getElementById("btn-online-search");
+    const loadingEl = document.getElementById("online-search-loading");
+    const resultsEl = document.getElementById("online-search-results");
+
+    if (!input || !resultsEl) return;
+    const query = input.value.trim();
+    if (!query) {
+      resultsEl.innerHTML = `<div class="empty-state"><p>Please enter a food name to search.</p></div>`;
+      return;
+    }
+
+    // Show loading state
+    if (loadingEl) loadingEl.classList.remove("hidden");
+    if (btnSearch) { btnSearch.disabled = true; btnSearch.textContent = "Searching..."; }
+    resultsEl.innerHTML = "";
+    this.closePreview();
+
+    try {
+      const items = await FoodDatabase.searchFoods(query);
+      this.renderOnlineResults(items);
+    } catch (err) {
+      console.warn("[OnlineSearch] Failed:", err);
+      resultsEl.innerHTML = `<div class="empty-state"><p>Search failed. Please check your connection and try again.</p></div>`;
+    } finally {
+      if (loadingEl) loadingEl.classList.add("hidden");
+      if (btnSearch) { btnSearch.disabled = false; btnSearch.textContent = "Search"; }
+    }
+  },
+
+  renderOnlineResults(items) {
+    const container = document.getElementById("online-search-results");
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    items.forEach(food => {
+      const sourceBadge = food.source === "USDA"
+        ? `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(99,179,237,0.18); color: #63b3ed; margin-left: 6px;">USDA</span>`
+        : `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(154,230,180,0.15); color: #68d391; margin-left: 6px;">OFF</span>`;
+
+      const item = document.createElement("div");
+      item.className = "meal-item clickable-selector-item";
+      item.style.cursor = "pointer";
+      item.innerHTML = `
+        <div class="meal-info">
+          <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
+          <span class="meal-sub">${food.brand} &bull; per 100g</span>
+          <div class="meal-macros">
+            <span class="m-tag p">P: ${food.nutrients.protein}g</span>
+            <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
+            <span class="m-tag f">F: ${food.nutrients.fats}g</span>
+          </div>
+        </div>
+        <div class="meal-kcal-block">
+          <span class="meal-kcal" style="font-size: 1.1rem;">${food.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+        </div>
+      `;
+
+      item.addEventListener("click", () => {
+        this.selectFoodItem(food, "history");
+      });
+
+      container.appendChild(item);
+    });
   }
 };
 
