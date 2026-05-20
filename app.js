@@ -20,6 +20,15 @@ const AppState = {
     weights: {},    // "YYYY-MM-DD": weightNumeric
     settings: {
       unit: "lbs"   // "lbs" or "kg"
+    },
+    profile: {
+      sex: "male",
+      age: 30,
+      heightFt: 5,
+      heightIn: 10,
+      activity: "light",
+      targetWeight: 170,
+      weeklyRate: 1.0
     }
   },
 
@@ -322,6 +331,24 @@ const ScannerViewController = {
       e.preventDefault();
       this.addCustomFoodLog();
     });
+
+    // 7. Auto-calculate custom calories from custom macros
+    const customProtein = document.getElementById("custom-protein");
+    const customCarbs = document.getElementById("custom-carbs");
+    const customFats = document.getElementById("custom-fats");
+    const customCalInput = document.getElementById("custom-calories");
+
+    const updateCalculatedCalories = () => {
+      let p = parseFloat(customProtein.value) || 0;
+      let c = parseFloat(customCarbs.value) || 0;
+      let f = parseFloat(customFats.value) || 0;
+      let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+      customCalInput.value = kcal > 0 ? kcal : "";
+    };
+
+    customProtein.addEventListener("input", updateCalculatedCalories);
+    customCarbs.addEventListener("input", updateCalculatedCalories);
+    customFats.addEventListener("input", updateCalculatedCalories);
   },
 
   async triggerProductLookup(barcode) {
@@ -538,6 +565,48 @@ const SettingsController = {
     if (csvInput) {
       csvInput.addEventListener("change", (e) => this.importRenphoCSV(e));
     }
+
+    // 6. Danger Zone collapsible card toggle
+    const toggleDangerBtn = document.getElementById("toggle-danger-zone-btn");
+    const dangerBody = document.getElementById("danger-zone-body");
+    const dangerCard = document.getElementById("danger-zone-card");
+    if (toggleDangerBtn && dangerBody && dangerCard) {
+      toggleDangerBtn.addEventListener("click", () => {
+        const isHidden = dangerBody.classList.contains("hidden");
+        if (isHidden) {
+          dangerBody.classList.remove("hidden");
+          dangerCard.classList.add("active");
+        } else {
+          dangerBody.classList.add("hidden");
+          dangerCard.classList.remove("active");
+        }
+      });
+    }
+
+    // 7. Planner Form live updates on inputs
+    const plannerInputs = [
+      "profile-sex",
+      "profile-age",
+      "profile-height-ft",
+      "profile-height-in",
+      "profile-activity",
+      "profile-target-weight",
+      "profile-weekly-rate"
+    ];
+
+    plannerInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("input", () => this.calculateTargetPlanner());
+        el.addEventListener("change", () => this.calculateTargetPlanner());
+      }
+    });
+
+    // 8. Apply Planner daily calories to budgets
+    const btnApply = document.getElementById("btn-apply-planner");
+    if (btnApply) {
+      btnApply.addEventListener("click", () => this.applyPlannerTarget());
+    }
   },
 
   render() {
@@ -559,6 +628,231 @@ const SettingsController = {
       document.getElementById("btn-unit-lbs").classList.remove("active");
       document.getElementById("btn-unit-kg").classList.add("active");
     }
+
+    // --- Profile & Planner Populating ---
+    if (!AppState.data.profile) {
+      AppState.data.profile = {
+        sex: "male",
+        age: 30,
+        heightFt: 5,
+        heightIn: 10,
+        activity: "light",
+        targetWeight: currentUnit === "lbs" ? 170 : 77,
+        weeklyRate: currentUnit === "lbs" ? 1.0 : 0.5
+      };
+    }
+
+    const profile = AppState.data.profile;
+    
+    // Safely write profile fields
+    const sexEl = document.getElementById("profile-sex");
+    if (sexEl) sexEl.value = profile.sex || "male";
+
+    const ageEl = document.getElementById("profile-age");
+    if (ageEl) ageEl.value = profile.age || 30;
+
+    const ftEl = document.getElementById("profile-height-ft");
+    if (ftEl) ftEl.value = profile.heightFt || 5;
+
+    const inEl = document.getElementById("profile-height-in");
+    if (inEl) inEl.value = profile.heightIn || 10;
+
+    const actEl = document.getElementById("profile-activity");
+    if (actEl) actEl.value = profile.activity || "light";
+
+    const targetWtEl = document.getElementById("profile-target-weight");
+    if (targetWtEl) targetWtEl.value = profile.targetWeight || (currentUnit === "lbs" ? 170 : 77);
+
+    // Update labels with active unit
+    document.querySelectorAll(".planner-unit").forEach(el => {
+      el.textContent = currentUnit;
+    });
+
+    // Populate weekly rates dynamically based on active unit
+    const rateSelect = document.getElementById("profile-weekly-rate");
+    if (rateSelect) {
+      const selectedRate = profile.weeklyRate || (currentUnit === "lbs" ? 1.0 : 0.5);
+      rateSelect.innerHTML = "";
+      if (currentUnit === "lbs") {
+        const lbsOptions = [
+          { value: "0.5", text: "0.5 lbs / week (Slow & steady)" },
+          { value: "1.0", text: "1.0 lbs / week (Recommended)" },
+          { value: "1.5", text: "1.5 lbs / week (Moderate)" },
+          { value: "2.0", text: "2.0 lbs / week (Aggressive)" }
+        ];
+        lbsOptions.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt.value;
+          o.textContent = opt.text;
+          if (parseFloat(opt.value) === selectedRate) o.selected = true;
+          rateSelect.appendChild(o);
+        });
+      } else {
+        const kgOptions = [
+          { value: "0.25", text: "0.25 kg / week (Slow & steady)" },
+          { value: "0.5", text: "0.5 kg / week (Recommended)" },
+          { value: "0.75", text: "0.75 kg / week (Moderate)" },
+          { value: "1.0", text: "1.0 kg / week (Aggressive)" }
+        ];
+        kgOptions.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt.value;
+          o.textContent = opt.text;
+          if (parseFloat(opt.value) === selectedRate) o.selected = true;
+          rateSelect.appendChild(o);
+        });
+      }
+    }
+
+    // Run calculations to populate standard results on render load
+    this.calculateTargetPlanner();
+  },
+
+  getCurrentWeight() {
+    const todayISO = AppState.getTodayISODate();
+    if (AppState.data.weights[todayISO] !== undefined) {
+      return AppState.data.weights[todayISO];
+    }
+    const dates = Object.keys(AppState.data.weights).sort().reverse();
+    if (dates.length > 0) {
+      return AppState.data.weights[dates[0]];
+    }
+    return AppState.data.settings.unit === "lbs" ? 180 : 80;
+  },
+
+  calculateTargetPlanner() {
+    const sexEl = document.getElementById("profile-sex");
+    if (!sexEl) return;
+
+    const sex = sexEl.value;
+    const age = parseInt(document.getElementById("profile-age").value) || 30;
+    const heightFt = parseFloat(document.getElementById("profile-height-ft").value) || 5;
+    const heightIn = parseFloat(document.getElementById("profile-height-in").value) || 10;
+    const activity = document.getElementById("profile-activity").value;
+    const targetWeight = parseFloat(document.getElementById("profile-target-weight").value) || 170;
+    const weeklyRate = parseFloat(document.getElementById("profile-weekly-rate").value) || 1.0;
+
+    const currentUnit = AppState.data.settings.unit;
+    const currentWeight = this.getCurrentWeight();
+
+    // Persist variables immediately so they don't wipe on tab switches
+    AppState.data.profile = {
+      sex,
+      age,
+      heightFt,
+      heightIn,
+      activity,
+      targetWeight,
+      weeklyRate
+    };
+    AppState.saveToStorage();
+
+    // Metric conversions for MSJ Formula
+    const currentWeightKg = currentUnit === "lbs" ? currentWeight / 2.20462 : currentWeight;
+    const targetWeightKg = currentUnit === "lbs" ? targetWeight / 2.20462 : targetWeight;
+    const heightCm = (heightFt * 12 + heightIn) * 2.54;
+
+    // BMR Calculation (Mifflin-St Jeor)
+    let bmr = 0;
+    if (sex === "male") {
+      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) + 5;
+    } else {
+      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) - 161;
+    }
+
+    // TDEE Multipliers
+    const activityMultipliers = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725
+    };
+    const activityFactor = activityMultipliers[activity] || 1.2;
+    const tdee = bmr * activityFactor;
+
+    // Target Calorie adjustment (deficit/surplus)
+    const weeklyRateLbs = currentUnit === "kg" ? weeklyRate * 2.20462 : weeklyRate;
+    const dailyCalorieDelta = weeklyRateLbs * 500;
+
+    let targetCalories = tdee;
+    if (targetWeightKg < currentWeightKg) {
+      targetCalories = tdee - dailyCalorieDelta;
+    } else if (targetWeightKg > currentWeightKg) {
+      targetCalories = tdee + dailyCalorieDelta;
+    }
+    
+    // Absolute minimum clamp of 500 kcal
+    targetCalories = Math.max(Math.round(targetCalories), 500);
+
+    // Weeks calculation
+    const weightDiff = Math.abs(currentWeight - targetWeight);
+    const weeksToGoal = weeklyRate > 0 ? (weightDiff / weeklyRate) : 0;
+
+    // Display summary results
+    document.getElementById("planner-cal-result").textContent = targetCalories.toLocaleString();
+    document.getElementById("planner-tdee-result").textContent = `${Math.round(tdee).toLocaleString()} kcal`;
+    document.getElementById("planner-weeks-result").textContent = weeksToGoal > 0 ? `${weeksToGoal.toFixed(1)} Weeks` : "0 Weeks";
+
+    // Safety checks & warnings
+    const warningBox = document.getElementById("planner-warning-box");
+    const warningText = document.getElementById("planner-warning-text");
+
+    let isDangerous = false;
+    let warningMsg = "";
+
+    if (weeklyRateLbs > 2.0) {
+      isDangerous = true;
+      warningMsg = `Aggressive rate selected. Safe weight change rate is up to 2.0 lbs (${currentUnit === "kg" ? "0.9 kg" : "0.9 kg"} equivalent) per week.`;
+    }
+
+    const minKcal = sex === "male" ? 1500 : 1200;
+    if (targetCalories < minKcal) {
+      isDangerous = true;
+      if (warningMsg) warningMsg += " Also, ";
+      warningMsg += `Target calories (${targetCalories} kcal) are below the recommended safe daily minimum (${minKcal} kcal for biological ${sex}s).`;
+    }
+
+    if (isDangerous) {
+      warningText.textContent = warningMsg;
+      warningBox.classList.remove("hidden");
+      if (weeklyRateLbs <= 2.0 && targetCalories >= minKcal - 200) {
+        warningBox.classList.add("caution");
+      } else {
+        warningBox.classList.remove("caution");
+      }
+    } else {
+      warningBox.classList.add("hidden");
+    }
+  },
+
+  applyPlannerTarget() {
+    const calResultText = document.getElementById("planner-cal-result").textContent.replace(/,/g, "");
+    const targetCalories = parseInt(calResultText) || 2000;
+
+    // Proportional Macro Scaling
+    const oldCalories = AppState.data.standardGoals.calories || 2000;
+    const scale = targetCalories / oldCalories;
+
+    AppState.data.standardGoals.calories = targetCalories;
+    AppState.data.standardGoals.protein = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+    AppState.data.standardGoals.carbs = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+    AppState.data.standardGoals.fats = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+
+    // Save Daily Override for current active date
+    const dateKey = AppState.selectedDateISO;
+    AppState.data.dailyGoals[dateKey] = {
+      calories: AppState.data.standardGoals.calories,
+      protein: AppState.data.standardGoals.protein,
+      carbs: AppState.data.standardGoals.carbs,
+      fats: AppState.data.standardGoals.fats
+    };
+
+    AppState.saveToStorage();
+    alert(`Success! Calculated daily calorie budget (${targetCalories} kcal) and proportionally scaled macros have been applied to your standards.`);
+    
+    // Refresh Settings Inputs & Redirect to Dashboard
+    this.render();
+    appRouter.navigate("dashboard");
   },
 
   saveStandardTargets() {
@@ -607,6 +901,20 @@ const SettingsController = {
         weights[dateKey] = parseFloat((original * 2.20462).toFixed(1));
       }
     });
+
+    // Proactively convert goal profile target weight and weekly rates
+    if (AppState.data.profile) {
+      const profile = AppState.data.profile;
+      if (targetUnit === "kg") {
+        profile.targetWeight = parseFloat((profile.targetWeight / 2.20462).toFixed(1));
+        const rateMap = { 0.5: 0.25, 1.0: 0.5, 1.5: 0.75, 2.0: 1.0 };
+        profile.weeklyRate = rateMap[profile.weeklyRate] || parseFloat((profile.weeklyRate / 2.20462).toFixed(2));
+      } else {
+        profile.targetWeight = parseFloat((profile.targetWeight * 2.20462).toFixed(1));
+        const rateMap = { 0.25: 0.5, 0.5: 1.0, 0.75: 1.5, 1.0: 2.0 };
+        profile.weeklyRate = rateMap[profile.weeklyRate] || parseFloat((profile.weeklyRate * 2.20462).toFixed(2));
+      }
+    }
 
     AppState.data.settings.unit = targetUnit;
     AppState.saveToStorage();
