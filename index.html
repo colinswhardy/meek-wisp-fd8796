@@ -330,6 +330,92 @@
 
     <!-- TAB 4: SETTINGS & TARGETS -->
     <section id="panel-settings" class="app-panel">
+      <!-- Interactive Weight Goal & TDEE Calorie Planner -->
+      <div class="glass-card planner-card">
+        <h3>Weight Goal & Calorie Planner</h3>
+        <p class="card-subtitle">Calculate dynamic daily targets based on your biological statistics and safe weekly rate.</p>
+
+        <form id="planner-form" oninput="return false;">
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="profile-sex">Biological Sex</label>
+              <select id="profile-sex">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="profile-age">Age (years)</label>
+              <input type="number" id="profile-age" min="10" max="120" value="30" pattern="[0-9]*" inputmode="numeric">
+            </div>
+          </div>
+
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label>Height (Ft / In)</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="number" id="profile-height-ft" placeholder="Ft" min="2" max="8" value="5" pattern="[0-9]*" inputmode="numeric" style="flex: 1;">
+                <input type="number" id="profile-height-in" placeholder="In" min="0" max="11" value="10" pattern="[0-9]*" inputmode="numeric" style="flex: 1;">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profile-activity">Daily Activity Level</label>
+              <select id="profile-activity">
+                <option value="sedentary">Sedentary (desk job)</option>
+                <option value="light" selected>Lightly Active (light exercise)</option>
+                <option value="moderate">Moderately Active (active/sports)</option>
+                <option value="active">Very Active (heavy labor/athletics)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="profile-target-weight">Goal Target Weight (<span class="planner-unit">lbs</span>)</label>
+              <input type="number" id="profile-target-weight" min="40" max="500" value="170" step="0.1" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="profile-weekly-rate">Weekly Rate (<span class="planner-unit">lbs</span>/wk)</label>
+              <select id="profile-weekly-rate">
+                <option value="0.5">0.5 lbs / week (Slow & steady)</option>
+                <option value="1.0" selected>1.0 lbs / week (Recommended)</option>
+                <option value="1.5">1.5 lbs / week (Moderate)</option>
+                <option value="2.0">2.0 lbs / week (Aggressive)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <!-- Dynamic Results summary block -->
+        <div class="planner-results-block" id="planner-results-card">
+          <div class="planner-main-metric">
+            <label>Calculated Calorie Target</label>
+            <span id="planner-cal-result">--</span>
+            <strong>kcal / day</strong>
+          </div>
+          <div class="planner-metric-grid">
+            <div class="planner-metric-box">
+              <label>Daily Energy Burn (TDEE)</label>
+              <span id="planner-tdee-result">--</span>
+            </div>
+            <div class="planner-metric-box">
+              <label>Estimated Timeframe</label>
+              <span id="planner-weeks-result">--</span>
+            </div>
+          </div>
+          
+          <!-- Warning Messages Container -->
+          <div class="planner-warning hidden" id="planner-warning-box">
+            <span class="warning-icon">⚠️</span>
+            <span id="planner-warning-text">Aggressive rate selected. Safe loss rate is 0.5 to 1.5 lbs per week.</span>
+          </div>
+
+          <button id="btn-apply-planner" class="btn btn-primary btn-block" style="margin-top: 16px;">
+            Apply Target Calories
+          </button>
+        </div>
+      </div>
+
       <!-- Edit Daily Budget Goals -->
       <div class="glass-card targets-config-card">
         <h3>Set Budgets & Target Goals</h3>
@@ -377,25 +463,48 @@
         </div>
 
         <div class="divider"></div>
-
-        <!-- Load Mock Data -->
+        <!-- Import Renpho CSV Data -->
         <div class="pref-row">
           <div>
-            <label class="pref-title">Load 7-Day Demo Logs</label>
-            <p class="pref-desc">Populate sample weights and meals to preview the trendline chart instantly</p>
+            <label class="pref-title">Import Renpho Weights</label>
+            <p class="pref-desc">Sync historical weights instantly via exported Renpho CSV</p>
           </div>
-          <button id="btn-load-mock" class="btn btn-secondary">Load Demo</button>
+          <label class="btn btn-secondary btn-sm btn-file-wrapper" id="btn-import-csv-wrapper">
+            <span>Import CSV</span>
+            <input type="file" id="csv-file-input" accept=".csv">
+          </label>
         </div>
+      </div>
 
-        <div class="divider"></div>
-
-        <!-- Clear all stored local data -->
-        <div class="pref-row">
-          <div>
-            <label class="pref-title color-danger">Clear Stored Data</label>
-            <p class="pref-desc">Erase all weights, calories, and goals from local storage</p>
+      <!-- Advanced Options / Danger Zone Collapsible Card -->
+      <div class="glass-card danger-zone-card" id="danger-zone-card">
+        <div class="card-header-toggle" id="toggle-danger-zone-btn">
+          <h3 class="color-danger" style="margin-bottom: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+            <span>⚠️</span> Advanced & Danger Zone
+          </h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <div id="danger-zone-body" class="custom-form-body hidden">
+          <!-- Load Mock Data -->
+          <div class="pref-row">
+            <div>
+              <label class="pref-title">Load 7-Day Demo Logs</label>
+              <p class="pref-desc">Populate sample weights and meals to preview the trendline chart instantly</p>
+            </div>
+            <button id="btn-load-mock" class="btn btn-secondary">Load Demo</button>
           </div>
-          <button id="btn-clear-data" class="btn btn-danger btn-sm">Clear All</button>
+
+          <div class="divider"></div>
+
+          <!-- Clear all stored local data -->
+          <div class="pref-row">
+            <div>
+              <label class="pref-title color-danger">Clear Stored Data</label>
+              <p class="pref-desc">Erase all weights, calories, and goals from local storage</p>
+            </div>
+            <button id="btn-clear-data" class="btn btn-danger btn-sm">Clear All</button>
+          </div>
         </div>
       </div>
     </section>

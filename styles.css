@@ -4,25 +4,25 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* HSL Color System */
-  --bg-app: #090a0f;
-  --bg-surface: rgba(18, 20, 28, 0.7);
-  --bg-surface-secondary: rgba(28, 31, 44, 0.5);
-  --border-glass: rgba(255, 255, 255, 0.07);
-  --border-focus: rgba(0, 242, 254, 0.5);
+  /* HSL Color System - Sleek Silver, Blue, Black Theme */
+  --bg-app: #030406; /* Pitch black OLED background */
+  --bg-surface: rgba(14, 18, 28, 0.75); /* Dark slate sapphire glass */
+  --bg-surface-secondary: rgba(26, 32, 48, 0.45); /* Cooler deep slate secondary */
+  --border-glass: rgba(255, 255, 255, 0.06);
+  --border-focus: rgba(0, 136, 255, 0.5); /* Electric cobalt focus glow */
   
-  --color-text-primary: #f1f3f9;
-  --color-text-secondary: #909bb2;
-  --color-text-tertiary: #5c667a;
+  --color-text-primary: #f8fafc; /* Crisp silver-white */
+  --color-text-secondary: #94a3b8; /* Elegant silver-gray */
+  --color-text-tertiary: #475569; /* Slate gray */
 
-  /* Accent Branding */
-  --color-calories: #00e676;
-  --color-protein: #00f2fe;
-  --color-carbs: #b388ff;
-  --color-fats: #ffb300;
-  --color-weight: #00c6ff;
-  --color-danger: #ff5252;
-  --color-success: #00e676;
+  /* Accent Branding - Silver & Blue Focus */
+  --color-calories: #0088ff; /* Electric cobalt blue */
+  --color-protein: #00f2fe; /* Neon cyan blue */
+  --color-carbs: #cbd5e1; /* Elegant light silver */
+  --color-fats: #3b82f6; /* Brushed metallic blue */
+  --color-weight: #0088ff; /* Cobalt blue for weight data */
+  --color-danger: #ef4444; /* High-end crimson */
+  --color-success: #10b981; /* High-end emerald green */
 
   /* Font Families */
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -38,7 +38,7 @@
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
-  --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
 }
 
 /* Reset & Global Base */
@@ -77,26 +77,23 @@ body {
   }
 }
 
-/* Header Styling */
+/* Header Styling - Slim calendar-only bar */
 .app-header {
   width: 100%;
-  padding: 16px 20px;
+  padding: 8px 16px;
   background: rgba(9, 10, 15, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-glass);
   display: flex;
   flex-direction: column;
-  gap: 12px;
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
 .header-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: none !important;
 }
 
 .logo-icon {
@@ -929,6 +926,33 @@ input:focus {
   gap: 12px;
 }
 
+.form-grid-2x2 .form-group input {
+  width: 100%;
+}
+
+/* File selector overlay wrapper */
+.btn-file-wrapper {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.btn-file-wrapper input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 100%;
+  min-height: 100%;
+  font-size: 100px;
+  text-align: right;
+  filter: alpha(opacity=0);
+  opacity: 0;
+  outline: none;
+  background: white;
+  cursor: inherit;
+  display: block;
+}
+
 /* Weight Tracker Layout */
 .form-row-weight {
   display: flex;
@@ -1183,6 +1207,139 @@ input:focus {
   stroke: var(--color-protein);
   filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.4));
   transform: translateY(-2px);
+}
+
+/* Biological Profile Form Dropdown selectors */
+select {
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23cbd5e1' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  width: 100%;
+}
+
+select:focus {
+  border-color: var(--color-protein);
+  box-shadow: 0 0 0 3px var(--border-focus);
+}
+
+/* Planner Results styling */
+.planner-results-block {
+  margin-top: 20px;
+  background: rgba(0, 136, 255, 0.04);
+  border: 1px solid rgba(0, 136, 255, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.planner-main-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 16px;
+}
+
+.planner-main-metric label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.planner-main-metric span {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--color-calories);
+  text-shadow: 0 0 15px rgba(0, 136, 255, 0.3);
+  line-height: 1;
+  margin: 6px 0;
+}
+
+.planner-main-metric strong {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.planner-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.planner-metric-box {
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.planner-metric-box label {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.planner-metric-box span {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.planner-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  animation: fadeIn var(--transition-fast);
+}
+
+.planner-warning.hidden {
+  display: none !important;
+}
+
+.planner-warning.caution {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  color: #fde047;
+}
+
+/* Danger zone collapsible active rotation */
+.danger-zone-card.active {
+  border-color: rgba(255, 82, 82, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(255, 82, 82, 0.1);
+}
+
+.danger-zone-card.active .toggle-icon {
+  transform: rotate(45deg);
 }
 
 /* Utility Hidden Classes */
