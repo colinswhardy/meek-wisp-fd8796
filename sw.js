@@ -1,4 +1,4 @@
-const CACHE_NAME = "colins-charts-macros-v2";
+const CACHE_NAME = "colins-charts-macros-v3";
 const ASSETS_TO_CACHE = [
   "./index.html",
   "./styles.css",
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
+  "./screenshot.png",
   "https://cdn.jsdelivr.net/npm/chart.js",
   "https://unpkg.com/html5-qrcode"
 ];

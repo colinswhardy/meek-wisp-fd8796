@@ -1,4 +1,5 @@
 {
+  "id": "colins-charts-macros-pwa",
   "name": "ColinsChartsMacros - Weight & Macro Tracker",
   "short_name": "ColinsChartsMacros",
   "description": "Premium weight tracker and barcode macro logging application.",
@@ -19,6 +20,15 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "ColinsChartsMacros Dashboard"
     }
   ]
 }
