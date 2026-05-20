@@ -54,8 +54,8 @@ const WeightChartManager = {
     
     // Create a beautiful subtle gradient underneath the actual weight path
     const weightGradient = ctx.createLinearGradient(0, 0, 0, 200);
-    weightGradient.addColorStop(0, "rgba(0, 198, 255, 0.25)");
-    weightGradient.addColorStop(1, "rgba(0, 198, 255, 0.0)");
+    weightGradient.addColorStop(0, "rgba(59, 130, 246, 0.25)");
+    weightGradient.addColorStop(1, "rgba(59, 130, 246, 0.0)");
 
     this.chartInstance = new Chart(ctx, {
       type: "line",
@@ -65,9 +65,9 @@ const WeightChartManager = {
           {
             label: `Actual Weight (${unit})`,
             data: actualWeights,
-            borderColor: "#00c6ff",
+            borderColor: "#3b82f6",
             borderWidth: 3,
-            pointBackgroundColor: "#00c6ff",
+            pointBackgroundColor: "#3b82f6",
             pointBorderColor: "rgba(255,255,255,0.8)",
             pointBorderWidth: 1.5,
             pointRadius: 5,
@@ -80,7 +80,7 @@ const WeightChartManager = {
           {
             label: "Trendline",
             data: regressionDataset,
-            borderColor: "#00f2fe",
+            borderColor: "#cbd5e1",
             borderWidth: 2,
             borderDash: [5, 5],
             pointRadius: 0, // Dotted line only, no points

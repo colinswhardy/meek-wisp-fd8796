@@ -4,25 +4,25 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* HSL Color System - Sleek Silver, Blue, Black Theme */
-  --bg-app: #030406; /* Pitch black OLED background */
-  --bg-surface: rgba(14, 18, 28, 0.75); /* Dark slate sapphire glass */
-  --bg-surface-secondary: rgba(26, 32, 48, 0.45); /* Cooler deep slate secondary */
-  --border-glass: rgba(255, 255, 255, 0.06);
-  --border-focus: rgba(0, 136, 255, 0.5); /* Electric cobalt focus glow */
+  /* HSL Color System - Sleek Deep Blue, Premium Silver, White & Black Theme */
+  --bg-app: #02040a; /* Pitch black with an elegant dark blue tint */
+  --bg-surface: rgba(10, 15, 30, 0.8); /* Elegant dark sapphire glass background */
+  --bg-surface-secondary: rgba(20, 30, 55, 0.5); /* Deep slate-blue secondary */
+  --border-glass: rgba(255, 255, 255, 0.08); /* Subtly brighter silver border for premium glassmorphism */
+  --border-focus: rgba(37, 99, 235, 0.6); /* Cobalt blue focus glow */
   
-  --color-text-primary: #f8fafc; /* Crisp silver-white */
-  --color-text-secondary: #94a3b8; /* Elegant silver-gray */
-  --color-text-tertiary: #475569; /* Slate gray */
+  --color-text-primary: #ffffff; /* Crisp pure white */
+  --color-text-secondary: #cbd5e1; /* Elegant silver-gray */
+  --color-text-tertiary: #94a3b8; /* Slate gray */
 
-  /* Accent Branding - Silver & Blue Focus */
-  --color-calories: #0088ff; /* Electric cobalt blue */
-  --color-protein: #00f2fe; /* Neon cyan blue */
-  --color-carbs: #cbd5e1; /* Elegant light silver */
-  --color-fats: #3b82f6; /* Brushed metallic blue */
-  --color-weight: #0088ff; /* Cobalt blue for weight data */
+  /* Accent Branding - Dark Blue & Silver Accents */
+  --color-calories: #2563eb; /* Cobalt Blue */
+  --color-protein: #3b82f6; /* Premium Cobalt/Royal Blue */
+  --color-carbs: #cbd5e1; /* Elegant Brushed Silver */
+  --color-fats: #1d4ed8; /* Deep Royal Blue */
+  --color-weight: #3b82f6; /* Cobalt blue for weight data */
   --color-danger: #ef4444; /* High-end crimson */
-  --color-success: #10b981; /* High-end emerald green */
+  --color-success: #2563eb; /* Deep Sapphire Blue instead of green */
 
   /* Font Families */
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -38,7 +38,7 @@
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
-  --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.75);
 }
 
 /* Reset & Global Base */
@@ -97,7 +97,7 @@ body {
 }
 
 .logo-icon {
-  filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.3));
+  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3));
 }
 
 .app-header h1 {
@@ -312,7 +312,7 @@ body {
 
 .quick-stat-item .color-calories {
   color: var(--color-calories);
-  text-shadow: 0 0 10px rgba(0, 230, 118, 0.2);
+  text-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
 }
 
 .quick-stat-item .stat-lbl {
@@ -386,9 +386,9 @@ body {
   position: relative;
 }
 
-.bg-protein { background: linear-gradient(90deg, #00c6ff, var(--color-protein)); }
-.bg-carbs { background: linear-gradient(90deg, #7c4dff, var(--color-carbs)); }
-.bg-fats { background: linear-gradient(90deg, #ff8f00, var(--color-fats)); }
+.bg-protein { background: linear-gradient(90deg, #1d4ed8, var(--color-protein)); }
+.bg-carbs { background: linear-gradient(90deg, #94a3b8, var(--color-carbs)); }
+.bg-fats { background: linear-gradient(90deg, #1e3a8a, var(--color-fats)); }
 
 /* Meals Log List */
 .logs-section {
@@ -668,9 +668,10 @@ input:focus {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #00c6ff, var(--color-protein));
-  color: #000;
-  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .btn-secondary {
@@ -684,9 +685,9 @@ input:focus {
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #00e676, #00b0ff);
-  color: #000;
-  box-shadow: 0 4px 15px rgba(0, 230, 118, 0.25);
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
 }
 
 .btn-danger {
@@ -795,16 +796,16 @@ input:focus {
   letter-spacing: 0.5px;
 }
 
-.highlight-kcal { border-color: rgba(0, 230, 118, 0.2); }
+.highlight-kcal { border-color: rgba(37, 99, 235, 0.25); }
 .highlight-kcal span { color: var(--color-calories); }
 
-.highlight-protein { border-color: rgba(0, 242, 254, 0.2); }
+.highlight-protein { border-color: rgba(59, 130, 246, 0.25); }
 .highlight-protein span { color: var(--color-protein); }
 
-.highlight-carbs { border-color: rgba(179, 136, 255, 0.2); }
+.highlight-carbs { border-color: rgba(203, 213, 225, 0.25); }
 .highlight-carbs span { color: var(--color-carbs); }
 
-.highlight-fats { border-color: rgba(255, 179, 0, 0.2); }
+.highlight-fats { border-color: rgba(29, 78, 216, 0.25); }
 .highlight-fats span { color: var(--color-fats); }
 
 .nutri-label-100g {
@@ -986,10 +987,10 @@ input:focus {
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
-  color: var(--color-success);
+  color: #60a5fa;
   margin-top: 14px;
-  background: rgba(0, 230, 118, 0.08);
-  border: 1px solid rgba(0, 230, 118, 0.15);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   padding: 8px 12px;
   border-radius: 8px;
   animation: fadeIn var(--transition-fast);
@@ -1073,7 +1074,7 @@ input:focus {
   font-weight: 700;
 }
 
-.c-stat-box span.loss { color: var(--color-success); }
+.c-stat-box span.loss { color: #60a5fa; }
 .c-stat-box span.gain { color: var(--color-danger); }
 .c-stat-box span.neutral { color: var(--color-text-secondary); }
 
@@ -1144,9 +1145,9 @@ input:focus {
 }
 
 .unit-btn.active {
-  background: linear-gradient(135deg, #00c6ff, var(--color-protein));
-  color: #000;
-  box-shadow: 0 2px 8px rgba(0, 242, 254, 0.25);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 /* Bottom Navigation Bar */
@@ -1205,7 +1206,7 @@ input:focus {
 
 .nav-item.active .nav-icon {
   stroke: var(--color-protein);
-  filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.4));
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.4));
   transform: translateY(-2px);
 }
 
@@ -1237,8 +1238,8 @@ select:focus {
 /* Planner Results styling */
 .planner-results-block {
   margin-top: 20px;
-  background: rgba(0, 136, 255, 0.04);
-  border: 1px solid rgba(0, 136, 255, 0.15);
+  background: rgba(37, 99, 235, 0.04);
+  border: 1px solid rgba(37, 99, 235, 0.15);
   border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
@@ -1268,7 +1269,7 @@ select:focus {
   font-size: 2.8rem;
   font-weight: 800;
   color: var(--color-calories);
-  text-shadow: 0 0 15px rgba(0, 136, 255, 0.3);
+  text-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
   line-height: 1;
   margin: 6px 0;
 }
@@ -1357,25 +1358,25 @@ select:focus {
   padding: 16px 24px;
   font-size: 1.15rem;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #00f2fe, #0088ff);
-  color: #030406;
-  box-shadow: 0 8px 30px rgba(0, 136, 255, 0.35);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.35);
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   transition: all var(--transition-fast);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .btn-scan-dashboard:hover, .btn-scan-dashboard:focus {
   transform: translateY(-2px);
-  box-shadow: 0 12px 35px rgba(0, 242, 254, 0.45);
-  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 35px rgba(37, 99, 235, 0.45);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .btn-scan-dashboard:active {
   transform: translateY(1px);
-  box-shadow: 0 4px 15px rgba(0, 136, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
 }
 
 .btn-scan-dashboard svg {
@@ -1552,11 +1553,11 @@ select:focus {
 }
 
 .history-row-bar-fill.status-normal {
-  background: linear-gradient(90deg, #0088ff, #00b0ff);
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
 }
 
 .history-row-bar-fill.status-perfect {
-  background: linear-gradient(90deg, #00e676, #00f2fe);
+  background: linear-gradient(90deg, #60a5fa, #93c5fd);
 }
 
 .history-row-bar-fill.status-over {
@@ -1622,10 +1623,10 @@ select:focus {
 }
 
 .weekday-pill input:checked + span {
-  background: linear-gradient(135deg, #00f2fe, #0088ff);
-  color: #030406;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
 }
 
 .weekday-pill:active span {
@@ -1700,13 +1701,13 @@ select:focus {
 }
 
 .switch-toggle input:checked + .slider-round {
-  background: linear-gradient(135deg, #00f2fe, #0088ff);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
   border-color: transparent;
 }
 
 .switch-toggle input:checked + .slider-round:before {
   transform: translateX(20px);
-  background-color: #030406;
+  background-color: #ffffff;
 }
 
 /* Premium Success Toast Notification Overlay */
@@ -1718,13 +1719,13 @@ select:focus {
   background: rgba(13, 20, 32, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: 50px;
   padding: 12px 24px;
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(59, 130, 246, 0.15);
   z-index: 200;
   opacity: 0;
   pointer-events: none;
@@ -1746,8 +1747,8 @@ select:focus {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--color-success);
-  color: #030406;
+  background: #3b82f6;
+  color: #fff;
   font-size: 0.75rem;
   font-weight: 900;
 }
@@ -1819,7 +1820,7 @@ select:focus {
 }
 
 .cycling-day-row:focus-within {
-  border-color: rgba(0, 136, 255, 0.4);
+  border-color: rgba(37, 99, 235, 0.4);
 }
 
 .cycling-day-meta {
@@ -1905,10 +1906,10 @@ select:focus {
 }
 
 .selector-tabs-header .tab-btn.active {
-  background: linear-gradient(135deg, #00f2fe, #0088ff);
-  color: #030406;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.25);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
 .selector-tab-content {
@@ -1938,8 +1939,8 @@ select:focus {
 }
 
 .search-box-container input:focus {
-  border-color: rgba(0, 242, 254, 0.4);
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.15);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.15);
   outline: none;
 }
 
@@ -1949,13 +1950,20 @@ select:focus {
 }
 
 .clickable-selector-item:hover {
-  border-color: rgba(0, 242, 254, 0.3) !important;
-  box-shadow: 0 6px 16px rgba(0, 242, 254, 0.08) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08) !important;
   transform: translateY(-2px);
 }
 
 .clickable-selector-item:active {
   transform: translateY(1px) scale(0.98);
+}
+
+.clickable-selector-item.selector-active {
+  border-color: var(--color-protein) !important;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.25) !important;
+  background: rgba(37, 99, 235, 0.04) !important;
+  transform: none !important;
 }
 
 /* Nutrient Info Badge Panel & Previews */
@@ -2067,8 +2075,8 @@ select:focus {
 }
 
 .weight-input-container:focus-within {
-  border-color: rgba(0, 242, 254, 0.4);
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.15);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.15);
 }
 
 .weight-input-container input {
@@ -2220,7 +2228,7 @@ select:focus {
 }
 
 .input-inline input:focus {
-  border-color: rgba(0, 242, 254, 0.3);
+  border-color: rgba(37, 99, 235, 0.3);
   outline: none;
 }
 
@@ -2301,8 +2309,8 @@ select:focus {
 
 /* Recipe builder totals card */
 .recipe-total-summary-card {
-  background: rgba(0, 136, 255, 0.03);
-  border: 1px solid rgba(0, 136, 255, 0.1) !important;
+  background: rgba(37, 99, 235, 0.03);
+  border: 1px solid rgba(37, 99, 235, 0.1) !important;
   border-radius: var(--radius-md);
   padding: 12px 14px;
 }
@@ -2312,7 +2320,7 @@ select:focus {
   font-weight: 700;
   font-size: 0.95rem;
   margin: 0 0 10px 0;
-  color: #00b0ff;
+  color: #3b82f6;
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }

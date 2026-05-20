@@ -2,7 +2,7 @@
 # ColinsChartsMacros - Lightweight PowerShell Web Server
 # --------------------------------------------------------------------------
 
-$port = 8080
+$port = 8085
 $listener = New-Object System.Net.HttpListener
 
 # Bind to 127.0.0.1 (Localhost) which does NOT require Administrator privileges

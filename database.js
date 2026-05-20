@@ -112,15 +112,153 @@ const FoodDatabase = {
     throw new Error("Product not found in any database.");
   },
 
+  // Local fallback dictionary of common, high-quality generic whole foods
+  COMMON_WHOLE_FOODS: [
+    {
+      name: "Chicken Breast, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["chicken", "breast", "cooked", "poultry", "meat"],
+      nutrients: { calories: 165, protein: 31.0, carbs: 0.0, fats: 3.6 }
+    },
+    {
+      name: "Chicken Breast, raw",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["chicken", "breast", "raw", "poultry", "meat"],
+      nutrients: { calories: 120, protein: 22.5, carbs: 0.0, fats: 2.6 }
+    },
+    {
+      name: "Whole Egg, cooked / boiled",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["egg", "whole", "boiled", "cooked"],
+      nutrients: { calories: 155, protein: 12.6, carbs: 1.1, fats: 10.6 }
+    },
+    {
+      name: "Egg White, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["egg", "white", "whites", "cooked"],
+      nutrients: { calories: 52, protein: 10.9, carbs: 0.7, fats: 0.2 }
+    },
+    {
+      name: "Oats / Oatmeal, raw",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["oat", "oats", "oatmeal", "porridge", "raw"],
+      nutrients: { calories: 389, protein: 16.9, carbs: 66.3, fats: 6.9 }
+    },
+    {
+      name: "White Rice, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["rice", "white", "cooked"],
+      nutrients: { calories: 130, protein: 2.7, carbs: 28.2, fats: 0.3 }
+    },
+    {
+      name: "Brown Rice, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["rice", "brown", "cooked"],
+      nutrients: { calories: 111, protein: 2.6, carbs: 23.0, fats: 0.9 }
+    },
+    {
+      name: "Salmon, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["salmon", "fish", "cooked", "seafood"],
+      nutrients: { calories: 206, protein: 22.1, carbs: 0.0, fats: 12.3 }
+    },
+    {
+      name: "Greek Yogurt (Nonfat / Plain)",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["yogurt", "greek", "plain", "nonfat", "yoghurt"],
+      nutrients: { calories: 59, protein: 10.3, carbs: 3.6, fats: 0.4 }
+    },
+    {
+      name: "Beef (Ground, 93% Lean, cooked)",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["beef", "ground", "lean", "cooked", "meat"],
+      nutrients: { calories: 172, protein: 25.8, carbs: 0.0, fats: 7.6 }
+    },
+    {
+      name: "Banana",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["banana", "bananas", "fruit"],
+      nutrients: { calories: 89, protein: 1.1, carbs: 22.8, fats: 0.3 }
+    },
+    {
+      name: "Apple (with skin, raw)",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["apple", "apples", "fruit"],
+      nutrients: { calories: 52, protein: 0.3, carbs: 13.8, fats: 0.2 }
+    },
+    {
+      name: "Sweet Potato, baked / cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["potato", "sweet", "baked", "cooked", "potatoes"],
+      nutrients: { calories: 90, protein: 2.0, carbs: 20.7, fats: 0.2 }
+    },
+    {
+      name: "Broccoli, cooked",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["broccoli", "cooked", "vegetable", "green"],
+      nutrients: { calories: 35, protein: 2.4, carbs: 7.2, fats: 0.4 }
+    },
+    {
+      name: "Avocado",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["avocado", "avocados"],
+      nutrients: { calories: 160, protein: 2.0, carbs: 8.5, fats: 14.7 }
+    },
+    {
+      name: "Almonds",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["almond", "almonds", "nuts", "nut"],
+      nutrients: { calories: 579, protein: 21.2, carbs: 21.6, fats: 49.9 }
+    },
+    {
+      name: "Peanut Butter",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["peanut", "butter", "peanuts"],
+      nutrients: { calories: 588, protein: 25.1, carbs: 20.0, fats: 50.4 }
+    },
+    {
+      name: "Whole Milk (3.25% Fat)",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["milk", "whole", "dairy"],
+      nutrients: { calories: 61, protein: 3.2, carbs: 4.8, fats: 3.3 }
+    },
+    {
+      name: "Whey Protein Powder (Standard)",
+      brand: "Generic Whole Food",
+      source: "Local DB",
+      keywords: ["protein", "powder", "whey", "supplement"],
+      nutrients: { calories: 400, protein: 80.0, carbs: 6.0, fats: 6.0 }
+    }
+  ],
+
   /**
-   * Keyword search across USDA FoodData Central and Open Food Facts.
-   * Returns an array of normalized food objects (per 100g nutrients).
+   * Keyword search across Local Fallback Database, USDA FoodData Central and Open Food Facts.
+   * Returns an array of normalized food objects sorted by relevance.
    * @param {string} query  Free-text food name, e.g. "cooked chicken breast"
    * @returns {Promise<Array>} Array of { name, brand, source, nutrients: {calories, protein, carbs, fats} }
    */
   async searchFoods(query) {
     if (!query || !query.trim()) return [];
-    const q = query.trim();
+    const q = query.trim().toLowerCase();
+    const qWords = q.replace(/[^a-z0-9 ]/g, "").split(" ").filter(w => w.length > 0);
     const results = [];
     const seenKeys = new Set();
 
@@ -132,9 +270,31 @@ const FoodDatabase = {
       }
     };
 
-    // 1. USDA FoodData Central — excellent for whole/generic foods
+    // 1. Search Local Fallback Dictionary
+    this.COMMON_WHOLE_FOODS.forEach(food => {
+      const foodNameLower = food.name.toLowerCase();
+      let matchCount = 0;
+      
+      qWords.forEach(word => {
+        if (food.keywords.includes(word) || foodNameLower.includes(word)) {
+          matchCount++;
+        }
+      });
+
+      // If all words in the query match, add it
+      if (qWords.length > 0 && matchCount >= qWords.length) {
+        addResult({
+          name: food.name,
+          brand: food.brand,
+          source: food.source,
+          nutrients: { ...food.nutrients }
+        });
+      }
+    });
+
+    // 2. USDA FoodData Central — excellent for whole/generic foods
     try {
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&api_key=DEMO_KEY&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=DEMO_KEY&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
       const resp = await fetch(usdaUrl);
       if (resp.ok) {
         const data = await resp.json();
@@ -172,9 +332,9 @@ const FoodDatabase = {
       console.warn("[Search] USDA search failed:", e);
     }
 
-    // 2. Open Food Facts — great for packaged branded foods
+    // 3. Open Food Facts — great for packaged branded foods
     try {
-      const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,nutriments`;
+      const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,nutriments`;
       const resp = await fetch(offUrl, {
         headers: { 'User-Agent': 'ColinsChartsMacros - Web - Version 1.0 - https://aurafit.app' }
       });
@@ -203,6 +363,67 @@ const FoodDatabase = {
     } catch (e) {
       console.warn("[Search] Open Food Facts search failed:", e);
     }
+
+    // 4. Implement Smart Relevance Scoring & Sorting
+    const scoreResult = (item) => {
+      const name = (item.name || "").toLowerCase();
+      const brand = (item.brand || "").toLowerCase();
+      
+      let score = 0;
+      
+      // Local DB items get absolute priority
+      if (item.source === "Local DB") {
+        return 10000;
+      }
+      
+      // Exact full match (case insensitive)
+      if (name === q) {
+        score += 2000;
+      }
+      
+      const qNormalized = q.replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ");
+      const nameNormalized = name.replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ");
+      
+      // Exact phrase match
+      if (nameNormalized.includes(qNormalized)) {
+        score += 800;
+        
+        // Starts with the phrase
+        if (nameNormalized.startsWith(qNormalized)) {
+          score += 400;
+        }
+      }
+      
+      // Word match count
+      let matchCount = 0;
+      qWords.forEach(word => {
+        if (nameNormalized.split(" ").includes(word)) {
+          matchCount++;
+        }
+      });
+      
+      if (matchCount > 0) {
+        score += (matchCount / qWords.length) * 500;
+      }
+      
+      // Prioritize generic whole foods
+      const isGenericBrand = brand === "usda" || brand === "generic brand" || brand === "generic" || brand === "open food facts" || brand === "generic whole food";
+      if (isGenericBrand) {
+        score += 300;
+      }
+      
+      // USDA source boost (USDA legacy/foundation data has extremely high quality nutrition info for whole foods)
+      if (item.source === "USDA" && isGenericBrand) {
+        score += 200;
+      }
+      
+      // Length penalty (favor shorter, cleaner names)
+      score -= name.length * 0.8;
+      
+      return score;
+    };
+
+    results.sort((a, b) => scoreResult(b) - scoreResult(a));
 
     return results;
   }

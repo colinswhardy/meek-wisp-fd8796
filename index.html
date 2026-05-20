@@ -590,6 +590,24 @@
         <div class="cycling-settings-body hidden" id="cycling-settings-body">
           <label class="pref-title" style="display: block; margin-bottom: 12px;">High Calorie / Re-Feed Schedule</label>
           <div class="cycling-days-list">
+            <!-- Sunday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-sunday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Sunday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-sunday">
+                <select class="cycling-day-type" id="cycling-type-sunday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-sunday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
             <!-- Monday Row -->
             <div class="cycling-day-row">
               <div class="cycling-day-meta">
@@ -697,24 +715,6 @@
                 <input type="number" class="cycling-day-val" id="cycling-val-saturday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
               </div>
             </div>
-            
-            <!-- Sunday Row -->
-            <div class="cycling-day-row">
-              <div class="cycling-day-meta">
-                <label class="switch-toggle">
-                  <input type="checkbox" id="cycling-day-sunday">
-                  <span class="slider-round"></span>
-                </label>
-                <span class="day-name">Sunday</span>
-              </div>
-              <div class="cycling-day-inputs hidden" id="cycling-inputs-sunday">
-                <select class="cycling-day-type" id="cycling-type-sunday">
-                  <option value="flat">+ kcal</option>
-                  <option value="percent">+ %</option>
-                </select>
-                <input type="number" class="cycling-day-val" id="cycling-val-sunday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -799,6 +799,10 @@
             <div class="planner-metric-box">
               <label>Estimated Timeframe</label>
               <span id="planner-weeks-result">--</span>
+            </div>
+            <div class="planner-metric-box">
+              <label>Estimated Goal Date</label>
+              <span id="planner-date-result">--</span>
             </div>
           </div>
           
@@ -891,6 +895,18 @@
             <input type="file" id="csv-file-input" accept=".csv">
           </label>
         </div>
+
+        <div class="divider"></div>
+        <!-- Gemini API Key for AI-powered food search -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Gemini API Key</label>
+            <p class="pref-desc">Enable AI-powered food lookup (get a free key from aistudio.google.com)</p>
+          </div>
+          <div style="flex-shrink: 0; width: 120px;">
+            <input type="password" id="gemini-api-key-input" placeholder="Paste key" style="width: 100%; padding: 8px 10px; font-size: 0.8rem; border-radius: 8px;">
+          </div>
+        </div>
       </div>
 
       <!-- Backup & Restore Data Card -->
@@ -975,13 +991,27 @@
       <div class="glass-card selector-tabs-card">
         <!-- Tabs header -->
         <div class="selector-tabs-header" id="selector-tabs-header">
-          <button class="tab-btn active" id="btn-tab-recipes">My Recipes</button>
+          <button class="tab-btn active" id="btn-tab-search">Search Online</button>
+          <button class="tab-btn" id="btn-tab-recipes">My Recipes</button>
           <button class="tab-btn" id="btn-tab-history">Food History</button>
-          <button class="tab-btn" id="btn-tab-search">Search Online</button>
+        </div>
+
+        <!-- Search Online Tab Content -->
+        <div class="selector-tab-content" id="tab-content-search">
+          <div class="search-box-container input-inline" style="gap: 8px;">
+            <input type="text" id="online-search-input" placeholder="e.g. Cooked chicken breast, oats..." style="flex: 1;">
+            <button id="btn-online-search" class="btn btn-primary" style="white-space: nowrap;">Search</button>
+          </div>
+          <div class="loading-state hidden" id="online-search-loading" style="padding: 20px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
+            Searching databases…
+          </div>
+          <div class="history-foods-list" id="online-search-results">
+            <!-- Dynamically rendered search results -->
+          </div>
         </div>
 
         <!-- Recipes Tab Content -->
-        <div class="selector-tab-content" id="tab-content-recipes">
+        <div class="selector-tab-content hidden" id="tab-content-recipes">
           <div class="recipes-list" id="selector-recipes-list">
             <!-- Dynamically rendered recipes -->
           </div>
@@ -996,20 +1026,6 @@
           
           <div class="history-foods-list" id="selector-history-list">
             <!-- Dynamically rendered historical foods -->
-          </div>
-        </div>
-
-        <!-- Search Online Tab Content -->
-        <div class="selector-tab-content hidden" id="tab-content-search">
-          <div class="search-box-container input-inline" style="gap: 8px;">
-            <input type="text" id="online-search-input" placeholder="e.g. Cooked chicken breast, oats..." style="flex: 1;">
-            <button id="btn-online-search" class="btn btn-primary" style="white-space: nowrap;">Search</button>
-          </div>
-          <div class="loading-state hidden" id="online-search-loading" style="padding: 20px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
-            Searching databases…
-          </div>
-          <div class="history-foods-list" id="online-search-results">
-            <!-- Dynamically rendered search results -->
           </div>
         </div>
       </div>

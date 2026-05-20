@@ -22,13 +22,13 @@ const AppState = {
       unit: "lbs",   // "lbs" or "kg"
       highCalorieDaysEnabled: false,
       highCalorieDays: {
+        sunday: { enabled: false, type: "flat", value: 300 },
         monday: { enabled: false, type: "flat", value: 300 },
         tuesday: { enabled: false, type: "flat", value: 300 },
         wednesday: { enabled: false, type: "flat", value: 300 },
         thursday: { enabled: false, type: "flat", value: 300 },
         friday: { enabled: false, type: "flat", value: 300 },
-        saturday: { enabled: false, type: "flat", value: 300 },
-        sunday: { enabled: false, type: "flat", value: 300 }
+        saturday: { enabled: false, type: "flat", value: 300 }
       }
     },
     profile: {
@@ -73,7 +73,7 @@ const AppState = {
           const oldType = this.data.settings.highCalorieSurplusType || "flat";
           const oldValue = this.data.settings.highCalorieSurplusValue !== undefined ? this.data.settings.highCalorieSurplusValue : 300;
           
-          const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+          const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
           const migratedDays = {};
           
           weekdays.forEach(day => {
@@ -1089,7 +1089,7 @@ const StrategyController = {
     }
 
     // Set up day-by-day checkbox, dropdown, and value input listeners
-    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     weekdays.forEach(day => {
       // Toggle day enabled
       const dayCheckbox = document.getElementById(`cycling-day-${day}`);
@@ -1141,7 +1141,7 @@ const StrategyController = {
     }
     this.toggleCyclingBodyVisibility();
 
-    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     weekdays.forEach(day => {
       const dayConfig = AppState.data.settings.highCalorieDays[day] || { enabled: false, type: "flat", value: 300 };
       const el = document.getElementById(`cycling-day-${day}`);
@@ -1470,10 +1470,25 @@ const SettingsController = {
     const weightDiff = Math.abs(currentWeight - targetWeight);
     const weeksToGoal = weeklyRate > 0 ? (weightDiff / weeklyRate) : 0;
 
+    // Goal Date calculation
+    let goalDateStr = "--";
+    if (weeksToGoal > 0) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + Math.round(weeksToGoal * 7));
+      goalDateStr = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } else if (weeksToGoal === 0) {
+      const targetDate = new Date();
+      goalDateStr = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
     // Display summary results
     document.getElementById("planner-cal-result").textContent = targetCalories.toLocaleString();
     document.getElementById("planner-tdee-result").textContent = `${Math.round(tdee).toLocaleString()} kcal`;
     document.getElementById("planner-weeks-result").textContent = weeksToGoal > 0 ? `${weeksToGoal.toFixed(1)} Weeks` : "0 Weeks";
+    const dateResultEl = document.getElementById("planner-date-result");
+    if (dateResultEl) {
+      dateResultEl.textContent = goalDateStr;
+    }
 
     // Safety checks & warnings
     const warningBox = document.getElementById("planner-warning-box");
@@ -2183,65 +2198,81 @@ const FoodSelectorController = {
   activeContext: null, // "daily_log" (standard) or "recipe_ingredient"
   selectedFoodItem: null, // current selected item in preview card
   selectedFoodType: null, // "recipe" or "history"
-  activeTab: "recipes", // "recipes" or "history"
+  activeTab: "search", // "recipes", "history", or "search"
+
+  setTabActive(tabName) {
+    this.closePreview();
+    this.activeTab = tabName;
+
+    const btnRecipes = document.getElementById("btn-tab-recipes");
+    const btnHistory = document.getElementById("btn-tab-history");
+    const btnTabSearch = document.getElementById("btn-tab-search");
+
+    const tabRecipes = document.getElementById("tab-content-recipes");
+    const tabHistory = document.getElementById("tab-content-history");
+    const tabSearch = document.getElementById("tab-content-search");
+
+    // Update tab button highlights
+    if (btnRecipes) {
+      if (tabName === "recipes") btnRecipes.classList.add("active");
+      else btnRecipes.classList.remove("active");
+    }
+    if (btnHistory) {
+      if (tabName === "history") btnHistory.classList.add("active");
+      else btnHistory.classList.remove("active");
+    }
+    if (btnTabSearch) {
+      if (tabName === "search") btnTabSearch.classList.add("active");
+      else btnTabSearch.classList.remove("active");
+    }
+
+    // Update tab content visibilities
+    if (tabRecipes) {
+      if (tabName === "recipes") tabRecipes.classList.remove("hidden");
+      else tabRecipes.classList.add("hidden");
+    }
+    if (tabHistory) {
+      if (tabName === "history") tabHistory.classList.remove("hidden");
+      else tabHistory.classList.add("hidden");
+    }
+    if (tabSearch) {
+      if (tabName === "search") tabSearch.classList.remove("hidden");
+      else tabSearch.classList.add("hidden");
+    }
+
+    // Clear online search results if they are empty
+    if (tabName === "search") {
+      const resultsEl = document.getElementById("online-search-results");
+      if (resultsEl && resultsEl.innerHTML === "") {
+        resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above and press Search.</p></div>`;
+      }
+    }
+
+    this.renderList();
+  },
 
   init() {
     // Bind tab clicks
     const btnRecipes = document.getElementById("btn-tab-recipes");
     const btnHistory = document.getElementById("btn-tab-history");
-    const tabRecipes = document.getElementById("tab-content-recipes");
-    const tabHistory = document.getElementById("tab-content-history");
+    const btnTabSearch = document.getElementById("btn-tab-search");
 
-    if (btnRecipes && btnHistory) {
-      btnRecipes.addEventListener("click", () => {
-        this.activeTab = "recipes";
-        btnRecipes.classList.add("active");
-        btnHistory.classList.remove("active");
-        tabRecipes.classList.remove("hidden");
-        tabHistory.classList.add("hidden");
-        this.renderList();
-      });
-
-      btnHistory.addEventListener("click", () => {
-        this.activeTab = "history";
-        btnHistory.classList.add("active");
-        btnRecipes.classList.remove("active");
-        tabHistory.classList.remove("hidden");
-        tabRecipes.classList.add("hidden");
-        this.renderList();
-      });
+    if (btnRecipes) {
+      btnRecipes.addEventListener("click", () => this.setTabActive("recipes"));
+    }
+    if (btnHistory) {
+      btnHistory.addEventListener("click", () => this.setTabActive("history"));
+    }
+    if (btnTabSearch) {
+      btnTabSearch.addEventListener("click", () => this.setTabActive("search"));
     }
 
     // Search bar filtering (history tab)
     const searchInput = document.getElementById("history-search-input");
     if (searchInput) {
       searchInput.addEventListener("input", () => {
+        this.closePreview();
         this.renderList();
-      });
-    }
-
-    // --- Search Online Tab ---
-    const btnTabSearch = document.getElementById("btn-tab-search");
-    const tabSearch = document.getElementById("tab-content-search");
-    const tabRecipesEl = document.getElementById("tab-content-recipes");
-    const tabHistoryEl = document.getElementById("tab-content-history");
-
-    if (btnTabSearch) {
-      btnTabSearch.addEventListener("click", () => {
-        this.activeTab = "search";
-        // Update tab buttons
-        document.getElementById("btn-tab-recipes").classList.remove("active");
-        document.getElementById("btn-tab-history").classList.remove("active");
-        btnTabSearch.classList.add("active");
-        // Toggle panels
-        if (tabRecipesEl) tabRecipesEl.classList.add("hidden");
-        if (tabHistoryEl) tabHistoryEl.classList.add("hidden");
-        if (tabSearch) tabSearch.classList.remove("hidden");
-        // Clear previous results when switching to tab
-        const resultsEl = document.getElementById("online-search-results");
-        if (resultsEl && resultsEl.innerHTML === "") {
-          resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above and press Search.</p></div>`;
-        }
       });
     }
 
@@ -2334,38 +2365,32 @@ const FoodSelectorController = {
     this.activeContext = context;
     this.closePreview();
     
-    // Clear search
+    // Clear search inputs
     const searchInput = document.getElementById("history-search-input");
     if (searchInput) searchInput.value = "";
+    const onlineSearchInput = document.getElementById("online-search-input");
+    if (onlineSearchInput) onlineSearchInput.value = "";
 
     const btnRecipes = document.getElementById("btn-tab-recipes");
     const btnHistory = document.getElementById("btn-tab-history");
+    const btnTabSearch = document.getElementById("btn-tab-search");
 
     if (context === "recipe_ingredient") {
-      // Hide Recipes tab header entirely
+      // Hide Recipes and Search Online tab headers entirely
       if (btnRecipes) btnRecipes.classList.add("hidden");
-      // Also hide the Search Online tab button when in recipe ingredient context (since context switches are recipe-specific)
-      const btnTabSearch = document.getElementById("btn-tab-search");
       if (btnTabSearch) btnTabSearch.classList.add("hidden");
+      
       // Force active tab to history
-      this.activeTab = "history";
-      btnHistory.classList.add("active");
-      document.getElementById("tab-content-recipes").classList.add("hidden");
-      document.getElementById("tab-content-search").classList.add("hidden");
-      document.getElementById("tab-content-history").classList.remove("hidden");
+      this.setTabActive("history");
+      if (btnHistory) btnHistory.classList.remove("hidden");
     } else {
-      // Show Recipes tab header
+      // Show Recipes and Search Online tab headers
       if (btnRecipes) btnRecipes.classList.remove("hidden");
-      const btnTabSearch = document.getElementById("btn-tab-search");
       if (btnTabSearch) btnTabSearch.classList.remove("hidden");
-      this.activeTab = "recipes";
-      btnRecipes.classList.add("active");
-      btnHistory.classList.remove("active");
-      const btnSearch = document.getElementById("btn-tab-search");
-      if (btnSearch) btnSearch.classList.remove("active");
-      document.getElementById("tab-content-recipes").classList.remove("hidden");
-      document.getElementById("tab-content-history").classList.add("hidden");
-      document.getElementById("tab-content-search").classList.add("hidden");
+      if (btnHistory) btnHistory.classList.remove("hidden");
+      
+      // Default active tab: Search Online
+      this.setTabActive("search");
     }
 
     // Update back label
@@ -2443,6 +2468,7 @@ const FoodSelectorController = {
   },
 
   renderRecipesList() {
+    this.closePreview();
     const container = document.getElementById("selector-recipes-list");
     if (!container) return;
 
@@ -2480,7 +2506,7 @@ const FoodSelectorController = {
       `;
 
       item.addEventListener("click", () => {
-        this.selectFoodItem(rec, "recipe");
+        this.selectFoodItem(rec, "recipe", item);
       });
 
       container.appendChild(item);
@@ -2492,10 +2518,12 @@ const FoodSelectorController = {
     delete AppState.data.recipes[id];
     AppState.saveToStorage();
     AppState.showToast("Recipe deleted.");
+    this.closePreview();
     this.renderRecipesList();
   },
 
   renderHistoryList() {
+    this.closePreview();
     const container = document.getElementById("selector-history-list");
     if (!container) return;
 
@@ -2536,16 +2564,33 @@ const FoodSelectorController = {
       `;
 
       item.addEventListener("click", () => {
-        this.selectFoodItem(food, "history");
+        this.selectFoodItem(food, "history", item);
       });
 
       container.appendChild(item);
     });
   },
 
-  selectFoodItem(food, type) {
+  selectFoodItem(food, type, clickedEl) {
+    const previewCard = document.getElementById("selector-preview-card");
+    
+    // Toggling: If the clicked item is clicked again and the preview card is already open after it, close it!
+    if (this.selectedFoodItem && this.selectedFoodItem === food && previewCard && !previewCard.classList.contains("hidden") && clickedEl && clickedEl.nextSibling === previewCard) {
+      this.closePreview();
+      return;
+    }
+
     this.selectedFoodItem = food;
     this.selectedFoodType = type;
+
+    // Remove active styling from any other active selector item
+    document.querySelectorAll(".clickable-selector-item.selector-active").forEach(el => {
+      el.classList.remove("selector-active");
+    });
+
+    if (clickedEl) {
+      clickedEl.classList.add("selector-active");
+    }
 
     // Populate preview card
     const titleEl = document.getElementById("selector-preview-title");
@@ -2597,11 +2642,13 @@ const FoodSelectorController = {
 
     this.updateScaledDisplay();
 
-    // Display card
-    const previewCard = document.getElementById("selector-preview-card");
-    if (previewCard) {
+    // Display card inline immediately underneath the clicked element
+    if (previewCard && clickedEl) {
+      clickedEl.after(previewCard);
       previewCard.classList.remove("hidden");
-      previewCard.scrollIntoView({ behavior: 'smooth' });
+      
+      // Smooth scroll the clicked element and its preview card into view nicely
+      clickedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   },
 
@@ -2699,7 +2746,19 @@ const FoodSelectorController = {
   closePreview() {
     this.selectedFoodItem = null;
     const preview = document.getElementById("selector-preview-card");
-    if (preview) preview.classList.add("hidden");
+    if (preview) {
+      preview.classList.add("hidden");
+      // Move it back to the bottom of the panel-food-selector so it's safe from container.innerHTML = ""
+      const panel = document.getElementById("panel-food-selector");
+      if (panel) {
+        panel.appendChild(preview);
+      }
+    }
+    
+    // Remove active styling from any active selector item
+    document.querySelectorAll(".clickable-selector-item.selector-active").forEach(el => {
+      el.classList.remove("selector-active");
+    });
   },
 
   // --- Online Food Search ---
@@ -2713,6 +2772,7 @@ const FoodSelectorController = {
     if (!input || !resultsEl) return;
     const query = input.value.trim();
     if (!query) {
+      this.closePreview();
       resultsEl.innerHTML = `<div class="empty-state"><p>Please enter a food name to search.</p></div>`;
       return;
     }
@@ -2720,8 +2780,8 @@ const FoodSelectorController = {
     // Show loading state
     if (loadingEl) loadingEl.classList.remove("hidden");
     if (btnSearch) { btnSearch.disabled = true; btnSearch.textContent = "Searching..."; }
-    resultsEl.innerHTML = "";
     this.closePreview();
+    resultsEl.innerHTML = "";
 
     try {
       const items = await FoodDatabase.searchFoods(query);
@@ -2736,6 +2796,7 @@ const FoodSelectorController = {
   },
 
   renderOnlineResults(items) {
+    this.closePreview();
     const container = document.getElementById("online-search-results");
     if (!container) return;
 
@@ -2752,7 +2813,9 @@ const FoodSelectorController = {
     items.forEach(food => {
       const sourceBadge = food.source === "USDA"
         ? `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(99,179,237,0.18); color: #63b3ed; margin-left: 6px;">USDA</span>`
-        : `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(154,230,180,0.15); color: #68d391; margin-left: 6px;">OFF</span>`;
+        : (food.source === "Local DB"
+          ? `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(167,139,250,0.18); color: #a78bfa; margin-left: 6px;">LOCAL</span>`
+          : `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(154,230,180,0.15); color: #68d391; margin-left: 6px;">OFF</span>`);
 
       const item = document.createElement("div");
       item.className = "meal-item clickable-selector-item";
@@ -2773,7 +2836,7 @@ const FoodSelectorController = {
       `;
 
       item.addEventListener("click", () => {
-        this.selectFoodItem(food, "history");
+        this.selectFoodItem(food, "history", item);
       });
 
       container.appendChild(item);
