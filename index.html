@@ -64,11 +64,15 @@
 
         <!-- Scan action triggers -->
         <div class="scanner-controls">
-          <button id="btn-start-scan-dashboard" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
+          <button id="btn-start-scan-dashboard" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard" style="flex: 1.5;">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Scan Barcode</span>
           </button>
           <button id="btn-stop-scan-dashboard" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-dashboard" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add Food</span>
+          </button>
         </div>
 
         <!-- Fallback manual barcode search -->
@@ -145,6 +149,57 @@
           <!-- Add Button -->
           <button id="btn-add-scaled-food-dashboard" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
         </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-dashboard">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-dashboard"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-dashboard" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-dashboard" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-dashboard">Product Name</label>
+            <input type="text" id="not-found-name-dashboard" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-dashboard">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-dashboard" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          
+          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-dashboard">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-dashboard" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-dashboard">Protein (g)</label>
+              <input type="number" id="not-found-protein-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-dashboard">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-dashboard">Fats (g)</label>
+              <input type="number" id="not-found-fats-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
       </div>
 
       <!-- Radial Gauge Calorie Card -->
@@ -225,11 +280,15 @@
 
         <!-- Scan action triggers -->
         <div class="scanner-controls">
-          <button id="btn-start-scan-food" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
+          <button id="btn-start-scan-food" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard" style="flex: 1.5;">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Scan Barcode</span>
           </button>
           <button id="btn-stop-scan-food" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-food" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add Food</span>
+          </button>
         </div>
 
         <!-- Fallback manual barcode search -->
@@ -308,6 +367,57 @@
         </div>
       </div>
 
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-food">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-food"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-food" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-food" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-food">Product Name</label>
+            <input type="text" id="not-found-name-food" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-food">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-food" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          
+          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-food">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-food" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-food">Protein (g)</label>
+              <input type="number" id="not-found-protein-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-food">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-food">Fats (g)</label>
+              <input type="number" id="not-found-fats-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+
       <!-- Today's Logs Section -->
       <div class="logs-section">
         <div class="section-header">
@@ -364,6 +474,14 @@
         <div class="calorie-history-list" id="calorie-history-container">
           <div class="loading-state">Loading calorie history...</div>
         </div>
+      </div>
+
+      <!-- Add Recipe bottom button -->
+      <div class="recipe-btn-container" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: center; width: 100%;">
+        <button id="btn-open-add-recipe" class="btn btn-primary btn-lg btn-block btn-iconic" onclick="appRouter.navigate('add_recipe')">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Add Recipe</span>
+        </button>
       </div>
     </section>
 
@@ -843,6 +961,357 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- SUBPAGE: FOOD SELECTOR (RECIPES & HISTORY) -->
+    <section id="panel-food-selector" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" id="btn-back-food-selector">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span id="food-selector-back-label">Back</span>
+        </button>
+      </div>
+
+      <div class="glass-card selector-tabs-card">
+        <!-- Tabs header -->
+        <div class="selector-tabs-header" id="selector-tabs-header">
+          <button class="tab-btn active" id="btn-tab-recipes">My Recipes</button>
+          <button class="tab-btn" id="btn-tab-history">Food History</button>
+        </div>
+
+        <!-- Recipes Tab Content -->
+        <div class="selector-tab-content" id="tab-content-recipes">
+          <div class="recipes-list" id="selector-recipes-list">
+            <!-- Dynamically rendered recipes -->
+          </div>
+        </div>
+
+        <!-- History Tab Content -->
+        <div class="selector-tab-content hidden" id="tab-content-history">
+          <!-- Text Search box to filter history -->
+          <div class="search-box-container">
+            <input type="text" id="history-search-input" placeholder="Search past foods...">
+          </div>
+          
+          <div class="history-foods-list" id="selector-history-list">
+            <!-- Dynamically rendered historical foods -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Scaling & Log Card (Dynamically displayed when a recipe or historical food is selected) -->
+      <div class="glass-card food-preview-card hidden" id="selector-preview-card">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="selector-preview-title">Product Name</h3>
+            <p id="selector-preview-subtitle">Brand</p>
+          </div>
+          <button id="btn-close-selector-preview" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="selector-preview-kcal">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="selector-preview-protein">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="selector-preview-carbs">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="selector-preview-fats">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g" id="selector-preview-base-weight">Values shown per 100g</div>
+        </div>
+
+        <!-- Input for weight or multiplier -->
+        <div class="serving-scaling-form">
+          <div class="form-group" id="selector-weight-group">
+            <label for="selector-weight-input" id="selector-weight-label">Weight Eaten (grams)</label>
+            <div class="weight-input-container">
+              <input type="number" id="selector-weight-input" min="0.1" step="any" value="100" pattern="[0-9]*" inputmode="numeric">
+              <span class="weight-unit" id="selector-weight-unit">g</span>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="selector-scaled-kcal">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="selector-scaled-protein">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="selector-scaled-carbs">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="selector-scaled-fats">0g</strong>
+            </div>
+          </div>
+
+          <button id="btn-log-selector-food" class="btn btn-success btn-lg btn-block">Log Eaten</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: CREATE RECIPE -->
+    <section id="panel-add-recipe" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('food')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Food</span>
+        </button>
+      </div>
+
+      <!-- Recipe metadata -->
+      <div class="glass-card recipe-meta-card">
+        <h3>Create New Recipe</h3>
+        <p class="card-subtitle">Combine multiple foods into a single re-usable recipe</p>
+        
+        <div class="form-group" style="margin-top: 15px;">
+          <label for="recipe-name-field">Recipe Name</label>
+          <input type="text" id="recipe-name-field" placeholder="e.g. Daily Protein Shake or Morning Oatmeal" required>
+        </div>
+      </div>
+
+      <!-- Active Barcode Scanner Section inside Recipe Builder -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-recipe">
+        <div class="scanner-header">
+          <h3>Scan Ingredient</h3>
+          <p>Scan a product's barcode to add as an ingredient</p>
+        </div>
+
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-recipe" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-recipe" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard" style="flex: 1.5;">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Scan Barcode</span>
+          </button>
+          <button id="btn-stop-scan-recipe" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-recipe-history-lookup" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>From History</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-recipe" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-recipe" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned/Entered Food Detail Card for Recipe -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-recipe">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-recipe">Product Name</h3>
+            <p id="preview-food-brand-recipe">Brand</p>
+          </div>
+          <button id="btn-close-preview-recipe" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-recipe">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-recipe">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-recipe">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-recipe">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-recipe">Weight in Recipe (grams)</label>
+            <div class="weight-input-container">
+              <input type="number" id="food-weight-input-recipe" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
+              <span class="weight-unit">g</span>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-recipe">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-recipe">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-recipe" class="btn btn-success btn-lg btn-block">Add to Recipe Ingredients</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card inside Recipe Builder -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-recipe">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-recipe"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-recipe" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-recipe" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-recipe">Product Name</label>
+            <input type="text" id="not-found-name-recipe" placeholder="e.g. Protein Powder" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-recipe">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-recipe" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          
+          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-recipe">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-recipe" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-recipe">Protein (g)</label>
+              <input type="number" id="not-found-protein-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-recipe">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-recipe">Fats (g)</label>
+              <input type="number" id="not-found-fats-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+
+      <!-- Custom Food Add Form inside Recipe Builder (Manual Ingredient Log) -->
+      <div class="glass-card custom-food-card" id="recipe-custom-food-card">
+        <div class="card-header-toggle" id="toggle-recipe-custom-form-btn">
+          <h3>Log Manual Custom Ingredient</h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <form id="recipe-custom-food-form" class="custom-form-body hidden">
+          <div class="form-group">
+            <label for="recipe-custom-name">Ingredient Name</label>
+            <input type="text" id="recipe-custom-name" placeholder="e.g. scoop of protein powder" required>
+          </div>
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="recipe-custom-calories">Calories (kcal)</label>
+              <input type="number" id="recipe-custom-calories" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-protein">Protein (g)</label>
+              <input type="number" id="recipe-custom-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-carbs">Carbs (g)</label>
+              <input type="number" id="recipe-custom-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-fats">Fats (g)</label>
+              <input type="number" id="recipe-custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="recipe-custom-weight">Weight (grams)</label>
+            <input type="number" id="recipe-custom-weight" min="1" placeholder="30" value="30" required pattern="[0-9]*" inputmode="numeric">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Custom Ingredient</button>
+        </form>
+      </div>
+
+      <!-- Current Ingredients list -->
+      <div class="glass-card recipe-ingredients-card">
+        <h3>Current Ingredients</h3>
+        
+        <div class="meals-list" id="recipe-ingredients-list-container">
+          <div class="empty-state">
+            <p>No ingredients added yet.</p>
+          </div>
+        </div>
+
+        <div class="recipe-total-summary-card" id="recipe-totals-box" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <h4>Recipe Aggregate Totals</h4>
+          <div class="scaling-summary" style="margin-top: 10px;">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="recipe-total-kcal">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="recipe-total-protein">0.0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="recipe-total-carbs">0.0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="recipe-total-fats">0.0g</strong>
+            </div>
+          </div>
+          <div class="recipe-weight-summary" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+            Total Weight: <strong id="recipe-total-weight">0g</strong>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-save-recipe" class="btn btn-success btn-lg btn-block" style="margin-top: 20px; margin-bottom: 40px;">
+        Save Recipe
+      </button>
     </section>
 
   </main>

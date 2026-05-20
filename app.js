@@ -39,7 +39,9 @@ const AppState = {
       activity: "light",
       targetWeight: 170,
       weeklyRate: 1.0
-    }
+    },
+    recipes: {},      // id: { id, name, ingredients: [], nutrients: {}, totalWeight }
+    customBarcodes: {} // barcode: { barcode, name, brand, nutrients: {} }
   },
 
   selectedDateISO: "", // Current active date YYYY-MM-DD
@@ -61,6 +63,8 @@ const AppState = {
         if (parsed.dailyGoals) this.data.dailyGoals = { ...this.data.dailyGoals, ...parsed.dailyGoals };
         if (parsed.meals) this.data.meals = { ...this.data.meals, ...parsed.meals };
         if (parsed.weights) this.data.weights = { ...this.data.weights, ...parsed.weights };
+        if (parsed.recipes) this.data.recipes = { ...this.data.recipes, ...parsed.recipes };
+        if (parsed.customBarcodes) this.data.customBarcodes = { ...this.data.customBarcodes, ...parsed.customBarcodes };
         if (parsed.settings) {
           this.data.settings = { ...this.data.settings, ...parsed.settings };
           
@@ -203,7 +207,9 @@ const appRouter = {
       strategy: document.getElementById("panel-strategy"),
       weight_planner: document.getElementById("panel-weight-planner"),
       weight_budgets: document.getElementById("panel-weight-budgets"),
-      settings: document.getElementById("panel-settings")
+      settings: document.getElementById("panel-settings"),
+      add_recipe: document.getElementById("panel-add-recipe"),
+      food_selector: document.getElementById("panel-food-selector")
     };
     this.navItems = document.querySelectorAll(".app-navbar .nav-item");
 
@@ -228,7 +234,7 @@ const appRouter = {
     if (!this.panels[tabName]) return;
     
     // Close camera scanner stream cleanly if leaving the active camera tabs
-    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food") && tabName !== AppState.activeTab) {
+    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food" || AppState.activeTab === "add_recipe") && tabName !== AppState.activeTab) {
       BarcodeScannerManager.stop();
     }
 
@@ -249,7 +255,8 @@ const appRouter = {
       const btnTab = btn.getAttribute("data-tab");
       const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets");
       const isStrategyRelated = (tabName === "strategy");
-      if (btnTab === tabName || (btnTab === "weight" && isWeightRelated) || (btnTab === "strategy" && isStrategyRelated)) {
+      const isFoodRelated = (tabName === "food" || tabName === "add_recipe" || tabName === "food_selector");
+      if (btnTab === tabName || (btnTab === "weight" && isWeightRelated) || (btnTab === "strategy" && isStrategyRelated) || (btnTab === "food" && isFoodRelated)) {
         btn.classList.add("active");
       } else {
         btn.classList.remove("active");
@@ -276,6 +283,10 @@ const appRouter = {
       StrategyController.render();
     } else if (AppState.activeTab === "weight_planner" || AppState.activeTab === "weight_budgets" || AppState.activeTab === "settings") {
       SettingsController.render();
+    } else if (AppState.activeTab === "add_recipe") {
+      RecipeBuilderController.render();
+    } else if (AppState.activeTab === "food_selector") {
+      FoodSelectorController.render();
     }
   }
 };
@@ -514,12 +525,12 @@ const FoodController = {
     }
   }
 };
-
-// Scanner & Barcode View Controller (Dual Context aware)
+// Scanner & Barcode View Controller (Triple Context aware)
 const ScannerViewController = {
   currentFetchedProduct: {
     dashboard: null,
-    food: null
+    food: null,
+    recipe: null
   },
 
   init() {
@@ -569,9 +580,10 @@ const ScannerViewController = {
       });
     }
 
-    // Initialize listeners for both scanner viewports
+    // Initialize listeners for three contexts
     this.initContext("dashboard");
     this.initContext("food");
+    this.initContext("recipe");
   },
 
   initContext(context) {
@@ -633,6 +645,24 @@ const ScannerViewController = {
         this.addScaledProductToLog(context);
       });
     }
+
+    // Manual registration form submission
+    const regForm = document.getElementById(`not-found-register-form-${context}`);
+    if (regForm) {
+      regForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.registerCustomBarcode(context);
+      });
+    }
+
+    // Close manual registration card
+    const btnCloseNotFound = document.getElementById(`btn-close-not-found-${context}`);
+    if (btnCloseNotFound) {
+      btnCloseNotFound.addEventListener("click", () => {
+        const card = document.getElementById(`barcode-not-found-card-${context}`);
+        if (card) card.classList.add("hidden");
+      });
+    }
   },
 
   async triggerProductLookup(context, barcode) {
@@ -646,7 +676,33 @@ const ScannerViewController = {
     }
 
     try {
-      const product = await FoodDatabase.lookupBarcode(barcode);
+      // 1. Check local customBarcodes database first
+      let product = AppState.data.customBarcodes[barcode];
+
+      if (!product) {
+        // 2. Query online databases sequential fallbacks
+        product = await FoodDatabase.lookupBarcode(barcode);
+      }
+
+      if (product.needsMacroEntry) {
+        // pre-fill known details but show manual registration form
+        document.getElementById(`not-found-name-${context}`).value = product.name;
+        document.getElementById(`not-found-brand-${context}`).value = product.brand;
+        document.getElementById(`not-found-code-${context}`).textContent = barcode;
+        
+        // Hide preview
+        this.closePreview(context);
+        
+        // Show not found registration card
+        const notFoundCard = document.getElementById(`barcode-not-found-card-${context}`);
+        if (notFoundCard) {
+          notFoundCard.classList.remove("hidden");
+          notFoundCard.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // Product successfully loaded with nutrients!
       this.currentFetchedProduct[context] = product;
       
       // Populate elements
@@ -663,6 +719,10 @@ const ScannerViewController = {
       if (wtInput) wtInput.value = 100;
       this.updateScaledMacros(context);
 
+      // Hide not found card if visible
+      const notFoundCard = document.getElementById(`barcode-not-found-card-${context}`);
+      if (notFoundCard) notFoundCard.classList.add("hidden");
+
       // Show preview card
       const previewCard = document.getElementById(`food-detail-card-${context}`);
       if (previewCard) {
@@ -671,7 +731,45 @@ const ScannerViewController = {
       }
 
     } catch (err) {
-      alert("Product details could not be found or barcode is invalid. Try adding it below as a Custom Food.");
+      console.warn(`[Lookup] Product not found for barcode: ${barcode}`);
+      
+      // Clear forms
+      document.getElementById(`not-found-code-${context}`).textContent = barcode;
+      document.getElementById(`not-found-name-${context}`).value = "";
+      document.getElementById(`not-found-brand-${context}`).value = "";
+      document.getElementById(`not-found-calories-${context}`).value = "";
+      document.getElementById(`not-found-protein-${context}`).value = "";
+      document.getElementById(`not-found-carbs-${context}`).value = "";
+      document.getElementById(`not-found-fats-${context}`).value = "";
+
+      // Auto-compute calories for manual registration form
+      const proteinInput = document.getElementById(`not-found-protein-${context}`);
+      const carbsInput = document.getElementById(`not-found-carbs-${context}`);
+      const fatsInput = document.getElementById(`not-found-fats-${context}`);
+      const calsInput = document.getElementById(`not-found-calories-${context}`);
+
+      if (proteinInput && carbsInput && fatsInput && calsInput) {
+        const updateCalculatedCalories = () => {
+          let p = parseFloat(proteinInput.value) || 0;
+          let c = parseFloat(carbsInput.value) || 0;
+          let f = parseFloat(fatsInput.value) || 0;
+          let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+          calsInput.value = kcal > 0 ? kcal : "";
+        };
+
+        // Bind auto compute on input
+        proteinInput.oninput = updateCalculatedCalories;
+        carbsInput.oninput = updateCalculatedCalories;
+        fatsInput.oninput = updateCalculatedCalories;
+      }
+
+      this.closePreview(context);
+      
+      const notFoundCard = document.getElementById(`barcode-not-found-card-${context}`);
+      if (notFoundCard) {
+        notFoundCard.classList.remove("hidden");
+        notFoundCard.scrollIntoView({ behavior: 'smooth' });
+      }
     } finally {
       if (inputField) {
         inputField.disabled = false;
@@ -682,6 +780,46 @@ const ScannerViewController = {
         searchBtn.textContent = "Search";
       }
     }
+  },
+
+  registerCustomBarcode(context) {
+    const barcode = document.getElementById(`not-found-code-${context}`).textContent;
+    const name = document.getElementById(`not-found-name-${context}`).value.trim();
+    const brand = document.getElementById(`not-found-brand-${context}`).value.trim() || "Generic Brand";
+    const kcal = Math.round(Number(document.getElementById(`not-found-calories-${context}`).value));
+    const protein = parseFloat(Number(document.getElementById(`not-found-protein-${context}`).value).toFixed(1));
+    const carbs = parseFloat(Number(document.getElementById(`not-found-carbs-${context}`).value).toFixed(1));
+    const fats = parseFloat(Number(document.getElementById(`not-found-fats-${context}`).value).toFixed(1));
+
+    if (!barcode || !name) {
+      alert("Please fill out barcode and product name.");
+      return;
+    }
+
+    const newFood = {
+      barcode: barcode,
+      name: name,
+      brand: brand,
+      nutrients: {
+        calories: kcal,
+        protein: protein,
+        carbs: carbs,
+        fats: fats
+      }
+    };
+
+    // Save locally
+    AppState.data.customBarcodes[barcode] = newFood;
+    AppState.saveToStorage();
+
+    // Hide registration card
+    const notFoundCard = document.getElementById(`barcode-not-found-card-${context}`);
+    if (notFoundCard) notFoundCard.classList.add("hidden");
+
+    AppState.showToast("Product registered locally!");
+
+    // Run lookup flow which will now succeed immediately
+    this.triggerProductLookup(context, barcode);
   },
 
   updateScaledMacros(context) {
@@ -713,6 +851,26 @@ const ScannerViewController = {
     const raw = product.nutrients;
     const factor = weight / 100;
 
+    if (context === "recipe") {
+      // Add as ingredient to the Recipe Builder
+      const newIng = {
+        name: product.name,
+        brand: product.brand,
+        weight: weight,
+        nutrients: {
+          calories: Math.round(raw.calories * factor),
+          protein: parseFloat((raw.protein * factor).toFixed(1)),
+          carbs: parseFloat((raw.carbs * factor).toFixed(1)),
+          fats: parseFloat((raw.fats * factor).toFixed(1))
+        }
+      };
+      RecipeBuilderController.addIngredient(newIng);
+      this.closePreview("recipe");
+      AppState.showToast("Ingredient added to recipe!");
+      return;
+    }
+
+    // Daily meals logging
     const newLogItem = {
       id: "food_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
       name: product.name,
@@ -732,7 +890,7 @@ const ScannerViewController = {
     AppState.data.meals[dateKey].push(newLogItem);
     AppState.saveToStorage();
 
-    // Close preview card cleanly
+    // Close preview card
     this.closePreview(context);
     
     // Refresh current view
@@ -786,7 +944,7 @@ const ScannerViewController = {
     const preview = document.getElementById(`food-detail-card-${context}`);
     if (preview) preview.classList.add("hidden");
   }
-};
+};};
 
 // Weight Log View Controller
 const WeightController = {
@@ -1704,6 +1862,722 @@ const CalendarSelectorController = {
   }
 };
 
+// Recipe Builder Controller (Manages #panel-add-recipe)
+const RecipeBuilderController = {
+  ingredients: [], // current recipe ingredients being built
+  
+  init() {
+    // Custom ingredient toggle
+    const toggleBtn = document.getElementById("toggle-recipe-custom-form-btn");
+    const customForm = document.getElementById("recipe-custom-food-form");
+    const customCard = document.getElementById("recipe-custom-food-card");
+
+    if (toggleBtn && customForm && customCard) {
+      toggleBtn.addEventListener("click", () => {
+        const isHidden = customForm.classList.contains("hidden");
+        if (isHidden) {
+          customForm.classList.remove("hidden");
+          customCard.classList.add("active");
+        } else {
+          customForm.classList.add("hidden");
+          customCard.classList.remove("active");
+        }
+      });
+    }
+
+    // Auto-calculate calories for custom ingredient
+    const customProtein = document.getElementById("recipe-custom-protein");
+    const customCarbs = document.getElementById("recipe-custom-carbs");
+    const customFats = document.getElementById("recipe-custom-fats");
+    const customCalInput = document.getElementById("recipe-custom-calories");
+
+    if (customProtein && customCarbs && customFats && customCalInput) {
+      const updateCalculatedCalories = () => {
+        let p = parseFloat(customProtein.value) || 0;
+        let c = parseFloat(customCarbs.value) || 0;
+        let f = parseFloat(customFats.value) || 0;
+        let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+        customCalInput.value = kcal > 0 ? kcal : "";
+      };
+
+      customProtein.addEventListener("input", updateCalculatedCalories);
+      customCarbs.addEventListener("input", updateCalculatedCalories);
+      customFats.addEventListener("input", updateCalculatedCalories);
+    }
+
+    // Submit custom ingredient form
+    const customIngForm = document.getElementById("recipe-custom-food-form");
+    if (customIngForm) {
+      customIngForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.addCustomIngredientSubmit();
+      });
+    }
+
+    // Save recipe button
+    const btnSave = document.getElementById("btn-save-recipe");
+    if (btnSave) {
+      btnSave.addEventListener("click", () => {
+        this.saveRecipe();
+      });
+    }
+  },
+
+  render() {
+    this.renderIngredients();
+    
+    // Clear forms and previews
+    const preview = document.getElementById("food-detail-card-recipe");
+    if (preview) preview.classList.add("hidden");
+    const notFound = document.getElementById("barcode-not-found-card-recipe");
+    if (notFound) notFound.classList.add("hidden");
+  },
+
+  addIngredient(ing) {
+    this.ingredients.push(ing);
+    this.renderIngredients();
+  },
+
+  addCustomIngredientSubmit() {
+    const name = document.getElementById("recipe-custom-name").value;
+    const kcal = Math.round(Number(document.getElementById("recipe-custom-calories").value));
+    const protein = parseFloat(Number(document.getElementById("recipe-custom-protein").value).toFixed(1));
+    const carbs = parseFloat(Number(document.getElementById("recipe-custom-carbs").value).toFixed(1));
+    const fats = parseFloat(Number(document.getElementById("recipe-custom-fats").value).toFixed(1));
+    const weight = parseFloat(document.getElementById("recipe-custom-weight").value);
+
+    if (!name || isNaN(weight) || weight <= 0) {
+      alert("Please enter a valid ingredient name and weight.");
+      return;
+    }
+
+    const newIng = {
+      name: name,
+      brand: "Custom Ingredient",
+      weight: weight,
+      nutrients: {
+        calories: kcal,
+        protein: protein,
+        carbs: carbs,
+        fats: fats
+      }
+    };
+
+    this.addIngredient(newIng);
+
+    // Reset custom ingredient form
+    const form = document.getElementById("recipe-custom-food-form");
+    if (form) {
+      form.reset();
+      form.classList.add("hidden");
+    }
+    const card = document.getElementById("recipe-custom-food-card");
+    if (card) {
+      card.classList.remove("active");
+    }
+
+    AppState.showToast("Custom ingredient added!");
+  },
+
+  renderIngredients() {
+    const container = document.getElementById("recipe-ingredients-list-container");
+    if (!container) return;
+
+    if (this.ingredients.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No ingredients added yet.</p>
+        </div>
+      `;
+      this.updateRecipeTotals(0, 0, 0, 0, 0);
+      return;
+    }
+
+    container.innerHTML = "";
+    
+    let totalKcal = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFats = 0;
+    let totalWeight = 0;
+
+    this.ingredients.forEach((ing, index) => {
+      totalKcal += ing.nutrients.calories;
+      totalProtein += ing.nutrients.protein;
+      totalCarbs += ing.nutrients.carbs;
+      totalFats += ing.nutrients.fats;
+      totalWeight += ing.weight;
+
+      const item = document.createElement("div");
+      item.className = "meal-item";
+      item.innerHTML = `
+        <div class="meal-info">
+          <span class="meal-name">${ing.name}</span>
+          <span class="meal-sub">${ing.brand} • ${ing.weight}g</span>
+          <div class="meal-macros">
+            <span class="m-tag p">P: ${ing.nutrients.protein}g</span>
+            <span class="m-tag c">C: ${ing.nutrients.carbs}g</span>
+            <span class="m-tag f">F: ${ing.nutrients.fats}g</span>
+          </div>
+        </div>
+        <div class="meal-kcal-block">
+          <span class="meal-kcal">${ing.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+          <button class="btn-delete-ingredient" aria-label="Delete ingredient" data-index="${index}">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        </div>
+      `;
+
+      item.querySelector(".btn-delete-ingredient").addEventListener("click", () => {
+        this.deleteIngredient(index);
+      });
+
+      container.appendChild(item);
+    });
+
+    this.updateRecipeTotals(totalKcal, totalProtein, totalCarbs, totalFats, totalWeight);
+  },
+
+  deleteIngredient(index) {
+    this.ingredients.splice(index, 1);
+    this.renderIngredients();
+  },
+
+  updateRecipeTotals(kcal, protein, carbs, fats, weight) {
+    document.getElementById("recipe-total-kcal").textContent = Math.round(kcal);
+    document.getElementById("recipe-total-protein").textContent = `${protein.toFixed(1)}g`;
+    document.getElementById("recipe-total-carbs").textContent = `${carbs.toFixed(1)}g`;
+    document.getElementById("recipe-total-fats").textContent = `${fats.toFixed(1)}g`;
+    document.getElementById("recipe-total-weight").textContent = `${weight.toFixed(0)}g`;
+  },
+
+  saveRecipe() {
+    const nameInput = document.getElementById("recipe-name-field");
+    const name = nameInput ? nameInput.value.trim() : "";
+
+    if (!name) {
+      alert("Please enter a Recipe Name.");
+      return;
+    }
+
+    if (this.ingredients.length === 0) {
+      alert("Please add at least one ingredient to save a recipe.");
+      return;
+    }
+
+    let totalKcal = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFats = 0;
+    let totalWeight = 0;
+
+    this.ingredients.forEach(ing => {
+      totalKcal += ing.nutrients.calories;
+      totalProtein += ing.nutrients.protein;
+      totalCarbs += ing.nutrients.carbs;
+      totalFats += ing.nutrients.fats;
+      totalWeight += ing.weight;
+    });
+
+    const recipeId = "recipe_" + Date.now();
+    const newRecipe = {
+      id: recipeId,
+      name: name,
+      ingredients: [...this.ingredients],
+      nutrients: {
+        calories: Math.round(totalKcal),
+        protein: parseFloat(totalProtein.toFixed(1)),
+        carbs: parseFloat(totalCarbs.toFixed(1)),
+        fats: parseFloat(totalFats.toFixed(1))
+      },
+      totalWeight: totalWeight
+    };
+
+    AppState.data.recipes[recipeId] = newRecipe;
+    AppState.saveToStorage();
+
+    // Reset Recipe Builder state
+    this.ingredients = [];
+    if (nameInput) nameInput.value = "";
+    this.render();
+
+    AppState.showToast("Recipe saved successfully!");
+    
+    // Go back to food log view
+    appRouter.navigate("food");
+  }
+};
+
+// Food Selector Controller (Manages #panel-food-selector)
+const FoodSelectorController = {
+  activeContext: null, // "daily_log" (standard) or "recipe_ingredient"
+  selectedFoodItem: null, // current selected item in preview card
+  selectedFoodType: null, // "recipe" or "history"
+  activeTab: "recipes", // "recipes" or "history"
+
+  init() {
+    // Bind tab clicks
+    const btnRecipes = document.getElementById("btn-tab-recipes");
+    const btnHistory = document.getElementById("btn-tab-history");
+    const tabRecipes = document.getElementById("tab-content-recipes");
+    const tabHistory = document.getElementById("tab-content-history");
+
+    if (btnRecipes && btnHistory) {
+      btnRecipes.addEventListener("click", () => {
+        this.activeTab = "recipes";
+        btnRecipes.classList.add("active");
+        btnHistory.classList.remove("active");
+        tabRecipes.classList.remove("hidden");
+        tabHistory.classList.add("hidden");
+        this.renderList();
+      });
+
+      btnHistory.addEventListener("click", () => {
+        this.activeTab = "history";
+        btnHistory.classList.add("active");
+        btnRecipes.classList.remove("active");
+        tabHistory.classList.remove("hidden");
+        tabRecipes.classList.add("hidden");
+        this.renderList();
+      });
+    }
+
+    // Search bar filtering
+    const searchInput = document.getElementById("history-search-input");
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        this.renderList();
+      });
+    }
+
+    // Close preview button
+    const btnClosePreview = document.getElementById("btn-close-selector-preview");
+    if (btnClosePreview) {
+      btnClosePreview.addEventListener("click", () => {
+        this.closePreview();
+      });
+    }
+
+    // Serving weight scaling input
+    const weightInput = document.getElementById("selector-weight-input");
+    if (weightInput) {
+      weightInput.addEventListener("input", () => {
+        this.updateScaledDisplay();
+      });
+      weightInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.logSelectedFood();
+        }
+      });
+    }
+
+    // Log food button click
+    const btnLogFood = document.getElementById("btn-log-selector-food");
+    if (btnLogFood) {
+      btnLogFood.addEventListener("click", () => {
+        this.logSelectedFood();
+      });
+    }
+
+    // Setup selector trigger buttons on Dashboard and Food tab
+    const btnFoodSelectDash = document.getElementById("btn-food-selector-dashboard");
+    if (btnFoodSelectDash) {
+      btnFoodSelectDash.addEventListener("click", () => {
+        this.openSelector("daily_log");
+      });
+    }
+
+    const btnFoodSelectFood = document.getElementById("btn-food-selector-food");
+    if (btnFoodSelectFood) {
+      btnFoodSelectFood.addEventListener("click", () => {
+        this.openSelector("daily_log");
+      });
+    }
+
+    // Recipe history lookup button
+    const btnRecipeHist = document.getElementById("btn-recipe-history-lookup");
+    if (btnRecipeHist) {
+      btnRecipeHist.addEventListener("click", () => {
+        this.openSelector("recipe_ingredient");
+      });
+    }
+
+    // Back button routing logic
+    const btnBackSelector = document.getElementById("btn-back-food-selector");
+    if (btnBackSelector) {
+      btnBackSelector.addEventListener("click", () => {
+        if (this.activeContext === "recipe_ingredient") {
+          appRouter.navigate("add_recipe");
+        } else {
+          appRouter.navigate("food");
+        }
+      });
+    }
+  },
+
+  openSelector(context) {
+    this.activeContext = context;
+    this.closePreview();
+    
+    // Clear search
+    const searchInput = document.getElementById("history-search-input");
+    if (searchInput) searchInput.value = "";
+
+    const btnRecipes = document.getElementById("btn-tab-recipes");
+    const btnHistory = document.getElementById("btn-tab-history");
+
+    if (context === "recipe_ingredient") {
+      // Hide Recipes tab header entirely
+      if (btnRecipes) btnRecipes.classList.add("hidden");
+      // Force active tab to history
+      this.activeTab = "history";
+      btnHistory.classList.add("active");
+      document.getElementById("tab-content-recipes").classList.add("hidden");
+      document.getElementById("tab-content-history").classList.remove("hidden");
+    } else {
+      // Show Recipes tab header
+      if (btnRecipes) btnRecipes.classList.remove("hidden");
+      this.activeTab = "recipes";
+      btnRecipes.classList.add("active");
+      btnHistory.classList.remove("active");
+      document.getElementById("tab-content-recipes").classList.remove("hidden");
+      document.getElementById("tab-content-history").classList.add("hidden");
+    }
+
+    // Update back label
+    const backLabel = document.getElementById("food-selector-back-label");
+    if (backLabel) {
+      backLabel.textContent = context === "recipe_ingredient" ? "Back to Recipe" : "Back";
+    }
+
+    appRouter.navigate("food_selector");
+  },
+
+  render() {
+    this.renderList();
+  },
+
+  // Dynamic Food History Aggregator
+  getFoodHistory() {
+    const historyMap = {};
+    
+    // Walk through all dates and meals
+    Object.keys(AppState.data.meals).forEach(dateISO => {
+      const meals = AppState.data.meals[dateISO] || [];
+      meals.forEach(meal => {
+        const key = `${meal.name.trim()}||${meal.brand.trim()}`.toLowerCase();
+        
+        // Scale nutrients to per 100g base for history standard display
+        const scale = meal.weight > 0 ? (100 / meal.weight) : 1;
+        const normalized = {
+          calories: Math.round(meal.calories * scale),
+          protein: parseFloat((meal.protein * scale).toFixed(1)),
+          carbs: parseFloat((meal.carbs * scale).toFixed(1)),
+          fats: parseFloat((meal.fats * scale).toFixed(1))
+        };
+
+        if (!historyMap[key]) {
+          historyMap[key] = {
+            name: meal.name,
+            brand: meal.brand,
+            nutrients: normalized,
+            count: 0
+          };
+        }
+        historyMap[key].count++;
+      });
+    });
+
+    // Inject custom registered barcodes
+    Object.keys(AppState.data.customBarcodes).forEach(barcode => {
+      const item = AppState.data.customBarcodes[barcode];
+      const key = `${item.name.trim()}||${item.brand.trim()}`.toLowerCase();
+      if (!historyMap[key]) {
+        historyMap[key] = {
+          name: item.name,
+          brand: item.brand,
+          nutrients: { ...item.nutrients },
+          count: 1
+        };
+      } else {
+        historyMap[key].count += 2; // boost priority
+      }
+    });
+
+    // Sort by log frequency descending
+    return Object.values(historyMap).sort((a, b) => b.count - a.count);
+  },
+
+  renderList() {
+    if (this.activeTab === "recipes") {
+      this.renderRecipesList();
+    } else {
+      this.renderHistoryList();
+    }
+  },
+
+  renderRecipesList() {
+    const container = document.getElementById("selector-recipes-list");
+    if (!container) return;
+
+    const recipes = Object.values(AppState.data.recipes || {});
+    if (recipes.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No saved recipes found. Create one using the "Add Recipe" button at the bottom of the Food tab.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    recipes.forEach(rec => {
+      const item = document.createElement("div");
+      item.className = "meal-item clickable-selector-item";
+      item.style.cursor = "pointer";
+      item.innerHTML = `
+        <div class="meal-info">
+          <span class="meal-name" style="font-weight: 600;">${rec.name}</span>
+          <span class="meal-sub">${rec.ingredients.length} ingredients • ${rec.totalWeight.toFixed(0)}g</span>
+          <div class="meal-macros">
+            <span class="m-tag p">P: ${rec.nutrients.protein}g</span>
+            <span class="m-tag c">C: ${rec.nutrients.carbs}g</span>
+            <span class="m-tag f">F: ${rec.nutrients.fats}g</span>
+          </div>
+        </div>
+        <div class="meal-kcal-block" style="align-items: flex-end;">
+          <span class="meal-kcal" style="font-size: 1.1rem;">${rec.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+          <button class="btn-delete-recipe-stored" aria-label="Delete recipe from database" style="background: none; border: none; color: rgba(255,255,255,0.3); padding: 4px; border-radius: 4px; margin-top: 4px;" onclick="event.stopPropagation(); FoodSelectorController.deleteStoredRecipe('${rec.id}')">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      `;
+
+      item.addEventListener("click", () => {
+        this.selectFoodItem(rec, "recipe");
+      });
+
+      container.appendChild(item);
+    });
+  },
+
+  deleteStoredRecipe(id) {
+    if (!confirm("Are you sure you want to permanently delete this recipe from your database?")) return;
+    delete AppState.data.recipes[id];
+    AppState.saveToStorage();
+    AppState.showToast("Recipe deleted.");
+    this.renderRecipesList();
+  },
+
+  renderHistoryList() {
+    const container = document.getElementById("selector-history-list");
+    if (!container) return;
+
+    const historyItems = this.getFoodHistory();
+    const searchVal = document.getElementById("history-search-input").value.toLowerCase().trim();
+
+    const filtered = historyItems.filter(item => {
+      return item.name.toLowerCase().includes(searchVal) || item.brand.toLowerCase().includes(searchVal);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No historical foods found matching your search.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    filtered.forEach(food => {
+      const item = document.createElement("div");
+      item.className = "meal-item clickable-selector-item";
+      item.style.cursor = "pointer";
+      item.innerHTML = `
+        <div class="meal-info">
+          <span class="meal-name" style="font-weight: 600;">${food.name}</span>
+          <span class="meal-sub">${food.brand} • per 100g</span>
+          <div class="meal-macros">
+            <span class="m-tag p">P: ${food.nutrients.protein}g</span>
+            <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
+            <span class="m-tag f">F: ${food.nutrients.fats}g</span>
+          </div>
+        </div>
+        <div class="meal-kcal-block">
+          <span class="meal-kcal" style="font-size: 1.1rem;">${food.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+        </div>
+      `;
+
+      item.addEventListener("click", () => {
+        this.selectFoodItem(food, "history");
+      });
+
+      container.appendChild(item);
+    });
+  },
+
+  selectFoodItem(food, type) {
+    this.selectedFoodItem = food;
+    this.selectedFoodType = type;
+
+    // Populate preview card
+    const titleEl = document.getElementById("selector-preview-title");
+    const subtitleEl = document.getElementById("selector-preview-subtitle");
+    const kcalEl = document.getElementById("selector-preview-kcal");
+    const proteinEl = document.getElementById("selector-preview-protein");
+    const carbsEl = document.getElementById("selector-preview-carbs");
+    const fatsEl = document.getElementById("selector-preview-fats");
+    const baseWeightEl = document.getElementById("selector-preview-base-weight");
+    const weightLabel = document.getElementById("selector-weight-label");
+    const weightUnit = document.getElementById("selector-weight-unit");
+    const weightInput = document.getElementById("selector-weight-input");
+    const logBtn = document.getElementById("btn-log-selector-food");
+
+    if (titleEl) titleEl.textContent = food.name;
+    if (subtitleEl) subtitleEl.textContent = food.brand || (type === "recipe" ? "Recipe" : "Generic");
+
+    if (type === "recipe") {
+      if (kcalEl) kcalEl.textContent = food.nutrients.calories;
+      if (proteinEl) proteinEl.textContent = food.nutrients.protein;
+      if (carbsEl) carbsEl.textContent = food.nutrients.carbs;
+      if (fatsEl) fatsEl.textContent = food.nutrients.fats;
+      if (baseWeightEl) baseWeightEl.textContent = `Values shown for complete recipe (${food.totalWeight.toFixed(0)}g)`;
+      
+      if (weightLabel) weightLabel.textContent = "Servings / Multiplier";
+      if (weightUnit) weightUnit.textContent = "x";
+      if (weightInput) {
+        weightInput.value = 1;
+        weightInput.step = "0.1";
+        weightInput.min = "0.01";
+      }
+      if (logBtn) logBtn.textContent = this.activeContext === "recipe_ingredient" ? "Add to Recipe" : "Log Recipe Eaten";
+    } else {
+      if (kcalEl) kcalEl.textContent = food.nutrients.calories;
+      if (proteinEl) proteinEl.textContent = food.nutrients.protein;
+      if (carbsEl) carbsEl.textContent = food.nutrients.carbs;
+      if (fatsEl) fatsEl.textContent = food.nutrients.fats;
+      if (baseWeightEl) baseWeightEl.textContent = "Values shown per 100g";
+      
+      if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight in Recipe (grams)" : "Weight Eaten (grams)";
+      if (weightUnit) weightUnit.textContent = "g";
+      if (weightInput) {
+        weightInput.value = 100;
+        weightInput.step = "1";
+        weightInput.min = "0.1";
+      }
+      if (logBtn) logBtn.textContent = this.activeContext === "recipe_ingredient" ? "Add to Recipe" : "Log Eaten";
+    }
+
+    this.updateScaledDisplay();
+
+    // Display card
+    const previewCard = document.getElementById("selector-preview-card");
+    if (previewCard) {
+      previewCard.classList.remove("hidden");
+      previewCard.scrollIntoView({ behavior: 'smooth' });
+    }
+  },
+
+  updateScaledDisplay() {
+    if (!this.selectedFoodItem) return;
+
+    const food = this.selectedFoodItem;
+    const type = this.selectedFoodType;
+    let inputVal = parseFloat(document.getElementById("selector-weight-input").value);
+    if (isNaN(inputVal) || inputVal <= 0) inputVal = 0;
+
+    let factor = 1;
+    if (type === "recipe") {
+      factor = inputVal; // servings multiplier
+    } else {
+      factor = inputVal / 100; // grams weight scale per 100g
+    }
+
+    const raw = food.nutrients;
+    document.getElementById("selector-scaled-kcal").textContent = Math.round(raw.calories * factor);
+    document.getElementById("selector-scaled-protein").textContent = `${(raw.protein * factor).toFixed(1)}g`;
+    document.getElementById("selector-scaled-carbs").textContent = `${(raw.carbs * factor).toFixed(1)}g`;
+    document.getElementById("selector-scaled-fats").textContent = `${(raw.fats * factor).toFixed(1)}g`;
+  },
+
+  logSelectedFood() {
+    if (!this.selectedFoodItem) return;
+
+    const food = this.selectedFoodItem;
+    const type = this.selectedFoodType;
+    let inputVal = parseFloat(document.getElementById("selector-weight-input").value);
+
+    if (isNaN(inputVal) || inputVal <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+
+    let factor = 1;
+    if (type === "recipe") {
+      factor = inputVal;
+    } else {
+      factor = inputVal / 100;
+    }
+
+    const raw = food.nutrients;
+
+    if (this.activeContext === "recipe_ingredient") {
+      // Add as ingredient to the Recipe Builder
+      const newIng = {
+        name: food.name,
+        brand: food.brand || "Generic",
+        weight: inputVal,
+        nutrients: {
+          calories: Math.round(raw.calories * factor),
+          protein: parseFloat((raw.protein * factor).toFixed(1)),
+          carbs: parseFloat((raw.carbs * factor).toFixed(1)),
+          fats: parseFloat((raw.fats * factor).toFixed(1))
+        }
+      };
+
+      RecipeBuilderController.addIngredient(newIng);
+      this.closePreview();
+      AppState.showToast("Ingredient added!");
+      
+      appRouter.navigate("add_recipe");
+      return;
+    }
+
+    // Daily meals log ingestion
+    const newLogItem = {
+      id: "food_select_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+      name: food.name,
+      brand: food.brand || (type === "recipe" ? "Recipe" : "Generic"),
+      weight: type === "recipe" ? Math.round(food.totalWeight * factor) : inputVal,
+      calories: Math.round(raw.calories * factor),
+      protein: parseFloat((raw.protein * factor).toFixed(1)),
+      carbs: parseFloat((raw.carbs * factor).toFixed(1)),
+      fats: parseFloat((raw.fats * factor).toFixed(1))
+    };
+
+    const dateKey = AppState.selectedDateISO;
+    if (!AppState.data.meals[dateKey]) {
+      AppState.data.meals[dateKey] = [];
+    }
+
+    AppState.data.meals[dateKey].push(newLogItem);
+    AppState.saveToStorage();
+
+    this.closePreview();
+    AppState.showToast("Food added to tracker!");
+
+    appRouter.navigate("food");
+  },
+
+  closePreview() {
+    this.selectedFoodItem = null;
+    const preview = document.getElementById("selector-preview-card");
+    if (preview) preview.classList.add("hidden");
+  }
+};
+
 // Global App Initialization Hooks
 window.addEventListener("DOMContentLoaded", () => {
   AppState.init();
@@ -1712,6 +2586,8 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Tab-specific controllers initialization
   ScannerViewController.init();
+  RecipeBuilderController.init();
+  FoodSelectorController.init();
   WeightController.init();
   StrategyController.init();
   SettingsController.init();

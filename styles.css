@@ -1864,3 +1864,473 @@ select:focus {
   height: 38px;
   text-align: center;
 }
+
+/* ==========================================================================
+   RECIPES & FOOD LOG SELECTOR SYSTEM
+   ========================================================================== */
+
+/* Food Selector Container and Tabs Styling */
+.selector-tabs-card {
+  padding: 16px !important;
+  margin-bottom: 16px;
+}
+
+.selector-tabs-header {
+  display: flex;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.selector-tabs-header .tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+  text-align: center;
+}
+
+.selector-tabs-header .tab-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.selector-tabs-header .tab-btn.active {
+  background: linear-gradient(135deg, #00f2fe, #0088ff);
+  color: #030406;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.25);
+}
+
+.selector-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn var(--transition-normal);
+}
+
+/* History Text Search Box */
+.search-box-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.search-box-container input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+
+.search-box-container input:focus {
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.15);
+  outline: none;
+}
+
+/* Interactive Food Selector Items */
+.clickable-selector-item {
+  transition: all var(--transition-fast) ease !important;
+}
+
+.clickable-selector-item:hover {
+  border-color: rgba(0, 242, 254, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(0, 242, 254, 0.08) !important;
+  transform: translateY(-2px);
+}
+
+.clickable-selector-item:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Nutrient Info Badge Panel & Previews */
+.food-preview-card {
+  animation: slideUpShow var(--transition-normal) cubic-bezier(0.18, 0.89, 0.32, 1.15);
+  margin-bottom: 24px;
+}
+
+@keyframes slideUpShow {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.food-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.food-details-header .details-name h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.food-details-header .details-name p {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.nutrition-pill-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.nutri-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 10px 4px;
+  gap: 2px;
+}
+
+.nutri-pill span {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.nutri-pill label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.nutri-pill.highlight-kcal { border-color: rgba(255, 167, 38, 0.25); }
+.nutri-pill.highlight-kcal span { color: var(--color-calories); }
+
+.nutri-pill.highlight-protein { border-color: rgba(240, 98, 146, 0.25); }
+.nutri-pill.highlight-protein span { color: var(--color-protein); }
+
+.nutri-pill.highlight-carbs { border-color: rgba(41, 182, 246, 0.25); }
+.nutri-pill.highlight-carbs span { color: var(--color-carbs); }
+
+.nutri-pill.highlight-fats { border-color: rgba(102, 187, 106, 0.25); }
+.nutri-pill.highlight-fats span { color: var(--color-fats); }
+
+.nutri-label-100g {
+  grid-column: span 4;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Serving Weight / Scaler Form inside Food Selector */
+.serving-scaling-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+}
+
+.weight-input-container {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  height: 48px;
+  transition: all var(--transition-fast);
+}
+
+.weight-input-container:focus-within {
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.15);
+}
+
+.weight-input-container input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 100%;
+  padding: 0;
+}
+
+.weight-input-container input:focus {
+  outline: none;
+}
+
+.weight-input-container .weight-unit {
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-left: 8px;
+}
+
+.scaling-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.scale-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.scale-item label {
+  font-size: 0.65rem;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.scale-item strong {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+/* Recipe Builder Layouts & Controls */
+.recipe-meta-card {
+  padding: 20px !important;
+  margin-bottom: 16px;
+}
+
+.recipe-meta-card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.recipe-meta-card .card-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.scanner-activation-card {
+  padding: 16px !important;
+  margin-bottom: 16px;
+}
+
+.scanner-activation-card .scanner-header h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.scanner-activation-card .scanner-header p {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin: 4px 0 12px 0;
+}
+
+.scanner-controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.manual-barcode-input {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.divider-text {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--color-text-tertiary);
+  margin: 8px 0;
+}
+
+.divider-text::before,
+.divider-text::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.divider-text:not(:empty)::before {
+  margin-right: .75em;
+}
+
+.divider-text:not(:empty)::after {
+  margin-left: .75em;
+}
+
+.input-inline {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.input-inline input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+}
+
+.input-inline input:focus {
+  border-color: rgba(0, 242, 254, 0.3);
+  outline: none;
+}
+
+/* Custom Food Manual forms */
+.custom-food-card {
+  padding: 14px 16px !important;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.card-header-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.card-header-toggle h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.toggle-icon {
+  font-size: 1.3rem;
+  color: var(--color-text-secondary);
+  font-weight: 300;
+  transition: transform var(--transition-fast);
+}
+
+.custom-form-body {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn var(--transition-fast);
+  cursor: default;
+}
+
+.form-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Delete Ingredient and stored Recipe buttons */
+.btn-delete-ingredient {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.btn-delete-ingredient:hover,
+.btn-delete-ingredient:active {
+  color: var(--color-danger);
+  background: rgba(255, 82, 82, 0.1);
+  transform: scale(1.05);
+}
+
+.btn-delete-recipe-stored {
+  transition: var(--transition-fast);
+}
+
+.btn-delete-recipe-stored:hover {
+  color: var(--color-danger) !important;
+  background: rgba(255, 82, 82, 0.1) !important;
+}
+
+/* Recipe builder totals card */
+.recipe-total-summary-card {
+  background: rgba(0, 136, 255, 0.03);
+  border: 1px solid rgba(0, 136, 255, 0.1) !important;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.recipe-total-summary-card h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin: 0 0 10px 0;
+  color: #00b0ff;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.recipe-weight-summary strong {
+  color: var(--color-text-primary);
+}
+
+.btn-add-food-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.btn-add-food-small:active {
+  transform: scale(0.96);
+}
