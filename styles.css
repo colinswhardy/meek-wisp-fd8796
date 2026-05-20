@@ -1346,3 +1346,422 @@ select:focus {
 .hidden {
   display: none !important;
 }
+
+/* --------------------------------------------------------------------------
+   Antigravity Premium Additions & Refined UI Components
+   -------------------------------------------------------------------------- */
+
+/* Prominent Barcode Scanner Button on Dashboard */
+.btn-scan-dashboard {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 1.15rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #00f2fe, #0088ff);
+  color: #030406;
+  box-shadow: 0 8px 30px rgba(0, 136, 255, 0.35);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all var(--transition-fast);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-scan-dashboard:hover, .btn-scan-dashboard:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0, 242, 254, 0.45);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-scan-dashboard:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 15px rgba(0, 136, 255, 0.2);
+}
+
+.btn-scan-dashboard svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+}
+
+/* Sliding Subpages Back Button & Headers */
+.subpage-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.btn-back {
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+.btn-back:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-back:active {
+  transform: scale(0.97);
+}
+
+.btn-back svg {
+  transition: transform var(--transition-fast);
+}
+
+.btn-back:hover svg {
+  transform: translateX(-2px);
+}
+
+/* Clickable Tool Navigation Rows inside Weight Panel */
+.clickable-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clickable-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid transparent;
+}
+
+.clickable-tool-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-glass);
+}
+
+.clickable-tool-row:active {
+  background: rgba(255, 255, 255, 0.02);
+  transform: scale(0.99);
+}
+
+.tool-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tool-icon {
+  font-size: 1.4rem;
+  background: var(--bg-surface-secondary);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+}
+
+.tool-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  display: block;
+}
+
+.tool-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 1px;
+}
+
+.tool-arrow {
+  color: var(--color-text-tertiary);
+  font-size: 0.85rem;
+  transition: transform var(--transition-fast);
+}
+
+.clickable-tool-row:hover .tool-arrow {
+  color: var(--color-text-secondary);
+  transform: translateX(2px);
+}
+
+/* MacroFactor Style 7-Day Calorie History rows and tracks */
+.calorie-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-calorie-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.history-row-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+}
+
+.history-row-day {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.history-row-fraction {
+  color: var(--color-text-secondary);
+}
+
+.history-row-fraction strong {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.history-row-bar-container {
+  width: 100%;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 9px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+}
+
+.history-row-bar-fill {
+  height: 100%;
+  border-radius: 9px;
+  transition: width var(--transition-slow) cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+.history-row-bar-fill.status-normal {
+  background: linear-gradient(90deg, #0088ff, #00b0ff);
+}
+
+.history-row-bar-fill.status-perfect {
+  background: linear-gradient(90deg, #00e676, #00f2fe);
+}
+
+.history-row-bar-fill.status-over {
+  background: linear-gradient(90deg, #ef4444, #ff8f00);
+}
+
+.history-row-pct {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--color-text-primary);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+.loading-state {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  padding: 20px 0;
+}
+
+/* Weekday Capsule Selectors for Calorie Cycling */
+.weekday-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.weekday-pill {
+  position: relative;
+  cursor: pointer;
+  width: 100%;
+}
+
+.weekday-pill input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.weekday-pill span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-surface-secondary);
+  color: var(--color-text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+}
+
+.weekday-pill input:checked + span {
+  background: linear-gradient(135deg, #00f2fe, #0088ff);
+  color: #030406;
+  border-color: transparent;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+}
+
+.weekday-pill:active span {
+  transform: scale(0.92);
+}
+
+.cycling-settings-body {
+  animation: slideDown var(--transition-normal) cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Refeed Day Badge Animation underneath progress ring */
+.refeed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 80, 0, 0.1);
+  border: 1px solid rgba(255, 179, 0, 0.35);
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #ffa726;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(255, 80, 0, 0.15);
+  animation: pulseScale 2s infinite ease-in-out;
+}
+
+@keyframes pulseScale {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); box-shadow: 0 4px 18px rgba(255, 80, 0, 0.25); }
+  100% { transform: scale(1); }
+}
+
+/* Tactile Switch Toggle Styles */
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-surface-secondary);
+  transition: .3s;
+  border-radius: 34px;
+  border: 1px solid var(--border-glass);
+}
+
+.slider-round:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--color-text-secondary);
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.switch-toggle input:checked + .slider-round {
+  background: linear-gradient(135deg, #00f2fe, #0088ff);
+  border-color: transparent;
+}
+
+.switch-toggle input:checked + .slider-round:before {
+  transform: translateX(20px);
+  background-color: #030406;
+}
+
+/* Premium Success Toast Notification Overlay */
+.premium-toast {
+  position: fixed;
+  bottom: 85px; /* Safely floating above bottom nav tab bar */
+  left: 50%;
+  transform: translate(-50%, 20px);
+  background: rgba(13, 20, 32, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 50px;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(16, 185, 129, 0.15);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  width: max-content;
+  max-width: 90vw;
+}
+
+.premium-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.toast-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-success);
+  color: #030406;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+#toast-message {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: 0.1px;
+}

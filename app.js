@@ -19,7 +19,19 @@ const AppState = {
     meals: {},      // "YYYY-MM-DD": [ { id, name, brand, weight, calories, protein, carbs, fats } ]
     weights: {},    // "YYYY-MM-DD": weightNumeric
     settings: {
-      unit: "lbs"   // "lbs" or "kg"
+      unit: "lbs",   // "lbs" or "kg"
+      highCalorieDaysEnabled: false,
+      highCalorieDays: {
+        monday: false,
+        tuesday: false,
+        wednesday: false,
+        thursday: false,
+        friday: false,
+        saturday: false,
+        sunday: false
+      },
+      highCalorieSurplusType: "flat",
+      highCalorieSurplusValue: 300
     },
     profile: {
       sex: "male",
@@ -34,6 +46,7 @@ const AppState = {
 
   selectedDateISO: "", // Current active date YYYY-MM-DD
   activeTab: "dashboard",
+  toastTimeout: null,
 
   init() {
     this.selectedDateISO = this.getTodayISODate();
@@ -46,7 +59,12 @@ const AppState = {
       try {
         const parsed = JSON.parse(saved);
         // Deep merge logic to assure schema compatibility
-        this.data = { ...this.data, ...parsed };
+        if (parsed.standardGoals) this.data.standardGoals = { ...this.data.standardGoals, ...parsed.standardGoals };
+        if (parsed.dailyGoals) this.data.dailyGoals = { ...this.data.dailyGoals, ...parsed.dailyGoals };
+        if (parsed.meals) this.data.meals = { ...this.data.meals, ...parsed.meals };
+        if (parsed.weights) this.data.weights = { ...this.data.weights, ...parsed.weights };
+        if (parsed.settings) this.data.settings = { ...this.data.settings, ...parsed.settings };
+        if (parsed.profile) this.data.profile = { ...this.data.profile, ...parsed.profile };
       } catch (e) {
         console.error("[Storage] Corrupt save file. Initializing standard defaults...", e);
       }
@@ -67,7 +85,66 @@ const AppState = {
 
   // Helper to obtain targets for a specific date (falls back to standards)
   getGoalsForDate(dateISO) {
-    return this.data.dailyGoals[dateISO] || this.data.standardGoals;
+    const baseGoals = this.data.dailyGoals[dateISO] || this.data.standardGoals;
+    
+    // Check if calorie cycling is enabled and this is a high-calorie day
+    if (this.data.settings.highCalorieDaysEnabled) {
+      // Find the day of the week
+      const date = new Date(dateISO + "T00:00:00");
+      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const dayName = weekdays[date.getDay()];
+      
+      if (this.data.settings.highCalorieDays[dayName]) {
+        // Calculate surplus
+        let surplus = 0;
+        if (this.data.settings.highCalorieSurplusType === "flat") {
+          surplus = Number(this.data.settings.highCalorieSurplusValue) || 0;
+        } else if (this.data.settings.highCalorieSurplusType === "percent") {
+          const pct = Number(this.data.settings.highCalorieSurplusValue) || 0;
+          surplus = baseGoals.calories * (pct / 100);
+        }
+        
+        const adjustedCalories = Math.max(Math.round(baseGoals.calories + surplus), 500);
+        const scalingFactor = baseGoals.calories > 0 ? (adjustedCalories / baseGoals.calories) : 1;
+        
+        return {
+          calories: adjustedCalories,
+          protein: Math.max(Math.round(baseGoals.protein * scalingFactor), 10),
+          carbs: Math.max(Math.round(baseGoals.carbs * scalingFactor), 10),
+          fats: Math.max(Math.round(baseGoals.fats * scalingFactor), 5),
+          isHighCalorieDay: true,
+          surplusApplied: Math.round(surplus)
+        };
+      }
+    }
+    
+    return {
+      ...baseGoals,
+      isHighCalorieDay: false,
+      surplusApplied: 0
+    };
+  },
+
+  showToast(message) {
+    const toast = document.getElementById("toast-notification");
+    const toastMsg = document.getElementById("toast-message");
+    if (!toast || !toastMsg) return;
+
+    toastMsg.textContent = message;
+    toast.classList.remove("hidden");
+    toast.classList.add("show");
+
+    // Clear any existing timeout on the toast
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+
+    this.toastTimeout = setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 300); // Wait for transition fade-out
+    }, 2500);
   }
 };
 
@@ -79,8 +156,9 @@ const appRouter = {
   init() {
     this.panels = {
       dashboard: document.getElementById("panel-dashboard"),
-      scanner: document.getElementById("panel-scanner"),
       weight: document.getElementById("panel-weight"),
+      weight_planner: document.getElementById("panel-weight-planner"),
+      weight_budgets: document.getElementById("panel-weight-budgets"),
       settings: document.getElementById("panel-settings")
     };
     this.navItems = document.querySelectorAll(".app-navbar .nav-item");
@@ -96,8 +174,8 @@ const appRouter = {
   navigate(tabName) {
     if (!this.panels[tabName]) return;
     
-    // Close camera scanner stream cleanly if leaving the log food tab
-    if (AppState.activeTab === "scanner" && tabName !== "scanner") {
+    // Close camera scanner stream cleanly if leaving the dashboard tab
+    if (AppState.activeTab === "dashboard" && tabName !== "dashboard") {
       BarcodeScannerManager.stop();
     }
 
@@ -114,7 +192,9 @@ const appRouter = {
 
     // Toggle navigation buttons
     this.navItems.forEach((btn) => {
-      if (btn.getAttribute("data-tab") === tabName) {
+      const btnTab = btn.getAttribute("data-tab");
+      const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets");
+      if (btnTab === tabName || (btnTab === "weight" && isWeightRelated)) {
         btn.classList.add("active");
       } else {
         btn.classList.remove("active");
@@ -130,6 +210,8 @@ const appRouter = {
       DashboardController.render();
     } else if (AppState.activeTab === "weight") {
       WeightController.render();
+    } else if (AppState.activeTab === "weight_planner" || AppState.activeTab === "weight_budgets") {
+      SettingsController.render();
     } else if (AppState.activeTab === "settings") {
       SettingsController.render();
     }
@@ -185,6 +267,25 @@ const DashboardController = {
     }
     ring.style.strokeDashoffset = offset;
 
+    // Show/hide high calorie day refeed badge
+    let badgeEl = document.getElementById("refeed-badge");
+    if (!badgeEl) {
+      badgeEl = document.createElement("div");
+      badgeEl.id = "refeed-badge";
+      badgeEl.className = "refeed-badge";
+      const container = document.querySelector(".circular-progress-container");
+      if (container) {
+        container.parentNode.insertBefore(badgeEl, container.nextSibling);
+      }
+    }
+    
+    if (goals.isHighCalorieDay && badgeEl) {
+      badgeEl.textContent = `🔥 +${goals.surplusApplied} kcal Refeed Day`;
+      badgeEl.classList.remove("hidden");
+    } else if (badgeEl) {
+      badgeEl.classList.add("hidden");
+    }
+
     // Macro Progress Bars
     this.updateMacroRow("protein", eatenProtein, goals.protein);
     this.updateMacroRow("carbs", eatenCarbs, goals.carbs);
@@ -211,7 +312,7 @@ const DashboardController = {
         <div class="empty-state">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           <p>No food logged for this day yet.</p>
-          <button class="btn btn-secondary btn-sm" onclick="appRouter.navigate('scanner')">Scan Food Now</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('btn-start-scan').scrollIntoView({behavior: 'smooth'})">Scan Food Now</button>
         </div>
       `;
       return;
@@ -441,8 +542,9 @@ const ScannerViewController = {
     // Close preview card cleanly, reset state
     this.closePreview();
     
-    // Animate tab change to Dashboard to visually verify log addition
-    appRouter.navigate("dashboard");
+    // Rerender dashboard directly
+    DashboardController.render();
+    AppState.showToast("Food item added to log!");
   },
 
   addCustomFoodLog() {
@@ -476,7 +578,8 @@ const ScannerViewController = {
     document.getElementById("custom-food-form").classList.add("hidden");
     document.getElementById("custom-food-card").classList.remove("active");
 
-    appRouter.navigate("dashboard");
+    DashboardController.render();
+    AppState.showToast("Custom food item added!");
   },
 
   closePreview() {
@@ -517,6 +620,9 @@ const WeightController = {
 
     // Refresh history chart and calculations
     WeightChartManager.renderChart(AppState.data.weights, dateKey, unit);
+    
+    // Render 7-Day Calorie History
+    this.renderCalorieHistory();
   },
 
   logWeight() {
@@ -535,6 +641,69 @@ const WeightController = {
     AppState.saveToStorage();
     
     this.render();
+    AppState.showToast("Weight logged successfully!");
+  },
+
+  renderCalorieHistory() {
+    const container = document.getElementById("calorie-history-container");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const today = new Date();
+    
+    // We will generate the last 7 days (including today) in descending order (Today first)
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateISO = WeightChartManager.formatISODate(d);
+      
+      const meals = AppState.data.meals[dateISO] || [];
+      const goals = AppState.getGoalsForDate(dateISO);
+      
+      let eatenKcal = 0;
+      meals.forEach(m => eatenKcal += m.calories);
+      eatenKcal = Math.round(eatenKcal);
+
+      const targetKcal = goals.calories;
+      const pct = targetKcal > 0 ? Math.min(Math.round((eatenKcal / targetKcal) * 100), 120) : 0;
+      
+      let label = "";
+      if (i === 0) {
+        label = "Today";
+      } else if (i === 1) {
+        label = "Yesterday";
+      } else {
+        label = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+      }
+
+      const row = document.createElement("div");
+      row.className = "history-calorie-row";
+      
+      let statusClass = "status-normal";
+      if (pct > 100) {
+        statusClass = "status-over";
+      } else if (pct >= 90) {
+        statusClass = "status-perfect";
+      }
+
+      const barWidth = Math.min(pct, 100);
+
+      row.innerHTML = `
+        <div class="history-row-meta">
+          <span class="history-row-day">${label}</span>
+          <span class="history-row-fraction">
+            <strong>${eatenKcal}</strong> / ${targetKcal} kcal
+          </span>
+        </div>
+        <div class="history-row-bar-container">
+          <div class="history-row-bar-fill ${statusClass}" style="width: ${barWidth}%"></div>
+          <span class="history-row-pct">${pct}%</span>
+        </div>
+      `;
+
+      container.appendChild(row);
+    }
   }
 };
 
@@ -607,6 +776,69 @@ const SettingsController = {
     if (btnApply) {
       btnApply.addEventListener("click", () => this.applyPlannerTarget());
     }
+
+    // 9. Calorie Cycling Event Listeners
+    const cyclingToggle = document.getElementById("cycling-enabled");
+    if (cyclingToggle) {
+      cyclingToggle.addEventListener("change", (e) => {
+        AppState.data.settings.highCalorieDaysEnabled = e.target.checked;
+        AppState.saveToStorage();
+        this.toggleCyclingBodyVisibility();
+        DashboardController.render();
+        AppState.showToast(e.target.checked ? "Calorie cycling enabled" : "Calorie cycling disabled");
+      });
+    }
+
+    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    weekdays.forEach(day => {
+      const el = document.getElementById(`cycling-day-${day}`);
+      if (el) {
+        el.addEventListener("change", (e) => {
+          AppState.data.settings.highCalorieDays[day] = e.target.checked;
+          AppState.saveToStorage();
+          DashboardController.render();
+        });
+      }
+    });
+
+    const surplusType = document.getElementById("cycling-surplus-type");
+    if (surplusType) {
+      surplusType.addEventListener("change", (e) => {
+        AppState.data.settings.highCalorieSurplusType = e.target.value;
+        AppState.saveToStorage();
+        this.updateSurplusUnitLabel();
+        DashboardController.render();
+      });
+    }
+
+    const surplusValue = document.getElementById("cycling-surplus-value");
+    if (surplusValue) {
+      surplusValue.addEventListener("input", (e) => {
+        AppState.data.settings.highCalorieSurplusValue = Number(e.target.value) || 0;
+        AppState.saveToStorage();
+        DashboardController.render();
+      });
+    }
+  },
+
+  toggleCyclingBodyVisibility() {
+    const enabled = AppState.data.settings.highCalorieDaysEnabled;
+    const body = document.getElementById("cycling-settings-body");
+    if (body) {
+      if (enabled) {
+        body.classList.remove("hidden");
+      } else {
+        body.classList.add("hidden");
+      }
+    }
+  },
+
+  updateSurplusUnitLabel() {
+    const type = AppState.data.settings.highCalorieSurplusType;
+    const label = document.getElementById("cycling-surplus-unit-label");
+    if (label) {
+      label.textContent = type === "flat" ? "kcal" : "%";
+    }
   },
 
   render() {
@@ -614,19 +846,29 @@ const SettingsController = {
     const goals = AppState.getGoalsForDate(dateKey);
 
     // Form defaults populate
-    document.getElementById("target-calories").value = goals.calories;
-    document.getElementById("target-protein").value = goals.protein;
-    document.getElementById("target-carbs").value = goals.carbs;
-    document.getElementById("target-fats").value = goals.fats;
+    const calEl = document.getElementById("target-calories");
+    const protEl = document.getElementById("target-protein");
+    const carbEl = document.getElementById("target-carbs");
+    const fatEl = document.getElementById("target-fats");
+    
+    if (calEl) calEl.value = goals.calories;
+    if (protEl) protEl.value = goals.protein;
+    if (carbEl) carbEl.value = goals.carbs;
+    if (fatEl) fatEl.value = goals.fats;
 
     // Weight active unit indicator
     const currentUnit = AppState.data.settings.unit;
-    if (currentUnit === "lbs") {
-      document.getElementById("btn-unit-lbs").classList.add("active");
-      document.getElementById("btn-unit-kg").classList.remove("active");
-    } else {
-      document.getElementById("btn-unit-lbs").classList.remove("active");
-      document.getElementById("btn-unit-kg").classList.add("active");
+    const lbsBtn = document.getElementById("btn-unit-lbs");
+    const kgBtn = document.getElementById("btn-unit-kg");
+    
+    if (lbsBtn && kgBtn) {
+      if (currentUnit === "lbs") {
+        lbsBtn.classList.add("active");
+        kgBtn.classList.remove("active");
+      } else {
+        lbsBtn.classList.remove("active");
+        kgBtn.classList.add("active");
+      }
     }
 
     // --- Profile & Planner Populating ---
@@ -702,6 +944,33 @@ const SettingsController = {
           rateSelect.appendChild(o);
         });
       }
+    }
+
+    // Calorie Cycling UI Populating
+    const cyclingEnabled = AppState.data.settings.highCalorieDaysEnabled;
+    const cyclingToggle = document.getElementById("cycling-enabled");
+    if (cyclingToggle) {
+      cyclingToggle.checked = cyclingEnabled;
+    }
+    this.toggleCyclingBodyVisibility();
+
+    const cyclingWeekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    cyclingWeekdays.forEach(day => {
+      const el = document.getElementById(`cycling-day-${day}`);
+      if (el) {
+        el.checked = AppState.data.settings.highCalorieDays[day] || false;
+      }
+    });
+
+    const surplusType = document.getElementById("cycling-surplus-type");
+    if (surplusType) {
+      surplusType.value = AppState.data.settings.highCalorieSurplusType || "flat";
+    }
+    this.updateSurplusUnitLabel();
+
+    const surplusValue = document.getElementById("cycling-surplus-value");
+    if (surplusValue) {
+      surplusValue.value = AppState.data.settings.highCalorieSurplusValue !== undefined ? AppState.data.settings.highCalorieSurplusValue : 300;
     }
 
     // Run calculations to populate standard results on render load
@@ -848,11 +1117,10 @@ const SettingsController = {
     };
 
     AppState.saveToStorage();
-    alert(`Success! Calculated daily calorie budget (${targetCalories} kcal) and proportionally scaled macros have been applied to your standards.`);
+    AppState.showToast(`Applied ${targetCalories} kcal budget & scaled macros!`);
     
-    // Refresh Settings Inputs & Redirect to Dashboard
+    // Refresh UI inputs
     this.render();
-    appRouter.navigate("dashboard");
   },
 
   saveStandardTargets() {
@@ -881,8 +1149,10 @@ const SettingsController = {
     };
 
     AppState.saveToStorage();
-    alert("Macro targets saved successfully!");
-    appRouter.navigate("dashboard");
+    AppState.showToast("Target budgets saved successfully!");
+    
+    // Refresh UI inputs
+    this.render();
   },
 
   toggleWeightUnit(targetUnit) {

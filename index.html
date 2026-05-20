@@ -60,89 +60,6 @@
 
     <!-- TAB 1: DASHBOARD -->
     <section id="panel-dashboard" class="app-panel active">
-      <!-- Radial Gauge Calorie Card -->
-      <div class="glass-card calorie-card">
-        <div class="circular-progress-container">
-          <svg class="circular-progress" viewBox="0 0 100 100">
-            <circle class="bg-circle" cx="50" cy="50" r="40" />
-            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
-          </svg>
-          <div class="progress-text">
-            <span class="progress-val-main" id="val-calories-eaten">0</span>
-            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
-          </div>
-        </div>
-        <div class="calorie-quick-stats">
-          <div class="quick-stat-item">
-            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
-            <span class="stat-lbl">Remaining</span>
-          </div>
-          <div class="quick-stat-divider"></div>
-          <div class="quick-stat-item">
-            <span class="stat-num" id="val-burn-status">0%</span>
-            <span class="stat-lbl">Completed</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Macro Progress Bars Card -->
-      <div class="glass-card macros-card">
-        <h3>Macro Budgets</h3>
-        
-        <!-- Protein Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
-            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Carbs Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs</span>
-            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Fats Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-fats"></span>Fats</span>
-            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Today's Logs Section -->
-      <div class="logs-section">
-        <div class="section-header">
-          <h3>Eaten Today</h3>
-          <span class="meals-count" id="meals-count-badge">0 items</span>
-        </div>
-        <div class="meals-list" id="meals-list-container">
-          <!-- Dynamically filled meal items -->
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-            <p>No food logged for this day yet.</p>
-            <button class="btn btn-secondary btn-sm" onclick="appRouter.navigate('scanner')">Scan Food Now</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- TAB 2: FOOD LOGGING & SCANNER -->
-    <section id="panel-scanner" class="app-panel">
       <!-- Active Barcode Scanner Section -->
       <div class="glass-card scanner-activation-card" id="scanner-view-container">
         <div class="scanner-header">
@@ -155,7 +72,7 @@
 
         <!-- Scan action triggers -->
         <div class="scanner-controls">
-          <button id="btn-start-scan" class="btn btn-primary btn-iconic">
+          <button id="btn-start-scan" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Scan Barcode</span>
           </button>
@@ -238,6 +155,85 @@
         </div>
       </div>
 
+      <!-- Radial Gauge Calorie Card -->
+      <div class="glass-card calorie-card">
+        <div class="circular-progress-container">
+          <svg class="circular-progress" viewBox="0 0 100 100">
+            <circle class="bg-circle" cx="50" cy="50" r="40" />
+            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
+          </svg>
+          <div class="progress-text">
+            <span class="progress-val-main" id="val-calories-eaten">0</span>
+            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
+          </div>
+        </div>
+        <div class="calorie-quick-stats">
+          <div class="quick-stat-item">
+            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
+            <span class="stat-lbl">Remaining</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat-item">
+            <span class="stat-num" id="val-burn-status">0%</span>
+            <span class="stat-lbl">Completed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macro Progress Bars Card -->
+      <div class="glass-card macros-card">
+        <h3>Macro Budgets</h3>
+        
+        <!-- Protein Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
+            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Carbs Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs</span>
+            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Fats Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-fats"></span>Fats</span>
+            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Logs Section -->
+      <div class="logs-section">
+        <div class="section-header">
+          <h3>Eaten Today</h3>
+          <span class="meals-count" id="meals-count-badge">0 items</span>
+        </div>
+        <div class="meals-list" id="meals-list-container">
+          <!-- Dynamically filled meal items -->
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <p>No food logged for this day yet.</p>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('btn-start-scan').scrollIntoView({behavior: 'smooth'})">Scan Food Now</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Custom Food Add Form (fallback if not found in API) -->
       <div class="glass-card custom-food-card" id="custom-food-card">
         <div class="card-header-toggle" id="toggle-custom-form-btn">
@@ -272,6 +268,9 @@
         </form>
       </div>
     </section>
+
+
+
 
 
     <!-- TAB 3: WEIGHT TRACKER -->
@@ -325,11 +324,60 @@
           </div>
         </div>
       </div>
+
+      <!-- Planning & Target Goals Clickable Menu -->
+      <div class="glass-card tools-config-card">
+        <h3>Calculators & Target Goals</h3>
+        <p class="card-subtitle">Configure your dynamic goals and macro budgets</p>
+        
+        <div class="clickable-tools-list">
+          <div class="clickable-tool-row" onclick="appRouter.navigate('weight_planner')">
+            <div class="tool-info">
+              <span class="tool-icon">⚖️</span>
+              <div>
+                <span class="tool-title">Weight Goal & Calorie Planner</span>
+                <p class="tool-desc">Calculate TDEE, BMR, and safe deficit targets</p>
+              </div>
+            </div>
+            <span class="tool-arrow">❯</span>
+          </div>
+          
+          <div class="divider" style="margin: 4px 0;"></div>
+          
+          <div class="clickable-tool-row" onclick="appRouter.navigate('weight_budgets')">
+            <div class="tool-info">
+              <span class="tool-icon">🎯</span>
+              <div>
+                <span class="tool-title">Set Budgets & Target Goals</span>
+                <p class="tool-desc">Manually configure calorie and macro budgets</p>
+              </div>
+            </div>
+            <span class="tool-arrow">❯</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-Day Calorie History (MacroFactor style) -->
+      <div class="glass-card history-calorie-card">
+        <h3>7-Day Calorie History</h3>
+        <p class="card-subtitle">Intake logs and budgets over the last 7 days</p>
+        
+        <div class="calorie-history-list" id="calorie-history-container">
+          <!-- Dynamically populated via WeightController -->
+          <div class="loading-state">Loading calorie history...</div>
+        </div>
+      </div>
     </section>
 
+    <!-- SUBPAGE: CALORIE PLANNER -->
+    <section id="panel-weight-planner" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('weight')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Weight</span>
+        </button>
+      </div>
 
-    <!-- TAB 4: SETTINGS & TARGETS -->
-    <section id="panel-settings" class="app-panel">
       <!-- Interactive Weight Goal & TDEE Calorie Planner -->
       <div class="glass-card planner-card">
         <h3>Weight Goal & Calorie Planner</h3>
@@ -415,6 +463,16 @@
           </button>
         </div>
       </div>
+    </section>
+
+    <!-- SUBPAGE: SET TARGET BUDGETS -->
+    <section id="panel-weight-budgets" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('weight')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Weight</span>
+        </button>
+      </div>
 
       <!-- Edit Daily Budget Goals -->
       <div class="glass-card targets-config-card">
@@ -444,6 +502,80 @@
 
           <button type="submit" class="btn btn-success btn-block">Save Target Budgets</button>
         </form>
+      </div>
+    </section>
+
+
+    <!-- TAB 4: SETTINGS & TARGETS -->
+    <section id="panel-settings" class="app-panel">
+      <!-- Calorie Cycling & High Calorie Days Refeeds -->
+      <div class="glass-card calorie-cycling-card">
+        <h3>Calorie Cycling & Refeeds</h3>
+        <p class="card-subtitle">Schedule high-calorie days to boost metabolic flexibility and support intense training.</p>
+        
+        <div class="pref-row" style="margin-bottom: 20px;">
+          <div>
+            <label class="pref-title">Enable Calorie Cycling</label>
+            <p class="pref-desc">Automatically cycle daily calorie targets based on the day of the week</p>
+          </div>
+          <label class="switch-toggle">
+            <input type="checkbox" id="cycling-enabled">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+
+        <div class="cycling-settings-body hidden" id="cycling-settings-body">
+          <label class="pref-title" style="display: block; margin-bottom: 12px;">High Calorie Days Schedule</label>
+          <div class="weekday-checkbox-grid">
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-monday">
+              <span>Mon</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-tuesday">
+              <span>Tue</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-wednesday">
+              <span>Wed</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-thursday">
+              <span>Thu</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-friday">
+              <span>Fri</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-saturday">
+              <span>Sat</span>
+            </label>
+            <label class="weekday-pill">
+              <input type="checkbox" id="cycling-day-sunday">
+              <span>Sun</span>
+            </label>
+          </div>
+
+          <div class="divider" style="margin: 16px 0;"></div>
+
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="cycling-surplus-type">Surplus Calculations</label>
+              <select id="cycling-surplus-type">
+                <option value="flat">Flat Calories (kcal over)</option>
+                <option value="percent">Percentage (% over base)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cycling-surplus-value">Surplus Amount</label>
+              <div class="input-inline">
+                <input type="number" id="cycling-surplus-value" min="0" max="2000" value="300" pattern="[0-9]*" inputmode="numeric">
+                <span class="weight-unit-label" id="cycling-surplus-unit-label">kcal</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- App Preferences (Units & Mock Data) -->
@@ -517,10 +649,6 @@
       <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Dashboard</span>
     </button>
-    <button class="nav-item" data-tab="scanner" aria-label="Scan Food">
-      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-      <span>Log Food</span>
-    </button>
     <button class="nav-item" data-tab="weight" aria-label="Weight Tracker">
       <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span>Weight</span>
@@ -541,6 +669,12 @@
       });
     }
   </script>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-notification" class="premium-toast hidden">
+    <span class="toast-check">✓</span>
+    <span id="toast-message">Success! Settings saved.</span>
+  </div>
 
   <!-- Application Modules -->
   <script src="database.js"></script>
