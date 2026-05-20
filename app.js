@@ -305,6 +305,12 @@ const ScannerViewController = {
     weightInput.addEventListener("input", () => {
       this.updateScaledMacros();
     });
+    weightInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        this.addScaledProductToLog();
+      }
+    });
 
     // 5. Scaled add button
     document.getElementById("btn-add-scaled-food").addEventListener("click", () => {
@@ -526,6 +532,12 @@ const SettingsController = {
 
     // 4. Data Wipe actions
     document.getElementById("btn-clear-data").addEventListener("click", () => this.purgeStorageData());
+
+    // 5. Renpho CSV Import
+    const csvInput = document.getElementById("csv-file-input");
+    if (csvInput) {
+      csvInput.addEventListener("change", (e) => this.importRenphoCSV(e));
+    }
   },
 
   render() {
@@ -662,6 +674,146 @@ const SettingsController = {
     localStorage.removeItem(AppState.storageKey);
     // Hard refresh window to reset DOM memory
     window.location.reload();
+  },
+
+  importRenphoCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/);
+      if (lines.length < 2) {
+        alert("The selected file appears to be empty or has no weight data rows.");
+        return;
+      }
+
+      // Helper to parse standard CSV row taking care of double quotes
+      function parseCSVRow(line) {
+        const result = [];
+        let current = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = "";
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      }
+
+      const headers = parseCSVRow(lines[0]);
+      let timeIdx = -1;
+      let weightIdx = -1;
+
+      // Scan headers for target metrics
+      for (let i = 0; i < headers.length; i++) {
+        const h = headers[i].toLowerCase();
+        if (h.includes("time of measurement") || h.includes("time") || h.includes("date")) {
+          if (timeIdx === -1) timeIdx = i;
+        }
+        if (h.includes("weight") || h.includes("wt") || h.includes("lbs") || h.includes("kg") || h.includes("weight value")) {
+          if (weightIdx === -1) weightIdx = i;
+        }
+      }
+
+      // Check if critical columns were discovered
+      if (timeIdx === -1 || weightIdx === -1) {
+        alert("Could not identify Date/Time and Weight columns in the CSV. Please make sure this is a Renpho CSV export.");
+        return;
+      }
+
+      // Check weight unit from header if possible
+      const headerWeightStr = headers[weightIdx].toLowerCase();
+      let fileUnit = null;
+      if (headerWeightStr.includes("kg")) {
+        fileUnit = "kg";
+      } else if (headerWeightStr.includes("lb") || headerWeightStr.includes("lbs")) {
+        fileUnit = "lbs";
+      }
+
+      const activeUnit = AppState.data.settings.unit;
+      let importCount = 0;
+
+      // Loop and parse each data row
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const cells = parseCSVRow(line);
+        if (cells.length <= Math.max(timeIdx, weightIdx)) continue;
+
+        const rawDate = cells[timeIdx];
+        const rawWeight = cells[weightIdx];
+        if (!rawDate || !rawWeight) continue;
+
+        // Parse date safely
+        let dateKey = null;
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          dateKey = WeightChartManager.formatISODate(d);
+        } else {
+          // Fallback match for YYYY-MM-DD
+          const match = rawDate.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+          if (match) {
+            dateKey = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+          }
+        }
+
+        if (!dateKey) continue;
+
+        // Clean weight characters (remove units, parse float)
+        const weightClean = rawWeight.replace(/[^\d.]/g, "");
+        let weightVal = parseFloat(weightClean);
+        if (isNaN(weightVal) || weightVal <= 0) continue;
+
+        // Convert weight units automatically if file and app units mismatch
+        if (fileUnit && fileUnit !== activeUnit) {
+          if (activeUnit === "kg" && fileUnit === "lbs") {
+            // lbs -> kg
+            weightVal = parseFloat((weightVal / 2.20462).toFixed(1));
+          } else if (activeUnit === "lbs" && fileUnit === "kg") {
+            // kg -> lbs
+            weightVal = parseFloat((weightVal * 2.20462).toFixed(1));
+          }
+        } else {
+          // Round weight strictly to 1 decimal place
+          weightVal = parseFloat(weightVal.toFixed(1));
+        }
+
+        // Save entry
+        AppState.data.weights[dateKey] = weightVal;
+        importCount++;
+      }
+
+      if (importCount > 0) {
+        AppState.saveToStorage();
+        alert(`Success! Imported ${importCount} weight records from Renpho.`);
+        // Reset file selector so same file can be reloaded
+        event.target.value = "";
+        
+        // Refresh view/charts
+        appRouter.refreshCurrentView();
+        if (AppState.activeTab === "dashboard") {
+          DashboardController.render();
+        }
+      } else {
+        alert("No valid weight data points were found in the selected file.");
+      }
+    };
+
+    reader.onerror = () => {
+      alert("Error reading the CSV file.");
+    };
+
+    reader.readAsText(file);
   }
 };
 
