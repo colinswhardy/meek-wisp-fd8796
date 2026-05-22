@@ -51,6 +51,7 @@ window.BarcodeScannerManager = {
         },
         aspectRatio: 1.0,
         videoConstraints: {
+          facingMode: "environment",
           width: { ideal: 640 },
           height: { ideal: 480 }
         }
