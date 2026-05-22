@@ -9,6 +9,14 @@ window.WeightController = {
       e.preventDefault();
       this.logWeight();
     });
+
+    // Make the Weight History chart card navigate to the zoomable/scrollable detail view
+    const chartCard = document.querySelector("#panel-weight .chart-card");
+    if (chartCard) {
+      chartCard.addEventListener("click", () => {
+        appRouter.navigate("weight_history_detail");
+      });
+    }
   },
 
   render() {
