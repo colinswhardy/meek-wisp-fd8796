@@ -185,22 +185,19 @@ window.FoodSelectorController = {
     const btnTabSearch = document.getElementById("btn-tab-search");
 
     if (context === "recipe_ingredient") {
-      // Hide Recipes and Search Online tab headers entirely
+      // Hide Recipes tab header entirely (to avoid nested recipes)
       if (btnRecipes) btnRecipes.classList.add("hidden");
-      if (btnTabSearch) btnTabSearch.classList.add("hidden");
-      
-      // Force active tab to history
-      this.setTabActive("history");
-      if (btnHistory) btnHistory.classList.remove("hidden");
     } else {
-      // Show Recipes and Search Online tab headers
+      // Show Recipes tab header
       if (btnRecipes) btnRecipes.classList.remove("hidden");
-      if (btnTabSearch) btnTabSearch.classList.remove("hidden");
-      if (btnHistory) btnHistory.classList.remove("hidden");
-      
-      // Default active tab: Search Online
-      this.setTabActive("search");
     }
+
+    // Always show Search Online and History tabs
+    if (btnTabSearch) btnTabSearch.classList.remove("hidden");
+    if (btnHistory) btnHistory.classList.remove("hidden");
+    
+    // Default active tab: Search Online
+    this.setTabActive("search");
 
     // Update back label
     const backLabel = document.getElementById("food-selector-back-label");

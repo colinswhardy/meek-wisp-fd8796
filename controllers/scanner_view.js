@@ -68,9 +68,32 @@ window.ScannerViewController = {
     const btnStart = document.getElementById(`btn-start-scan-${context}`);
     if (btnStart) {
       btnStart.addEventListener("click", () => {
-        BarcodeScannerManager.start(context, (barcode) => {
-          this.triggerProductLookup(context, barcode);
-        });
+        // Show manual barcode input on the camera page
+        const manualInput = document.getElementById(`manual-barcode-input-${context}`);
+        if (manualInput) {
+          manualInput.classList.remove("hidden");
+        }
+
+        BarcodeScannerManager.start(
+          context,
+          (barcode) => {
+            this.triggerProductLookup(context, barcode);
+          },
+          (err) => {
+            console.warn(`[Scanner] Camera failed to start in context ${context}:`, err);
+            // Hide camera scanner container to exit modal view
+            const scannerEl = document.getElementById(`camera-scanner-${context}`);
+            if (scannerEl) scannerEl.classList.add("hidden");
+
+            // Keep manual input visible as a fallback on the main page card
+            if (manualInput) {
+              manualInput.classList.remove("hidden");
+            }
+
+            // Show feedback
+            AppState.showToast("Camera access denied or unavailable. Please enter the barcode manually.");
+          }
+        );
       });
     }
 
@@ -79,6 +102,10 @@ window.ScannerViewController = {
     if (btnStop) {
       btnStop.addEventListener("click", () => {
         BarcodeScannerManager.stop();
+        const manualInput = document.getElementById(`manual-barcode-input-${context}`);
+        if (manualInput) {
+          manualInput.classList.add("hidden");
+        }
       });
     }
 
@@ -143,6 +170,17 @@ window.ScannerViewController = {
   },
 
   async triggerProductLookup(context, barcode) {
+    // If scanning was active, stop it cleanly
+    if (BarcodeScannerManager.isScanning && BarcodeScannerManager.activeContext === context) {
+      await BarcodeScannerManager.stop();
+    }
+
+    // Hide manual input container
+    const manualInput = document.getElementById(`manual-barcode-input-${context}`);
+    if (manualInput) {
+      manualInput.classList.add("hidden");
+    }
+
     const inputField = document.getElementById(`manual-barcode-field-${context}`);
     const searchBtn = document.getElementById(`btn-lookup-barcode-${context}`);
     
