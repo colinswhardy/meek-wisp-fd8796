@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0d0e12">
+  <meta name="theme-color" content="#02040a">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>ColinsChartsMacros - Weight & Macro Tracker</title>
   
   <!-- PWA Manifest -->
@@ -52,6 +53,31 @@
 
     <!-- TAB 1: DASHBOARD -->
     <section id="panel-dashboard" class="app-panel active">
+      <!-- Radial Gauge Calorie Card -->
+      <div class="glass-card calorie-card">
+        <div class="circular-progress-container">
+          <svg class="circular-progress" viewBox="0 0 100 100">
+            <circle class="bg-circle" cx="50" cy="50" r="40" />
+            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
+          </svg>
+          <div class="progress-text">
+            <span class="progress-val-main" id="val-calories-eaten">0</span>
+            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
+          </div>
+        </div>
+        <div class="calorie-quick-stats">
+          <div class="quick-stat-item">
+            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
+            <span class="stat-lbl">Remaining</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat-item">
+            <span class="stat-num" id="val-burn-status">0%</span>
+            <span class="stat-lbl">Completed</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Active Barcode Scanner Section -->
       <div class="glass-card scanner-activation-card" id="scanner-view-container-dashboard">
         <div class="scanner-header">
@@ -200,31 +226,6 @@
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
         </form>
-      </div>
-
-      <!-- Radial Gauge Calorie Card -->
-      <div class="glass-card calorie-card">
-        <div class="circular-progress-container">
-          <svg class="circular-progress" viewBox="0 0 100 100">
-            <circle class="bg-circle" cx="50" cy="50" r="40" />
-            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
-          </svg>
-          <div class="progress-text">
-            <span class="progress-val-main" id="val-calories-eaten">0</span>
-            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
-          </div>
-        </div>
-        <div class="calorie-quick-stats">
-          <div class="quick-stat-item">
-            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
-            <span class="stat-lbl">Remaining</span>
-          </div>
-          <div class="quick-stat-divider"></div>
-          <div class="quick-stat-item">
-            <span class="stat-num" id="val-burn-status">0%</span>
-            <span class="stat-lbl">Completed</span>
-          </div>
-        </div>
       </div>
 
       <!-- Macro Progress Bars Card -->
@@ -487,27 +488,6 @@
 
     <!-- TAB 3: WEIGHT TRACKER -->
     <section id="panel-weight" class="app-panel">
-      <!-- Daily Weight Logger -->
-      <div class="glass-card weight-logger-card">
-        <h3>Log Weight</h3>
-        <p class="card-subtitle">Log your weight for the currently selected day</p>
-        
-        <form id="weight-log-form">
-          <div class="form-row-weight">
-            <div class="weight-input-wrapper">
-              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder="e.g. 182.4" required inputmode="decimal">
-              <span class="weight-unit-label" id="lbl-weight-unit">lbs</span>
-            </div>
-            <button type="submit" class="btn btn-primary" id="btn-log-weight">Log Weight</button>
-          </div>
-        </form>
-
-        <div class="today-weight-status" id="today-weight-status-container">
-          <span class="status-icon">✓</span>
-          <span id="today-weight-text">Logged weight for today: <strong>--</strong></span>
-        </div>
-      </div>
-
       <!-- History Chart Card -->
       <div class="glass-card chart-card">
         <div class="chart-header">
@@ -527,13 +507,34 @@
 
         <div class="chart-stats-grid">
           <div class="c-stat-box">
-            <label>Weekly Average</label>
-            <span id="val-weight-avg">--</span>
+            <label>Avg Daily Change (7d)</label>
+            <span id="val-weight-avg-daily-change" class="neutral">--</span>
           </div>
           <div class="c-stat-box">
             <label>Weekly Net Change</label>
             <span id="val-weight-change" class="neutral">--</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Daily Weight Logger -->
+      <div class="glass-card weight-logger-card">
+        <h3>Log Weight</h3>
+        <p class="card-subtitle">Log your weight for the currently selected day</p>
+        
+        <form id="weight-log-form">
+          <div class="form-row-weight">
+            <div class="weight-input-wrapper">
+              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder="e.g. 182.4" required inputmode="decimal">
+              <span class="weight-unit-label" id="lbl-weight-unit">lbs</span>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-log-weight">Log Weight</button>
+          </div>
+        </form>
+
+        <div class="today-weight-status" id="today-weight-status-container">
+          <span class="status-icon">✓</span>
+          <span id="today-weight-text">Logged weight for today: <strong>--</strong></span>
         </div>
       </div>
     </section>
@@ -1370,24 +1371,25 @@
   <!-- Service Worker Registration script -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js")
-          .then((reg) => {
-            console.log("[PWA] Service Worker registered:", reg.scope);
-            
-            // Check for updates
-            reg.addEventListener("updatefound", () => {
-              const installingWorker = reg.installing;
-              if (installingWorker) {
-                installingWorker.addEventListener("statechange", () => {
-                  if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-                    console.log("[PWA] New version detected, updating...");
-                  }
-                });
-              }
-            });
-          })
-          .catch((err) => console.error("[PWA] Registration failed:", err));
+      window.addEventListener("load", async () => {
+        try {
+          const reg = await navigator.serviceWorker.register("./sw.js");
+          console.log("[PWA] Service Worker registered:", reg.scope);
+          
+          // Check for updates
+          reg.addEventListener("updatefound", () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.addEventListener("statechange", () => {
+                if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  console.log("[PWA] New version detected, updating...");
+                }
+              });
+            }
+          });
+        } catch (err) {
+          console.error("[PWA] Registration failed:", err);
+        }
       });
 
       // Reload the page when the new active service worker takes control
@@ -1409,9 +1411,6 @@
   </div>
 
   <!-- Application Modules -->
-  <script src="database.js"></script>
-  <script src="scanner.js"></script>
-  <script src="charts.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

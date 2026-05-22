@@ -3,7 +3,7 @@
  * Manages Chart.js rendering and least-squares linear regression modeling.
  */
 
-const WeightChartManager = {
+export const WeightChartManager = {
   chartInstance: null,
 
   /**
@@ -39,7 +39,7 @@ const WeightChartManager = {
 
     // 3. Calculate Stats: Average and Net Weekly Change
     const loggedWeights = actualWeights.filter(w => w !== null);
-    this.updateStats(loggedWeights, unit);
+    this.updateStats(actualWeights, loggedWeights, unit);
 
     // 4. Compute Linear Regression coordinates
     const regressionDataset = this.computeRegressionDataset(datesInRange, dateKeys, allWeightLogs);
@@ -199,28 +199,37 @@ const WeightChartManager = {
   /**
    * Refreshes average weight and net change indicators on the dashboard card.
    */
-  updateStats(loggedWeights, unit) {
-    const avgEl = document.getElementById("val-weight-avg");
+  updateStats(actualWeights, loggedWeights, unit) {
+    const avgDailyChangeEl = document.getElementById("val-weight-avg-daily-change");
     const changeEl = document.getElementById("val-weight-change");
-    if (!avgEl || !changeEl) return;
+    if (!avgDailyChangeEl || !changeEl) return;
 
     if (loggedWeights.length === 0) {
-      avgEl.textContent = "--";
+      avgDailyChangeEl.textContent = "--";
+      avgDailyChangeEl.className = "neutral";
       changeEl.textContent = "--";
       changeEl.className = "neutral";
       return;
     }
 
-    // Average
-    const sum = loggedWeights.reduce((a, b) => a + b, 0);
-    const avg = sum / loggedWeights.length;
-    avgEl.textContent = `${avg.toFixed(1)} ${unit}`;
-
     // Net Change (first logged point vs last logged point in this 7-day range)
     if (loggedWeights.length < 2) {
+      avgDailyChangeEl.textContent = "--";
+      avgDailyChangeEl.className = "neutral";
       changeEl.textContent = "Log more days";
       changeEl.className = "neutral";
     } else {
+      // Find the indices of the first and last logged weights in actualWeights to get number of days
+      let firstIdx = -1;
+      let lastIdx = -1;
+      for (let i = 0; i < actualWeights.length; i++) {
+        if (actualWeights[i] !== null) {
+          if (firstIdx === -1) firstIdx = i;
+          lastIdx = i;
+        }
+      }
+      const days = lastIdx - firstIdx;
+
       const net = loggedWeights[loggedWeights.length - 1] - loggedWeights[0];
       const sign = net > 0 ? "+" : "";
       changeEl.textContent = `${sign}${net.toFixed(1)} ${unit}`;
@@ -231,6 +240,24 @@ const WeightChartManager = {
         changeEl.className = "loss"; // green for loss
       } else {
         changeEl.className = "neutral";
+      }
+
+      // Calculate Average Daily Change: total net change / number of days
+      if (days > 0) {
+        const avgDailyChange = net / days;
+        const signChange = avgDailyChange > 0 ? "+" : "";
+        avgDailyChangeEl.textContent = `${signChange}${avgDailyChange.toFixed(2)} ${unit}/day`;
+        
+        if (avgDailyChange > 0) {
+          avgDailyChangeEl.className = "gain";
+        } else if (avgDailyChange < 0) {
+          avgDailyChangeEl.className = "loss";
+        } else {
+          avgDailyChangeEl.className = "neutral";
+        }
+      } else {
+        avgDailyChangeEl.textContent = "--";
+        avgDailyChangeEl.className = "neutral";
       }
     }
   },

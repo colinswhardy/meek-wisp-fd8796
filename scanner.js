@@ -3,27 +3,36 @@
  * Controls mobile camera scanner instances utilizing html5-qrcode.
  */
 
-const BarcodeScannerManager = {
+export const BarcodeScannerManager = {
   html5QrcodeInstance: null,
   isScanning: false,
-  activeContext: null, // "dashboard" or "food"
+  activeContext: null, // "dashboard", "food", or "recipe"
+  transitioning: false,
 
   /**
    * Initializes and starts camera scanning in the container for the specified context.
-   * @param {string} context "dashboard" or "food"
+   * @param {string} context "dashboard", "food", or "recipe"
    * @param {Function} onScanSuccessCallback Callback when a barcode is scanned. Receives barcode string.
    * @param {Function} onErrorCallback Optional error reporter for camera permissions.
    */
   async start(context, onScanSuccessCallback, onErrorCallback) {
+    if (this.transitioning) {
+      console.log("[Scanner] Busy transitioning, deferring start request...");
+      return;
+    }
     if (this.isScanning) {
       if (this.activeContext === context) return;
       await this.stop();
     }
     
+    this.transitioning = true;
     this.activeContext = context;
     const scannerId = `camera-scanner-${context}`;
     const scannerEl = document.getElementById(scannerId);
-    if (!scannerEl) return;
+    if (!scannerEl) {
+      this.transitioning = false;
+      return;
+    }
     
     scannerEl.classList.remove("hidden");
     
@@ -40,7 +49,11 @@ const BarcodeScannerManager = {
             height: size * 0.6
           };
         },
-        aspectRatio: 1.0
+        aspectRatio: 1.0,
+        videoConstraints: {
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
       };
 
       this.isScanning = true;
@@ -67,11 +80,19 @@ const BarcodeScannerManager = {
       this.isScanning = false;
       this.activeContext = null;
       scannerEl.classList.add("hidden");
+      
+      // Clean DOM nodes on error to prevent leaks
+      try {
+        scannerEl.innerHTML = "";
+      } catch (domErr) {}
+
       if (onErrorCallback) {
         onErrorCallback(err);
       } else {
         alert("Camera access denied or unavailable. Please enter the barcode manually.");
       }
+    } finally {
+      this.transitioning = false;
     }
   },
 
@@ -79,30 +100,48 @@ const BarcodeScannerManager = {
    * Stops camera stream and clears scanner state.
    */
   async stop() {
+    // If starting up, wait until transitioning is complete to prevent raw camera driver hangs
+    let checkCount = 0;
+    while (this.transitioning && checkCount < 30) {
+      console.log("[Scanner] Waiting for camera start transition to finish before stopping...");
+      await new Promise(resolve => setTimeout(resolve, 100));
+      checkCount++;
+    }
+
     if (!this.isScanning || !this.activeContext) return;
     
+    this.transitioning = true;
     const context = this.activeContext;
 
     try {
       if (this.html5QrcodeInstance) {
         await this.html5QrcodeInstance.stop();
-        this.html5QrcodeInstance = null;
       }
     } catch (err) {
       console.warn(`[Scanner-${context}] Clean stop failed:`, err);
     } finally {
+      this.html5QrcodeInstance = null;
       this.isScanning = false;
       this.activeContext = null;
       
       const scannerEl = document.getElementById(`camera-scanner-${context}`);
-      if (scannerEl) scannerEl.classList.add("hidden");
+      if (scannerEl) {
+        scannerEl.classList.add("hidden");
+        // Systematically prune dynamically spawned canvas/video elements to avoid memory leaks
+        try {
+          scannerEl.innerHTML = "";
+        } catch (domErr) {
+          console.warn("[Scanner] DOM pruning failed:", domErr);
+        }
+      }
       
       const startBtn = document.getElementById(`btn-start-scan-${context}`);
       if (startBtn) startBtn.classList.remove("hidden");
       
       const stopBtn = document.getElementById(`btn-stop-scan-${context}`);
       if (stopBtn) stopBtn.classList.add("hidden");
+      
+      this.transitioning = false;
     }
   }
 };
-
