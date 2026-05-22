@@ -6,8 +6,8 @@
 window.WeightDetailController = {
   chartInstance: null,
   isInitialized: false,
-  zoomSteps: [3, 5, 7, 10, 14, 30, 90, 180, 365, 730, 1825], // Days
-  zoomLabels: ["3 Days", "5 Days", "7 Days", "10 Days", "14 Days", "1 Month", "3 Months", "6 Months", "1 Year", "2 Years", "5 Years"],
+  zoomSteps: [3, 5, 7, 10, 14, 30, 60, 90, 120, 180, 240, 300, 365, 545, 730], // Days
+  zoomLabels: ["3 Days", "5 Days", "7 Days", "10 Days", "14 Days", "1 Month", "2 Months", "3 Months", "4 Months", "6 Months", "8 Months", "10 Months", "12 Months", "18 Months", "2 Years"],
   currentZoomIndex: 4, // Default to 14 days
   panOffset: 0, // Days offset from today (0 means anchored to today)
 
@@ -19,11 +19,13 @@ window.WeightDetailController = {
     const btnIn = document.getElementById("btn-zoom-in");
     const btnPanLeft = document.getElementById("btn-pan-left");
     const btnPanRight = document.getElementById("btn-pan-right");
+    const btnToday = document.getElementById("btn-today");
 
     if (btnOut) btnOut.addEventListener("click", () => this.zoomOut());
     if (btnIn) btnIn.addEventListener("click", () => this.zoomIn());
     if (btnPanLeft) btnPanLeft.addEventListener("click", () => this.panLeft());
     if (btnPanRight) btnPanRight.addEventListener("click", () => this.panRight());
+    if (btnToday) btnToday.addEventListener("click", () => this.goToToday());
 
     this.isInitialized = true;
   },
@@ -43,17 +45,23 @@ window.WeightDetailController = {
   },
 
   panLeft() {
-    // Pan backward in time by half the current zoom window
+    // Pan backward in time by 60% of current zoom window
     const windowDays = this.zoomSteps[this.currentZoomIndex];
-    this.panOffset += Math.max(1, Math.floor(windowDays / 2));
+    this.panOffset += Math.max(1, Math.round(windowDays * 0.6));
     this.renderChart();
   },
 
   panRight() {
-    // Pan forward in time
+    // Pan forward in time by 60% of current zoom window
     const windowDays = this.zoomSteps[this.currentZoomIndex];
-    this.panOffset -= Math.max(1, Math.floor(windowDays / 2));
+    this.panOffset -= Math.max(1, Math.round(windowDays * 0.6));
     if (this.panOffset < 0) this.panOffset = 0; // Don't pan into the future beyond today
+    this.renderChart();
+  },
+
+  goToToday() {
+    this.panOffset = 0;
+    this.currentZoomIndex = 4; // Default to 14 Days
     this.renderChart();
   },
 
@@ -115,29 +123,49 @@ window.WeightDetailController = {
     const displayLabels = this.buildSmartLabels(datesInRange);
     const actualWeights = dateKeys.map(key => allWeightLogs[key] || null);
     
-    // Compute Linear Regression across the ENTIRE dataset so the trendline is accurate for the whole history
+    // Compute Linear Regression across the VISIBLE dataset on the screen
     const allLoggedDates = Object.keys(allWeightLogs).filter(d => allWeightLogs[d] !== null && allWeightLogs[d] !== undefined).sort();
     
     // Calculate and display historical metrics for the detail view
     this.renderStats("detail", allWeightLogs, allLoggedDates, unit);
 
     let regressionDataset = Array(datesInRange.length).fill(null);
-    if (allLoggedDates.length >= 2) {
-      const firstDateStr = allLoggedDates[0];
-      const firstDateMs = new Date(firstDateStr + "T12:00:00").getTime();
-      
-      const points = [];
-      for (const d of allLoggedDates) {
-        const ms = new Date(d + "T12:00:00").getTime();
-        const elapsedDays = (ms - firstDateMs) / (1000 * 60 * 60 * 24);
-        points.push({ x: elapsedDays, y: allWeightLogs[d] });
+    
+    // Extract visible points
+    let pointsForRegression = [];
+    datesInRange.forEach((date, idx) => {
+      const key = dateKeys[idx];
+      const w = allWeightLogs[key];
+      if (w !== null && w !== undefined) {
+        pointsForRegression.push({ date: date, weight: w });
       }
+    });
+
+    // Fallback: if there are fewer than 2 visible points on screen, use all historical logged points so the line is still displayed
+    if (pointsForRegression.length < 2 && allLoggedDates.length >= 2) {
+      pointsForRegression = allLoggedDates.map(dStr => ({
+        date: new Date(dStr + "T12:00:00"),
+        weight: allWeightLogs[dStr]
+      }));
+    }
+
+    if (pointsForRegression.length >= 2) {
+      // Sort points chronologically
+      pointsForRegression.sort((a, b) => a.date - b.date);
+      
+      const firstDateMs = pointsForRegression[0].date.getTime();
+      const points = pointsForRegression.map(p => {
+        const elapsedDays = (p.date.getTime() - firstDateMs) / (1000 * 60 * 60 * 24);
+        return { x: elapsedDays, y: p.weight };
+      });
 
       const n = points.length;
       let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
       for (let i = 0; i < n; i++) {
-        sumX += points[i].x; sumY += points[i].y;
-        sumXY += points[i].x * points[i].y; sumXX += points[i].x * points[i].x;
+        sumX += points[i].x; 
+        sumY += points[i].y;
+        sumXY += points[i].x * points[i].y; 
+        sumXX += points[i].x * points[i].x;
       }
       const denominator = n * sumXX - sumX * sumX;
       
@@ -204,9 +232,9 @@ window.WeightDetailController = {
           {
             label: "Trendline",
             data: regressionDataset,
-            borderColor: "#cbd5e1",
-            borderWidth: 2,
-            borderDash: [5, 5],
+            borderColor: "#ff7a00",
+            borderWidth: 2.5,
+            borderDash: [6, 4],
             pointRadius: 0,
             fill: false,
             tension: 0
