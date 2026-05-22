@@ -3,7 +3,7 @@
   "name": "ColinsChartsMacros - Weight & Macro Tracker",
   "short_name": "ColinsChartsMacros",
   "description": "Premium weight tracker and barcode macro logging application.",
-  "start_url": "/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#02040a",
   "theme_color": "#02040a",
