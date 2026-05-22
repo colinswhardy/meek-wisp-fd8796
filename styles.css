@@ -2650,7 +2650,6 @@ select:focus {
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: 10px 4px;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 
 .detail-chart-container {
