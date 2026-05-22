@@ -107,10 +107,11 @@ window.appRouter = {
     const previousTab = AppState.activeTab;
     const targetGroup = this.getNavbarTabForPanel(tabName);
 
-    // Save scroll position of the outgoing panel
+    // Save scroll position of the outgoing panel (handles both window-level and viewport-level scrolling)
     const viewport = document.querySelector(".app-viewport");
-    if (viewport && previousTab) {
-      this.scrollPositions[previousTab] = viewport.scrollTop;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || (viewport ? viewport.scrollTop : 0);
+    if (previousTab) {
+      this.scrollPositions[previousTab] = scrollTop;
     }
 
     // Reset scroll of incoming panel if this is a back navigation
@@ -157,12 +158,22 @@ window.appRouter = {
     this.refreshCurrentView();
 
     // Restore scroll position instantly
+    const targetScrollTop = this.scrollPositions[tabName] || 0;
+
+    // 1. Scroll window / documentElement instantly
+    const originalDocScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, targetScrollTop);
+    document.documentElement.scrollTop = targetScrollTop;
+    document.documentElement.offsetHeight; // force reflow
+    document.documentElement.style.scrollBehavior = originalDocScrollBehavior;
+
+    // 2. Scroll viewport instantly (in case viewport scrolling is active)
     if (viewport) {
-      const targetScrollTop = this.scrollPositions[tabName] || 0;
       const originalScrollBehavior = viewport.style.scrollBehavior;
       viewport.style.scrollBehavior = "auto";
       viewport.scrollTop = targetScrollTop;
-      viewport.offsetHeight; // force synchronous reflow to ensure instant scroll is rendered
+      viewport.offsetHeight; // force reflow
       viewport.style.scrollBehavior = originalScrollBehavior;
     }
   },
