@@ -545,6 +545,39 @@ window.SettingsController = {
         return result;
       }
 
+      function parseDateToISO(raw) {
+        // Try standard constructor first
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          return WeightChartManager.formatISODate(d);
+        }
+
+        // Regex fallback for YYYY-MM-DD or YYYY/MM/DD
+        let match = raw.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        if (match) {
+          return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+        }
+
+        // Regex fallback for MM/DD/YYYY or DD/MM/YYYY
+        match = raw.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+        if (match) {
+          const p1 = parseInt(match[1]);
+          const p2 = parseInt(match[2]);
+          const year = match[3];
+          if (p1 > 12) {
+            // DD/MM/YYYY
+            return `${year}-${String(p2).padStart(2, "0")}-${String(p1).padStart(2, "0")}`;
+          }
+          if (p2 > 12) {
+            // MM/DD/YYYY
+            return `${year}-${String(p1).padStart(2, "0")}-${String(p2).padStart(2, "0")}`;
+          }
+          // Default to MM/DD/YYYY
+          return `${year}-${String(p1).padStart(2, "0")}-${String(p2).padStart(2, "0")}`;
+        }
+        return null;
+      }
+
       const headers = parseCSVRow(lines[0]);
       let timeIdx = -1;
       let weightIdx = -1;
@@ -586,16 +619,7 @@ window.SettingsController = {
         const rawWeight = cells[weightIdx];
         if (!rawDate || !rawWeight) continue;
 
-        let dateKey = null;
-        const d = new Date(rawDate);
-        if (!isNaN(d.getTime())) {
-          dateKey = WeightChartManager.formatISODate(d);
-        } else {
-          const match = rawDate.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-          if (match) {
-            dateKey = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-          }
-        }
+        const dateKey = parseDateToISO(rawDate);
 
         if (!dateKey) continue;
 

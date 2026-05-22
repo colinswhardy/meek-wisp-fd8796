@@ -8,6 +8,7 @@ window.WeightDetailController = {
   yAxisChart: null,
   zoomLevel: 100,
   isInitialized: false,
+  isFreshNavigation: true,
   _popstateHandler: null,
 
   init() {
@@ -109,10 +110,17 @@ window.WeightDetailController = {
     // Calculate and display historical metrics
     this.renderStats(allWeightLogs, loggedDates, unit);
 
-    // 2. Generate contiguous dates for the last 45 days (1.5 months) ending today
+    // 2. Generate contiguous dates from the earliest log or the last 45 days (whichever is older) ending today
     const today = new Date();
-    const startDate = new Date();
+    let startDate = new Date();
     startDate.setDate(today.getDate() - 45);
+
+    if (loggedDates.length > 0) {
+      const earliestLogDate = new Date(loggedDates[0] + "T00:00:00");
+      if (earliestLogDate < startDate) {
+        startDate = earliestLogDate;
+      }
+    }
 
     const datesInRange = [];
     const currentIter = new Date(startDate);
@@ -123,6 +131,14 @@ window.WeightDetailController = {
       datesInRange.push(new Date(currentIter));
       currentIter.setDate(currentIter.getDate() + 1);
       safetyCounter++;
+    }
+
+    const totalDays = datesInRange.length;
+
+    // Set comfortable default zoom when entering this view, so that the density is roughly ~45 days per screen width (100% of wrapper)
+    if (this.isFreshNavigation) {
+      this.zoomLevel = Math.max(100, Math.round((totalDays / 45) * 100));
+      this.isFreshNavigation = false;
     }
 
     // Format keys ("YYYY-MM-DD")
