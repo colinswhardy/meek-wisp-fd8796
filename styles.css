@@ -215,112 +215,93 @@ body {
   margin-bottom: 16px;
 }
 
-/* Radial Progress Ring (Calorie card) */
-.calorie-card {
+/* Bar-based Calorie + Macro Card (Dashboard) */
+.calorie-bar-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 24px 20px;
+  gap: 14px;
+  padding: 22px 20px;
 }
 
-.circular-progress-container {
-  position: relative;
-  width: 180px;
-  height: 180px;
-}
-
-.circular-progress {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg); /* Start progress from top */
-}
-
-.circular-progress circle {
-  fill: none;
-  stroke-width: 7;
-}
-
-.circular-progress .bg-circle {
-  stroke: rgba(255, 255, 255, 0.04);
-}
-
-.circular-progress .progress-ring {
-  stroke: var(--color-calories);
-  stroke-dasharray: 251.2; /* 2 * PI * r (40) */
-  stroke-dashoffset: 251.2; /* 100% remaining */
-  stroke-linecap: round;
-  transition: stroke-dashoffset var(--transition-slow);
-}
-
-.progress-text {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.calorie-bar-header {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 10px;
 }
 
-.progress-val-main {
+.calorie-bar-totals {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calorie-bar-eaten-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calorie-bar-eaten-val {
   font-family: var(--font-display);
-  font-size: 2.3rem;
+  font-size: 3rem;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -1px;
   color: var(--color-text-primary);
-  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 40%, var(--color-calories));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.progress-label-main {
-  font-size: 0.85rem;
+.calorie-bar-eaten-lbl {
+  font-size: 0.82rem;
   color: var(--color-text-secondary);
-  margin-top: 4px;
   font-weight: 500;
 }
 
-/* Calorie Quick Stats */
-.calorie-quick-stats {
-  display: flex;
-  width: 100%;
-  border-top: 1px solid var(--border-glass);
-  padding-top: 16px;
-  margin-top: 4px;
-}
-
-.quick-stat-item {
-  flex: 1;
+.calorie-bar-right-stats {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-.quick-stat-divider {
-  width: 1px;
-  background: var(--border-glass);
-  align-self: stretch;
+.calorie-stat-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
-.quick-stat-item .stat-num {
+.calorie-stat-num {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  line-height: 1.1;
 }
 
-.quick-stat-item .color-calories {
+.calorie-stat-num.color-calories {
   color: var(--color-calories);
-  text-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
 }
 
-.quick-stat-item .stat-lbl {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+.calorie-stat-lbl {
+  font-size: 0.68rem;
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
+}
+
+.calorie-track-full {
+  height: 10px;
+  border-radius: 5px;
   margin-top: 2px;
+}
+
+.calorie-bar-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border-glass);
+  margin: 2px 0;
 }
 
 /* Macro Budgets (Dashboard) */
@@ -389,6 +370,7 @@ body {
 .bg-protein { background: linear-gradient(90deg, #1d4ed8, var(--color-protein)); }
 .bg-carbs { background: linear-gradient(90deg, #94a3b8, var(--color-carbs)); }
 .bg-fats { background: linear-gradient(90deg, #1e3a8a, var(--color-fats)); }
+.bg-calories { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
 
 /* Meals Log List */
 .logs-section {
@@ -537,6 +519,30 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Floating Barcode Scanner (Food Tab) */
+.scanner-float {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 88px; /* sit just above the nav bar */
+  width: calc(100% - 32px);
+  max-width: 428px;
+  z-index: 80;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  will-change: transform, opacity;
+}
+
+.scanner-float.scanner-float--hidden {
+  transform: translateX(-50%) translateY(120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Extra bottom space on food tab to clear the floating scanner */
+#panel-food {
+  padding-bottom: 160px;
 }
 
 .scanner-header h3 {
