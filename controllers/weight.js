@@ -10,13 +10,58 @@ window.WeightController = {
       this.logWeight();
     });
 
-    // Make the Weight History chart card navigate to the zoomable/scrollable detail view
+    // Make the Weight History chart card navigate to the detail view,
+    // but show data point info when a specific point is clicked
     const chartCard = document.querySelector("#panel-weight .chart-card");
     if (chartCard) {
-      chartCard.addEventListener("click", () => {
+      chartCard.addEventListener("click", (e) => {
+        // Check if the click landed on a chart data point
+        const chart = WeightChartManager.chartInstance;
+        if (chart) {
+          const elements = chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
+          if (elements.length > 0) {
+            const el = elements[0];
+            const datasetIndex = el.datasetIndex;
+            // Only show popup for actual weight dataset (index 0), not trendline
+            if (datasetIndex === 0) {
+              const index = el.index;
+              const weight = chart.data.datasets[0].data[index];
+              const label = chart.data.labels[index];
+              if (weight !== null && weight !== undefined) {
+                const unit = AppState.data.settings.unit || "lbs";
+                this.showDataPointPopup(e, `${label}: ${Number(weight).toFixed(1)} ${unit}`);
+                return; // Don't navigate
+              }
+            }
+          }
+        }
         appRouter.navigate("weight_history_detail");
       });
     }
+  },
+
+  showDataPointPopup(event, text) {
+    // Remove any existing popup
+    const existing = document.getElementById("weight-point-popup");
+    if (existing) existing.remove();
+
+    const popup = document.createElement("div");
+    popup.id = "weight-point-popup";
+    popup.textContent = text;
+    document.body.appendChild(popup);
+
+    // Position near click
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    popup.style.left = `${event.clientX}px`;
+    popup.style.top = `${event.clientY - 50}px`;
+
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+      popup.classList.add("fade-out");
+      setTimeout(() => popup.remove(), 300);
+    }, 2000);
   },
 
   render() {

@@ -27,6 +27,12 @@ window.WeightDetailController = {
     }
 
     this.isInitialized = true;
+
+    // Fullscreen button
+    const btnFullscreen = document.getElementById("btn-fullscreen-chart");
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener("click", () => this.toggleFullscreen());
+    }
   },
 
   adjustZoom(delta) {
@@ -82,10 +88,10 @@ window.WeightDetailController = {
     // Calculate and display historical metrics
     this.renderStats(allWeightLogs, loggedDates, unit);
 
-    // 2. Generate contiguous dates for the last 90 days (3 months) ending today
+    // 2. Generate contiguous dates for the last 45 days (1.5 months) ending today
     const today = new Date();
     const startDate = new Date();
-    startDate.setDate(today.getDate() - 90);
+    startDate.setDate(today.getDate() - 45);
 
     const datesInRange = [];
     const currentIter = new Date(startDate);
@@ -101,9 +107,9 @@ window.WeightDetailController = {
     // Format keys ("YYYY-MM-DD")
     const dateKeys = datesInRange.map(d => this.formatISODate(d));
 
-    // Display labels e.g. "May 14"
+    // Display labels e.g. "May 2026"
     const displayLabels = datesInRange.map(d => {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+      return d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
     });
 
     // 3. Map weight values (null if day skipped)
@@ -217,6 +223,35 @@ window.WeightDetailController = {
 
     // 6. Apply Current Zoom and automatically scroll to the most recent data
     this.applyZoomAndScroll(this.zoomLevel !== 100);
+  },
+
+  toggleFullscreen() {
+    const panel = document.getElementById("panel-weight-history-detail");
+    if (!panel) return;
+
+    if (panel.classList.contains("chart-fullscreen-mode")) {
+      // Exit fullscreen
+      panel.classList.remove("chart-fullscreen-mode");
+      // Unlock orientation if supported
+      if (screen.orientation && screen.orientation.unlock) {
+        try { screen.orientation.unlock(); } catch(e) {}
+      }
+    } else {
+      // Enter fullscreen
+      panel.classList.add("chart-fullscreen-mode");
+      // Try to lock to landscape if supported
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch(() => {});
+      }
+    }
+
+    // Resize chart after DOM update
+    setTimeout(() => {
+      if (this.chartInstance) {
+        this.chartInstance.resize();
+      }
+      this.applyZoomAndScroll(true);
+    }, 100);
   },
 
   renderStats(allWeightLogs, loggedDates, unit) {
