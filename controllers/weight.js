@@ -16,24 +16,28 @@ window.WeightController = {
     if (chartCard) {
       chartCard.addEventListener("click", (e) => {
         // Check if the click landed on a chart data point
-        const chart = WeightChartManager.chartInstance;
-        if (chart) {
-          const elements = chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
-          if (elements.length > 0) {
-            const el = elements[0];
-            const datasetIndex = el.datasetIndex;
-            // Only show popup for actual weight dataset (index 0), not trendline
-            if (datasetIndex === 0) {
-              const index = el.index;
-              const weight = chart.data.datasets[0].data[index];
-              const label = chart.data.labels[index];
-              if (weight !== null && weight !== undefined) {
-                const unit = AppState.data.settings.unit || "lbs";
-                this.showDataPointPopup(e, `${label}: ${Number(weight).toFixed(1)} ${unit}`);
-                return; // Don't navigate
+        try {
+          const chart = WeightChartManager.chartInstance;
+          if (chart) {
+            const elements = chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
+            if (elements.length > 0) {
+              const el = elements[0];
+              const datasetIndex = el.datasetIndex;
+              // Only show popup for actual weight dataset (index 0), not trendline
+              if (datasetIndex === 0) {
+                const index = el.index;
+                const weight = chart.data.datasets[0].data[index];
+                const label = chart.data.labels[index];
+                if (weight !== null && weight !== undefined) {
+                  const unit = AppState.data.settings.unit || "lbs";
+                  this.showDataPointPopup(e, `${label}: ${Number(weight).toFixed(1)} ${unit}`);
+                  return; // Don't navigate
+                }
               }
             }
           }
+        } catch (err) {
+          console.warn("Failed to check clicked chart elements on mobile/touch:", err);
         }
         appRouter.navigate("weight_history_detail");
       });

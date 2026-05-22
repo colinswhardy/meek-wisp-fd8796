@@ -373,12 +373,14 @@ window.WeightDetailController = {
     // Nice tick generation based on minVal and maxVal
     const nTicks = 5;
     const rawStep = (maxVal - minVal) / nTicks;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const step = Math.ceil(rawStep / magnitude) * magnitude || 1;
+    const magnitude = rawStep > 0 ? Math.pow(10, Math.floor(Math.log10(rawStep))) : 1;
+    const step = Math.max(0.1, Math.ceil(rawStep / magnitude) * magnitude || 1);
     const tickMin = Math.floor(minVal / step) * step;
     const ticks = [];
-    for (let t = tickMin; t <= maxVal + step * 0.01; t += step) {
+    let safety = 0;
+    for (let t = tickMin; t <= maxVal + step * 0.01 && safety < 100; t += step) {
       ticks.push(parseFloat(t.toFixed(2)));
+      safety++;
     }
 
     // Style the overlay canvas to match the chart height
