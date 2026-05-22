@@ -132,27 +132,63 @@
 
     <!-- TAB 1: DASHBOARD -->
     <section id="panel-dashboard" class="app-panel active">
-      <!-- Radial Gauge Calorie Card -->
-      <div class="glass-card calorie-card">
-        <div class="circular-progress-container">
-          <svg class="circular-progress" viewBox="0 0 100 100">
-            <circle class="bg-circle" cx="50" cy="50" r="40" />
-            <circle id="calorie-progress-ring" class="progress-ring" cx="50" cy="50" r="40" />
-          </svg>
-          <div class="progress-text">
-            <span class="progress-val-main" id="val-calories-eaten">0</span>
-            <span class="progress-label-main">of <span id="val-calories-target">2,000</span> kcal</span>
+      <!-- Bar-based Calorie + Macro Card -->
+      <div class="glass-card calorie-bar-card">
+        <!-- Total Calories (prominent) -->
+        <div class="calorie-bar-header">
+          <div class="calorie-bar-totals">
+            <div class="calorie-bar-eaten-group">
+              <span class="calorie-bar-eaten-val" id="val-calories-eaten">0</span>
+              <span class="calorie-bar-eaten-lbl">of <span id="val-calories-target">2,000</span> kcal</span>
+            </div>
+            <div class="calorie-bar-right-stats">
+              <div class="calorie-stat-pill">
+                <span class="calorie-stat-num color-calories" id="val-calories-remaining">2,000</span>
+                <span class="calorie-stat-lbl" id="lbl-calories-remaining">Remaining</span>
+              </div>
+              <div class="calorie-stat-pill">
+                <span class="calorie-stat-num" id="val-burn-status">0%</span>
+                <span class="calorie-stat-lbl">Done</span>
+              </div>
+            </div>
+          </div>
+          <div class="macro-progress-track calorie-track-full">
+            <div id="bar-calories" class="macro-progress-fill bg-calories" style="width: 0%"></div>
           </div>
         </div>
-        <div class="calorie-quick-stats">
-          <div class="quick-stat-item">
-            <span class="stat-num color-calories" id="val-calories-remaining">2,000</span>
-            <span class="stat-lbl">Remaining</span>
+
+        <div class="calorie-bar-divider"></div>
+
+        <!-- Protein Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
+            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
           </div>
-          <div class="quick-stat-divider"></div>
-          <div class="quick-stat-item">
-            <span class="stat-num" id="val-burn-status">0%</span>
-            <span class="stat-lbl">Completed</span>
+          <div class="macro-progress-track">
+            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Carbs Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-carbs"></span>Carbohydrates</span>
+            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Fats Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-fats"></span>Fat</span>
+            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
           </div>
         </div>
       </div>
@@ -307,49 +343,12 @@
         </form>
       </div>
 
-      <!-- Macro Progress Bars Card -->
-      <div class="glass-card macros-card">
-        <h3>Macro Budgets</h3>
-        
-        <!-- Protein Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
-            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Carbs Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs</span>
-            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Fats Row -->
-        <div class="macro-bar-row">
-          <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-fats"></span>Fats</span>
-            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
-          </div>
-          <div class="macro-progress-track">
-            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- TAB 2: FOOD LOG -->
     <section id="panel-food" class="app-panel">
-      <!-- Active Barcode Scanner Section (Duplicate context for Food Tab) -->
-      <div class="glass-card scanner-activation-card" id="scanner-view-container-food">
+      <!-- Floating Barcode Scanner (Food Tab) -->
+      <div class="glass-card scanner-activation-card scanner-float" id="scanner-view-container-food">
         <div class="scanner-header">
           <h3>Barcode Scan</h3>
           <p>Scan a product's barcode to auto-import macros</p>
@@ -604,7 +603,7 @@
         <form id="weight-log-form">
           <div class="form-row-weight">
             <div class="weight-input-wrapper">
-              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder="e.g. 182.4" required inputmode="decimal">
+              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder=" " required inputmode="decimal">
               <span class="weight-unit-label" id="lbl-weight-unit">lbs</span>
             </div>
             <button type="submit" class="btn btn-primary" id="btn-log-weight">Log Weight</button>
