@@ -1045,7 +1045,7 @@ input:focus {
 }
 
 .dot-actual { background-color: var(--color-weight); box-shadow: 0 0 4px var(--color-weight); }
-.dot-trend { background-color: var(--color-protein); box-shadow: 0 0 4px var(--color-protein); }
+.dot-trend { background-color: #ff7a00; box-shadow: 0 0 4px #ff7a00; }
 
 .chart-canvas-wrapper {
   position: relative;
