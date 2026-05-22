@@ -222,30 +222,28 @@ window.WeightDetailController = {
   renderStats(allWeightLogs, loggedDates, unit) {
     const elCurrent = document.getElementById("detail-val-current");
     const elChange = document.getElementById("detail-val-change");
-    const elPeak = document.getElementById("detail-val-peak");
-    const elFloor = document.getElementById("detail-val-floor");
-    const elAvg = document.getElementById("detail-val-avg");
+    const elTimeframe = document.getElementById("detail-val-timeframe");
+    const elGoalDate = document.getElementById("detail-val-goaldate");
 
-    if (!elCurrent || !elChange || !elPeak || !elFloor || !elAvg) return;
+    if (!elCurrent || !elChange || !elTimeframe || !elGoalDate) return;
 
     if (loggedDates.length === 0) {
       elCurrent.textContent = "--";
       elChange.textContent = "--";
       elChange.className = "";
-      elPeak.textContent = "--";
-      elFloor.textContent = "--";
-      elAvg.textContent = "--";
+      elTimeframe.textContent = "--";
+      elGoalDate.textContent = "--";
       return;
     }
 
     const weights = loggedDates.map(d => allWeightLogs[d]);
     const current = weights[weights.length - 1];
-    const earliest = weights[0];
-    const netChange = current - earliest;
-    const peak = Math.max(...weights);
-    const floor = Math.min(...weights);
-    const sum = weights.reduce((a, b) => a + b, 0);
-    const avg = sum / weights.length;
+
+    // Use starting weight from profile for Total Change comparison
+    const profile = AppState.data.profile || {};
+    const startingWeight = profile.startingWeight;
+    const referenceWeight = startingWeight !== null && startingWeight !== undefined ? startingWeight : weights[0];
+    const netChange = current - referenceWeight;
 
     elCurrent.textContent = `${current.toFixed(1)} ${unit}`;
     
@@ -259,9 +257,21 @@ window.WeightDetailController = {
       elChange.className = "";
     }
 
-    elPeak.textContent = `${peak.toFixed(1)} ${unit}`;
-    elFloor.textContent = `${floor.toFixed(1)} ${unit}`;
-    elAvg.textContent = `${avg.toFixed(1)} ${unit}`;
+    // Estimated Timeframe & Goal Date from planner profile data
+    const targetWeight = parseFloat(profile.targetWeight) || 0;
+    const weeklyRate = parseFloat(profile.weeklyRate) || 0;
+    const weightDiff = Math.abs(current - targetWeight);
+    const weeksToGoal = weeklyRate > 0 ? (weightDiff / weeklyRate) : 0;
+
+    if (weeksToGoal > 0) {
+      elTimeframe.textContent = `${weeksToGoal.toFixed(1)} Weeks`;
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + Math.round(weeksToGoal * 7));
+      elGoalDate.textContent = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } else {
+      elTimeframe.textContent = "0 Weeks";
+      elGoalDate.textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
   },
 
   computeRegressionDataset(datesInRange, dateKeys, allWeightLogs) {

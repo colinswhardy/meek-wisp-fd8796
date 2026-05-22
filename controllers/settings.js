@@ -63,6 +63,7 @@ window.SettingsController = {
       "profile-height-ft",
       "profile-height-in",
       "profile-activity",
+      "profile-starting-weight",
       "profile-target-weight",
       "profile-weekly-rate"
     ];
@@ -136,6 +137,7 @@ window.SettingsController = {
         heightFt: 5,
         heightIn: 10,
         activity: "light",
+        startingWeight: null,
         targetWeight: currentUnit === "lbs" ? 170 : 77,
         weeklyRate: currentUnit === "lbs" ? 1.0 : 0.5
       };
@@ -161,6 +163,9 @@ window.SettingsController = {
 
     const targetWtEl = document.getElementById("profile-target-weight");
     if (targetWtEl) targetWtEl.value = profile.targetWeight || (currentUnit === "lbs" ? 170 : 77);
+
+    const startWtEl = document.getElementById("profile-starting-weight");
+    if (startWtEl) startWtEl.value = profile.startingWeight || "";
 
     // Update labels with active unit
     document.querySelectorAll(".planner-unit").forEach(el => {
@@ -230,6 +235,8 @@ window.SettingsController = {
     const activity = document.getElementById("profile-activity").value;
     const targetWeight = parseFloat(document.getElementById("profile-target-weight").value) || 170;
     const weeklyRate = parseFloat(document.getElementById("profile-weekly-rate").value) || 1.0;
+    const startingWeightRaw = document.getElementById("profile-starting-weight").value;
+    const startingWeight = startingWeightRaw ? parseFloat(startingWeightRaw) : null;
 
     const currentUnit = AppState.data.settings.unit;
     const currentWeight = this.getCurrentWeight();
@@ -241,6 +248,7 @@ window.SettingsController = {
       heightFt,
       heightIn,
       activity,
+      startingWeight,
       targetWeight,
       weeklyRate
     };
@@ -422,10 +430,16 @@ window.SettingsController = {
       const profile = AppState.data.profile;
       if (targetUnit === "kg") {
         profile.targetWeight = parseFloat((profile.targetWeight / 2.20462).toFixed(1));
+        if (profile.startingWeight) {
+          profile.startingWeight = parseFloat((profile.startingWeight / 2.20462).toFixed(1));
+        }
         const rateMap = { 0.5: 0.25, 1.0: 0.5, 1.5: 0.75, 2.0: 1.0 };
         profile.weeklyRate = rateMap[profile.weeklyRate] || parseFloat((profile.weeklyRate / 2.20462).toFixed(2));
       } else {
         profile.targetWeight = parseFloat((profile.targetWeight * 2.20462).toFixed(1));
+        if (profile.startingWeight) {
+          profile.startingWeight = parseFloat((profile.startingWeight * 2.20462).toFixed(1));
+        }
         const rateMap = { 0.25: 0.5, 0.5: 1.0, 0.75: 1.5, 1.0: 2.0 };
         profile.weeklyRate = rateMap[profile.weeklyRate] || parseFloat((profile.weeklyRate * 2.20462).toFixed(2));
       }
