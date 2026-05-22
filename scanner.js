@@ -142,6 +142,9 @@ window.BarcodeScannerManager = {
       const stopBtn = document.getElementById(`btn-stop-scan-${context}`);
       if (stopBtn) stopBtn.classList.add("hidden");
       
+      const manualInput = document.getElementById(`manual-barcode-input-${context}`);
+      if (manualInput) manualInput.classList.add("hidden");
+      
       this.transitioning = false;
     }
   }

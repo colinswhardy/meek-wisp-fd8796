@@ -181,7 +181,7 @@
         </div>
 
         <!-- Fallback manual barcode search -->
-        <div class="manual-barcode-input">
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-dashboard">
           <span class="divider-text">OR ENTER MANUALLY</span>
           <div class="input-inline">
             <input type="number" id="manual-barcode-field-dashboard" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
@@ -372,7 +372,7 @@
         </div>
 
         <!-- Fallback manual barcode search -->
-        <div class="manual-barcode-input">
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-food">
           <span class="divider-text">OR ENTER MANUALLY</span>
           <div class="input-inline">
             <input type="number" id="manual-barcode-field-food" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
@@ -1214,13 +1214,13 @@
           </button>
           <button id="btn-stop-scan-recipe" class="btn btn-danger hidden">Stop Camera</button>
           <button id="btn-recipe-history-lookup" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span>From History</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add Ingredient</span>
           </button>
         </div>
 
         <!-- Fallback manual barcode search -->
-        <div class="manual-barcode-input">
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-recipe">
           <span class="divider-text">OR ENTER MANUALLY</span>
           <div class="input-inline">
             <input type="number" id="manual-barcode-field-recipe" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">

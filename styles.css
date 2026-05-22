@@ -2441,9 +2441,10 @@ select:focus {
   border-radius: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   align-items: stretch !important;
   box-shadow: none !important;
+  overflow: hidden !important;
   animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -2458,11 +2459,11 @@ select:focus {
   }
 }
 
-/* Large 75% height dedicated camera viewport */
+/* Large dedicated camera viewport */
 .scanner-activation-card:has(.camera-viewport:not(.hidden)) .camera-viewport {
   width: 100% !important;
   max-width: 100% !important;
-  height: 75vh !important;
+  height: 60vh !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 0 24px 24px !important;
@@ -2482,14 +2483,36 @@ select:focus {
   z-index: 2;
 }
 
-/* Dedicated controls bar filling the remaining 25% height */
+/* Elegant manual input overlay during active camera scan */
+.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 24px 24px 8px 24px !important;
+  background: rgba(2, 4, 10, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input .divider-text {
+  display: none !important;
+}
+
+.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input .input-inline {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* Dedicated controls bar filling the remaining height */
 .scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-controls {
-  height: 25vh !important;
+  flex-grow: 1 !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
   align-items: center !important;
-  padding: 24px !important;
+  padding: 8px 24px 24px 24px !important;
   background: rgba(2, 4, 10, 0.95) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
@@ -2513,9 +2536,170 @@ select:focus {
 
 /* Hide other non-active layout elements during scanner mode */
 .scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-header,
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input,
 .scanner-activation-card:has(.camera-viewport:not(.hidden)) .btn-scan-dashboard,
 .scanner-activation-card:has(.camera-viewport:not(.hidden)) .btn-add-food-small {
   display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Weight History Detail Screen & Zoom/Scroll Controls
+   -------------------------------------------------------------------------- */
+
+/* Clickable main Weight History card */
+#panel-weight .chart-card {
+  cursor: pointer;
+  position: relative;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+#panel-weight .chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.85), 0 0 15px rgba(37, 99, 235, 0.15);
+}
+
+#panel-weight .chart-card::after {
+  content: 'Expand ↗';
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-protein);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  padding: 4px 10px;
+  border-radius: 20px;
+  opacity: 0.85;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+#panel-weight .chart-card:hover::after {
+  opacity: 1;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Detail statistics grid */
+.detail-stats-card {
+  margin-bottom: 5px;
+}
+
+.detail-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.d-stat-box {
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.d-stat-box label {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.d-stat-box span {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.d-stat-box span.loss {
+  color: #10b981;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.d-stat-box span.gain {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+/* Scrollable Detail Chart Container */
+.detail-chart-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 10px 4px;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.detail-chart-container {
+  height: 320px;
+  min-width: 100%;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+/* Zoom Controls Toolbar */
+.zoom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-glass);
+}
+
+.zoom-btn {
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.zoom-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.zoom-btn.btn-fit {
+  border-radius: 12px;
+  width: auto;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.zoom-level-badge {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-protein);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-left: 6px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
