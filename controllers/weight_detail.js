@@ -5,7 +5,7 @@
 
 window.WeightDetailController = {
   chartInstance: null,
-  zoomLevel: 200, // percentage: 100 to 500, default is 200% for a nice detailed timeline
+  zoomLevel: 100, // percentage: default is 100% (shows 6 months of data fitting the screen)
   isInitialized: false,
 
   init() {
@@ -30,7 +30,7 @@ window.WeightDetailController = {
   },
 
   adjustZoom(delta) {
-    const newZoom = Math.min(Math.max(this.zoomLevel + delta, 100), 500);
+    const newZoom = Math.max(this.zoomLevel + delta, 100);
     if (newZoom !== this.zoomLevel) {
       this.zoomLevel = newZoom;
       this.applyZoomAndScroll(true);
@@ -82,17 +82,10 @@ window.WeightDetailController = {
     // Calculate and display historical metrics
     this.renderStats(allWeightLogs, loggedDates, unit);
 
-    // 2. Generate contiguous dates from the earliest logged weight to today (min 30 days)
+    // 2. Generate contiguous dates for the last 90 days (3 months) ending today
     const today = new Date();
-    let startDate = new Date();
-    startDate.setDate(today.getDate() - 30); // Default to last 30 days
-
-    if (loggedDates.length > 0) {
-      const earliestLogged = new Date(loggedDates[0] + "T00:00:00");
-      if (earliestLogged < startDate) {
-        startDate = earliestLogged;
-      }
-    }
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - 90);
 
     const datesInRange = [];
     const currentIter = new Date(startDate);
