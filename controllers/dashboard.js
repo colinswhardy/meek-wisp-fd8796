@@ -58,6 +58,11 @@ window.DashboardController = {
     this.updateMacroRow("protein", eatenProtein, targetProtein);
     this.updateMacroRow("carbs", eatenCarbs, targetCarbs);
     this.updateMacroRow("fats", eatenFats, targetFats);
+
+    // Update Weight Analytics on Dashboard
+    if (window.WeightDetailController) {
+      window.WeightDetailController.renderDashboardStats();
+    }
   },
 
   updateMacroRow(macroName, eaten, target) {
