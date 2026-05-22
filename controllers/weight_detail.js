@@ -20,10 +20,10 @@ window.WeightDetailController = {
     const btnFit = document.getElementById("btn-zoom-fit");
 
     if (btnOut) {
-      btnOut.addEventListener("click", () => this.adjustZoom(-50));
+      btnOut.addEventListener("click", () => this.adjustZoom(-25));
     }
     if (btnIn) {
-      btnIn.addEventListener("click", () => this.adjustZoom(50));
+      btnIn.addEventListener("click", () => this.adjustZoom(25));
     }
     if (btnFit) {
       btnFit.addEventListener("click", () => this.resetZoom());
@@ -53,17 +53,21 @@ window.WeightDetailController = {
   },
 
   adjustZoom(delta) {
-    const newZoom = Math.max(this.zoomLevel + delta, 100);
+    const newZoom = Math.max(10, Math.min(this.zoomLevel + delta, 1000));
     if (newZoom !== this.zoomLevel) {
       this.zoomLevel = newZoom;
       this.applyZoomAndScroll(true);
+      this.updateVisibleYScale();
     }
   },
 
   resetZoom() {
-    if (this.zoomLevel !== 100) {
-      this.zoomLevel = 100;
-      this.applyZoomAndScroll(false); // don't need to scroll to end if it fits the screen
+    const totalDays = this.totalDays || 45;
+    const fitZoom = Math.max(10, Math.round((14 / totalDays) * 100));
+    if (this.zoomLevel !== fitZoom) {
+      this.zoomLevel = fitZoom;
+      this.applyZoomAndScroll(false); // don't scroll to end, just fit all
+      this.updateVisibleYScale();
     }
   },
 
@@ -71,12 +75,26 @@ window.WeightDetailController = {
     const container = document.getElementById("detail-chart-container");
     const badge = document.getElementById("zoom-level-badge");
     const scrollWrapper = document.getElementById("detail-chart-scroll-wrapper");
+    const totalDays = this.totalDays || 45;
+
+    // Default 100% zoom shows exactly 2 weeks (14 days)
+    const widthPercent = Math.max(100, (totalDays / 14) * this.zoomLevel);
 
     if (container) {
-      container.style.width = this.zoomLevel + "%";
+      container.style.width = widthPercent + "%";
     }
     if (badge) {
-      badge.textContent = this.zoomLevel + "%";
+      let badgeText = "";
+      const visibleDays = 1400 / this.zoomLevel;
+      if (visibleDays >= totalDays) {
+        badgeText = "All";
+      } else if (visibleDays >= 7) {
+        const wks = visibleDays / 7;
+        badgeText = Number.isInteger(wks) ? `${wks} Wk${wks > 1 ? "s" : ""}` : `${wks.toFixed(1)} Wk${wks > 1 ? "s" : ""}`;
+      } else {
+        badgeText = `${Math.round(visibleDays)} Day${Math.round(visibleDays) !== 1 ? "s" : ""}`;
+      }
+      badge.textContent = badgeText;
     }
 
     // Tell Chart.js to resize to fill the new container width
@@ -84,15 +102,11 @@ window.WeightDetailController = {
       this.chartInstance.resize();
     }
 
-    // Re-render Y-axis overlay after resize
-    if (this.chartInstance) {
-      setTimeout(() => this.renderYAxisOverlay(), 50);
-    }
-
     // Scroll to the far right (most recent weights) after rendering/scaling
     if (scrollToEnd && scrollWrapper) {
       setTimeout(() => {
         scrollWrapper.scrollLeft = scrollWrapper.scrollWidth - scrollWrapper.clientWidth;
+        this.updateVisibleYScale(); // recalculate Y scale once scroll is positioned
       }, 80);
     }
   },
@@ -135,9 +149,9 @@ window.WeightDetailController = {
 
     const totalDays = datesInRange.length;
 
-    // Set comfortable default zoom when entering this view, so that the density is roughly ~45 days per screen width (100% of wrapper)
+    // Set default zoom to 100% (which corresponds to exactly 14 days/2 weeks visible)
     if (this.isFreshNavigation) {
-      this.zoomLevel = Math.max(100, Math.round((totalDays / 45) * 100));
+      this.zoomLevel = 100;
       this.isFreshNavigation = false;
     }
 
@@ -149,6 +163,9 @@ window.WeightDetailController = {
 
     // 3. Map weight values (null if day skipped)
     const actualWeights = dateKeys.map(key => allWeightLogs[key] || null);
+
+    this.totalDays = totalDays;
+    this.actualWeights = actualWeights;
 
     // 4. Compute Linear Regression dataset coordinates
     const regressionDataset = this.computeRegressionDataset(datesInRange, dateKeys, allWeightLogs);
@@ -250,11 +267,26 @@ window.WeightDetailController = {
       }
     });
 
+    // Bind scroll listener for dynamic Y scaling
+    const scrollWrapper = document.getElementById("detail-chart-scroll-wrapper");
+    if (scrollWrapper) {
+      let scrollTimeout = null;
+      scrollWrapper.onscroll = () => {
+        if (!this.chartInstance) return;
+        if (scrollTimeout) {
+          cancelAnimationFrame(scrollTimeout);
+        }
+        scrollTimeout = requestAnimationFrame(() => {
+          this.updateVisibleYScale();
+        });
+      };
+    }
+
     // 6. Apply Current Zoom and automatically scroll to the most recent data
     this.applyZoomAndScroll(this.zoomLevel !== 100);
 
-    // 7. Draw the sticky Y-axis overlay
-    setTimeout(() => this.renderYAxisOverlay(), 80);
+    // 7. Initial visible Y scale and overlay rendering
+    this.updateVisibleYScale();
   },
 
   /**
@@ -306,36 +338,43 @@ window.WeightDetailController = {
    * Renders the sticky Y-axis overlay canvas to the left of the scrolling chart.
    * Reads scale state from the main chartInstance.
    */
-  renderYAxisOverlay() {
+  renderYAxisOverlay(forcedMin = null, forcedMax = null) {
     const mainChart = this.chartInstance;
     const overlayCanvas = document.getElementById("weightDetailYAxis");
     if (!mainChart || !overlayCanvas) return;
 
-    // Get the chart area and Y scale from the main chart
-    // Since the Y axis is hidden on the main chart, we need to derive min/max from its data
-    const datasets = mainChart.data.datasets;
-    let minVal = Infinity, maxVal = -Infinity;
-    datasets.forEach(ds => {
-      ds.data.forEach(v => {
-        if (v !== null && v !== undefined) {
-          if (v < minVal) minVal = v;
-          if (v > maxVal) maxVal = v;
-        }
-      });
-    });
-    if (minVal === Infinity) { minVal = 0; maxVal = 100; }
+    let minVal, maxVal;
+    if (forcedMin !== null && forcedMax !== null) {
+      minVal = forcedMin;
+      maxVal = forcedMax;
+    } else {
+      if (mainChart.options.scales.y.min !== undefined && mainChart.options.scales.y.max !== undefined) {
+        minVal = mainChart.options.scales.y.min;
+        maxVal = mainChart.options.scales.y.max;
+      } else {
+        const datasets = mainChart.data.datasets;
+        let dMin = Infinity, dMax = -Infinity;
+        datasets.forEach(ds => {
+          ds.data.forEach(v => {
+            if (v !== null && v !== undefined) {
+              if (v < dMin) dMin = v;
+              if (v > dMax) dMax = v;
+            }
+          });
+        });
+        if (dMin === Infinity) { dMin = 0; dMax = 100; }
+        const range = dMax - dMin || 1;
+        const pad = range * 0.1;
+        minVal = dMin - pad;
+        maxVal = dMax + pad;
+      }
+    }
 
-    // Add a small padding to min/max so points aren't clipped at the edge
-    const range = maxVal - minVal || 1;
-    const pad = range * 0.1;
-    minVal = minVal - pad;
-    maxVal = maxVal + pad;
-
-    // Nice tick generation
+    // Nice tick generation based on minVal and maxVal
     const nTicks = 5;
     const rawStep = (maxVal - minVal) / nTicks;
     const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const step = Math.ceil(rawStep / magnitude) * magnitude;
+    const step = Math.ceil(rawStep / magnitude) * magnitude || 1;
     const tickMin = Math.floor(minVal / step) * step;
     const ticks = [];
     for (let t = tickMin; t <= maxVal + step * 0.01; t += step) {
@@ -392,6 +431,74 @@ window.WeightDetailController = {
     ctx.restore();
   },
 
+  updateVisibleYScale() {
+    const scrollWrapper = document.getElementById("detail-chart-scroll-wrapper");
+    const container = document.getElementById("detail-chart-container");
+    if (!scrollWrapper || !container || !this.chartInstance || !this.actualWeights) return;
+
+    const scrollLeft = scrollWrapper.scrollLeft;
+    const clientWidth = scrollWrapper.clientWidth;
+    const scrollWidth = scrollWrapper.scrollWidth || container.offsetWidth;
+    const totalDays = this.totalDays || this.actualWeights.length;
+
+    if (scrollWidth <= 0 || totalDays <= 0) return;
+
+    // Convert scroll position to data indices (add 1 day padding on each side)
+    const startIndex = Math.max(0, Math.floor((scrollLeft / scrollWidth) * totalDays) - 1);
+    const endIndex = Math.min(totalDays - 1, Math.ceil(((scrollLeft + clientWidth) / scrollWidth) * totalDays) + 1);
+
+    const visibleWeights = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+      const w = this.actualWeights[i];
+      if (w !== null && w !== undefined) {
+        visibleWeights.push(w);
+      }
+    }
+
+    // Also include trendline values in the visible range to avoid clipping
+    const trendlineDataset = this.chartInstance.data.datasets[1];
+    if (trendlineDataset && trendlineDataset.data) {
+      for (let i = startIndex; i <= endIndex; i++) {
+        const val = trendlineDataset.data[i];
+        if (val !== null && val !== undefined) {
+          visibleWeights.push(val);
+        }
+      }
+    }
+
+    let minVal, maxVal;
+    if (visibleWeights.length > 0) {
+      minVal = Math.min(...visibleWeights);
+      maxVal = Math.max(...visibleWeights);
+    } else {
+      const allLogged = this.actualWeights.filter(w => w !== null && w !== undefined);
+      if (allLogged.length > 0) {
+        minVal = Math.min(...allLogged);
+        maxVal = Math.max(...allLogged);
+      } else {
+        minVal = AppState.data.settings.unit === "lbs" ? 100 : 45;
+        maxVal = AppState.data.settings.unit === "lbs" ? 200 : 90;
+      }
+    }
+
+    // Add padding (15% of range, minimum 0.5 unit padding so weights aren't tightly bunched)
+    const range = maxVal - minVal;
+    let pad = 0.5;
+    if (range > 0) {
+      pad = Math.max(0.5, range * 0.15);
+    }
+    minVal = minVal - pad;
+    maxVal = maxVal + pad;
+
+    // Update Chart.js scale
+    this.chartInstance.options.scales.y.min = parseFloat(minVal.toFixed(1));
+    this.chartInstance.options.scales.y.max = parseFloat(maxVal.toFixed(1));
+    this.chartInstance.update("none");
+
+    // Redraw sticky Y-axis ticks overlay
+    this.renderYAxisOverlay(minVal, maxVal);
+  },
+
   toggleFullscreen() {
     const panel = document.getElementById("panel-weight-history-detail");
     const btnBack = document.querySelector("#panel-weight-history-detail .subpage-header");
@@ -431,7 +538,7 @@ window.WeightDetailController = {
     setTimeout(() => {
       if (this.chartInstance) this.chartInstance.resize();
       this.applyZoomAndScroll(true);
-      this.renderYAxisOverlay();
+      this.updateVisibleYScale();
     }, 100);
   },
 
