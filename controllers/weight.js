@@ -79,7 +79,7 @@ window.WeightController = {
 
     if (inputField && statusBox && statusText) {
       if (loggedVal !== null) {
-        inputField.value = loggedVal.toFixed(1);
+        // Show logged confirmation status — don't pre-fill the input
         statusBox.classList.add("active");
         statusText.innerHTML = `Logged weight for today: <strong>${loggedVal.toFixed(1)} ${unit}</strong>`;
       } else {
@@ -106,6 +106,9 @@ window.WeightController = {
 
     AppState.data.weights[dateKey] = cleanedWeight;
     AppState.saveToStorage();
+    
+    // Clear the input field immediately after logging
+    document.getElementById("weight-input").value = "";
     
     this.render();
     

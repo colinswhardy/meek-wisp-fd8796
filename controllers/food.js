@@ -4,6 +4,8 @@
  */
 
 window.FoodController = {
+  _scrollHandler: null,
+
   render() {
     const dateKey = AppState.selectedDateISO;
     const meals = AppState.data.meals[dateKey] || [];
@@ -13,6 +15,33 @@ window.FoodController = {
     
     // 2. Render 7-day calorie history list
     this.renderCalorieHistory();
+
+    // 3. Set up floating scanner scroll behaviour
+    this.initFloatingScanner();
+  },
+
+  initFloatingScanner() {
+    const viewport = document.querySelector('.app-viewport');
+    const floatCard = document.getElementById('scanner-view-container-food');
+    if (!viewport || !floatCard) return;
+
+    // Remove any previous listener
+    if (this._scrollHandler) {
+      viewport.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = null;
+    }
+
+    this._scrollHandler = () => {
+      if (viewport.scrollTop > 10) {
+        floatCard.classList.add('scanner-float--hidden');
+      } else {
+        floatCard.classList.remove('scanner-float--hidden');
+      }
+    };
+
+    viewport.addEventListener('scroll', this._scrollHandler, { passive: true });
+    // Ensure correct initial state
+    floatCard.classList.remove('scanner-float--hidden');
   },
 
   renderMealList(meals) {

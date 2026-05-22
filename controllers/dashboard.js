@@ -36,50 +36,22 @@ window.DashboardController = {
     remainingEl.textContent = Math.abs(Math.round(remainingKcal)).toLocaleString();
     if (remainingKcal < 0) {
       remainingEl.classList.add("color-danger");
-      const statLbl = remainingEl.parentElement.querySelector(".stat-lbl");
+      const statLbl = document.getElementById("lbl-calories-remaining");
       if (statLbl) statLbl.textContent = "Surplus";
     } else {
       remainingEl.classList.remove("color-danger");
-      const statLbl = remainingEl.parentElement.querySelector(".stat-lbl");
+      const statLbl = document.getElementById("lbl-calories-remaining");
       if (statLbl) statLbl.textContent = "Remaining";
     }
 
     const pctVal = targetCalories > 0 ? Math.round((eatenKcal / targetCalories) * 100) : 0;
     document.getElementById("val-burn-status").textContent = `${pctVal}%`;
 
-    // Animate circular progress ring
-    const ring = document.getElementById("calorie-progress-ring");
-    if (ring) {
-      const strokeDash = 251.2; // 2 * PI * r (40)
-      let offset = strokeDash;
-      
-      if (targetCalories > 0) {
-        const clampedPct = Math.min(eatenKcal / targetCalories, 1.0);
-        offset = strokeDash - (strokeDash * clampedPct);
-      }
-      ring.style.strokeDashoffset = offset;
-    }
-
-    // Show/hide high calorie day re-feed badge with silver-gray formatting
-    let badgeEl = document.getElementById("refeed-badge");
-    if (!badgeEl) {
-      badgeEl = document.createElement("div");
-      badgeEl.id = "refeed-badge";
-      badgeEl.className = "refeed-badge";
-      const container = document.querySelector(".circular-progress-container");
-      if (container) {
-        container.parentNode.insertBefore(badgeEl, container.nextSibling);
-      }
-    }
-    
-    if (goals.isHighCalorieDay && badgeEl) {
-      const text = goals.surplusType === "percent" 
-        ? `${goals.surplusValue}% re-feed day` 
-        : `${goals.surplusValue} kcal re-feed day`;
-      badgeEl.textContent = text;
-      badgeEl.classList.remove("hidden");
-    } else if (badgeEl) {
-      badgeEl.classList.add("hidden");
+    // Animate calorie bar
+    const calBar = document.getElementById("bar-calories");
+    if (calBar) {
+      const pct = targetCalories > 0 ? Math.min((eatenKcal / targetCalories) * 100, 100) : 0;
+      calBar.style.width = `${pct}%`;
     }
 
     // Macro Progress Bars
