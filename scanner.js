@@ -59,6 +59,12 @@ window.BarcodeScannerManager = {
 
       this.isScanning = true;
 
+      // Add active-scanning class to container
+      const container = document.getElementById(`scanner-view-container-${context}`);
+      if (container) {
+        container.classList.add("active-scanning");
+      }
+
       // Start camera feed (defaults to rear camera via facingMode: environment)
       await this.html5QrcodeInstance.start(
         { facingMode: "environment" },
@@ -81,6 +87,12 @@ window.BarcodeScannerManager = {
       this.isScanning = false;
       this.activeContext = null;
       scannerEl.classList.add("hidden");
+
+      // Remove active-scanning class on startup failure
+      const container = document.getElementById(`scanner-view-container-${context}`);
+      if (container) {
+        container.classList.remove("active-scanning");
+      }
       
       // Clean DOM nodes on error to prevent leaks
       try {
@@ -124,6 +136,12 @@ window.BarcodeScannerManager = {
       this.html5QrcodeInstance = null;
       this.isScanning = false;
       this.activeContext = null;
+
+      // Remove active-scanning class on stop or cleanup
+      const container = document.getElementById(`scanner-view-container-${context}`);
+      if (container) {
+        container.classList.remove("active-scanning");
+      }
       
       const scannerEl = document.getElementById(`camera-scanner-${context}`);
       if (scannerEl) {

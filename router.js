@@ -116,6 +116,13 @@ window.appRouter = {
       }
     }
 
+    // Reset weight history controller's fresh navigation flag to recalibrate comfortable zoom
+    if (tabName === "weight_history_detail" && previousTab !== "weight_history_detail") {
+      if (window.WeightDetailController) {
+        window.WeightDetailController.isFreshNavigation = true;
+      }
+    }
+
     // Save scroll position of the outgoing panel (handles both window-level and viewport-level scrolling)
     const viewport = document.querySelector(".app-viewport");
     const scrollTop = window.scrollY || document.documentElement.scrollTop || (viewport ? viewport.scrollTop : 0);
