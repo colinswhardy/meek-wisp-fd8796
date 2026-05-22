@@ -191,9 +191,9 @@ window.ScannerViewController = {
       document.getElementById(`preview-100g-carbs-${context}`).textContent = product.nutrients.carbs;
       document.getElementById(`preview-100g-fats-${context}`).textContent = product.nutrients.fats;
 
-      // Set standard weight scale to 100g
+      // Set standard weight scale to blank
       const wtInput = document.getElementById(`food-weight-input-${context}`);
-      if (wtInput) wtInput.value = 100;
+      if (wtInput) wtInput.value = "";
       this.updateScaledMacros(context);
 
       // Hide not found card if visible

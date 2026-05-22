@@ -442,7 +442,7 @@ window.FoodSelectorController = {
       if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight in Recipe (grams)" : "Weight Eaten (grams)";
       if (weightUnit) weightUnit.textContent = "g";
       if (weightInput) {
-        weightInput.value = 100;
+        weightInput.value = "";
         weightInput.step = "1";
         weightInput.min = "0.1";
       }
@@ -456,8 +456,8 @@ window.FoodSelectorController = {
       clickedEl.after(previewCard);
       previewCard.classList.remove("hidden");
       
-      // Smooth scroll the clicked element and its preview card into view nicely
-      clickedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Instant jump/scroll the clicked element to the top of the screen
+      clickedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
     }
   },
 
