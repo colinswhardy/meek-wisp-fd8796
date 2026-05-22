@@ -3,7 +3,7 @@
  * Manages Chart.js rendering and least-squares linear regression modeling.
  */
 
-export const WeightChartManager = {
+window.WeightChartManager = {
   chartInstance: null,
 
   /**

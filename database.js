@@ -3,7 +3,7 @@
  * Handles barcode metadata searches and nutrient extraction.
  */
 
-export const FoodDatabase = {
+window.FoodDatabase = {
   /**
    * Fetches product information by barcode from Open Food Facts API v2.
    * @param {string} barcode Barcode EAN/UPC digit sequence

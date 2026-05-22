@@ -3,17 +3,7 @@
  * Manages view transition layers, navbar states, browser History navigation, and stream safety.
  */
 
-import { AppState } from "./state.js";
-import { BarcodeScannerManager } from "./scanner.js";
-import { DashboardController } from "./controllers/dashboard.js";
-import { FoodController } from "./controllers/food.js";
-import { WeightController } from "./controllers/weight.js";
-import { StrategyController } from "./controllers/strategy.js";
-import { SettingsController } from "./controllers/settings.js";
-import { RecipeBuilderController } from "./controllers/recipe.js";
-import { FoodSelectorController } from "./controllers/food_selector.js";
-
-export const appRouter = {
+window.appRouter = {
   panels: {},
   navItems: [],
 

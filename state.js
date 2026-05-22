@@ -3,7 +3,7 @@
  * Manages user preference syncing, local storage deep merges, and daily goal/log requests.
  */
 
-export const AppState = {
+window.AppState = {
   storageKey: "colins_charts_macros_user_data_v1",
   
   // Default Initialized State

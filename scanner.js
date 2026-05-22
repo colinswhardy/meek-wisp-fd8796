@@ -3,7 +3,7 @@
  * Controls mobile camera scanner instances utilizing html5-qrcode.
  */
 
-export const BarcodeScannerManager = {
+window.BarcodeScannerManager = {
   html5QrcodeInstance: null,
   isScanning: false,
   activeContext: null, // "dashboard", "food", or "recipe"

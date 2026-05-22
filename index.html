@@ -1410,7 +1410,107 @@
     <span id="toast-message">Success! Settings saved.</span>
   </div>
 
-  <!-- Application Modules -->
-  <script type="module" src="app.js"></script>
+  <!-- Inline Sync Error Boundary for Modules -->
+  <script>
+    (function() {
+      const showCrashAlert = (name, err) => {
+        let errorBox = document.getElementById("crash-error-banner");
+        if (!errorBox) {
+          errorBox = document.createElement("div");
+          errorBox.id = "crash-error-banner";
+          errorBox.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: rgba(220, 53, 69, 0.98); color: #fff; padding: 20px; z-index: 100000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; border-bottom: 3px solid #b21f2d; text-shadow: 0 1px 2px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 25px rgba(0,0,0,0.6);";
+          
+          const closeBtn = document.createElement("button");
+          closeBtn.textContent = "✕";
+          closeBtn.style.cssText = "float: right; background: none; border: none; color: white; font-size: 26px; cursor: pointer; margin-left: 20px; font-weight: bold; line-height: 1;";
+          closeBtn.onclick = () => errorBox.remove();
+          
+          errorBox.appendChild(closeBtn);
+          const title = document.createElement("strong");
+          title.textContent = name;
+          title.style.display = "block";
+          title.style.fontSize = "16px";
+          title.style.marginBottom = "8px";
+          errorBox.appendChild(title);
+          
+          document.body.prepend(errorBox);
+        }
+        const errorMsg = document.createElement("div");
+        errorMsg.textContent = (err.message || err) + "\n" + (err.stack || "");
+        errorMsg.style.whiteSpace = "pre-wrap";
+        errorMsg.style.marginTop = "8px";
+        errorMsg.style.fontFamily = "monospace";
+        errorMsg.style.fontSize = "13px";
+        errorMsg.style.background = "rgba(0,0,0,0.2)";
+        errorMsg.style.padding = "10px";
+        errorMsg.style.borderRadius = "5px";
+        errorBox.appendChild(errorMsg);
+      };
+
+      // 1. Check if running locally via file:// protocol
+      if (window.location.protocol === "file:") {
+        console.log("[Info] Running locally via file:// protocol.");
+        
+        // Show a helpful, dismissible top banner that doesn't block interaction
+        setTimeout(() => {
+          let infoBox = document.getElementById("file-protocol-tip");
+          if (!infoBox) {
+            infoBox = document.createElement("div");
+            infoBox.id = "file-protocol-tip";
+            infoBox.style.cssText = "background: rgba(13, 110, 253, 0.95); color: #fff; padding: 12px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; text-align: center; border-bottom: 2px solid #0a58ca; z-index: 9999; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.3); line-height: 1.5;";
+            
+            const closeBtn = document.createElement("button");
+            closeBtn.textContent = "✕";
+            closeBtn.style.cssText = "float: right; background: none; border: none; color: white; font-size: 16px; cursor: pointer; font-weight: bold; margin-left: 15px; line-height: 1;";
+            closeBtn.onclick = () => infoBox.remove();
+            
+            infoBox.appendChild(closeBtn);
+            const textSpan = document.createElement("span");
+            textSpan.innerHTML = "💡 <strong>Direct Explorer Launch Active:</strong> You can double-click this app anytime! All manual lookups, custom food logs, weight entries, calorie cycling, and charts work perfectly. <em>(Camera barcode scanning requires running the server via server.ps1 due to browser camera security policies).</em>";
+            infoBox.appendChild(textSpan);
+            
+            document.body.prepend(infoBox);
+          }
+        }, 1000);
+      }
+
+      // 2. Use capturing phase error listener (3rd argument true) to capture script/resource load errors
+      window.addEventListener("error", function(event) {
+        if (event.target && (event.target.tagName === "SCRIPT" || event.target.tagName === "LINK")) {
+          const src = event.target.src || event.target.href || "unknown source";
+          showCrashAlert(
+            "⚠️ Critical Resource Load Failure",
+            "Failed to load: " + src + "\n\nThis can happen if a script file is missing, name-mismatched, or deleted. Please check if the file exists in the directory."
+          );
+        } else {
+          // Standard JavaScript exceptions
+          showCrashAlert("⚠️ Uncaught Application Error", event.error || event.message);
+        }
+      }, true);
+
+      window.addEventListener("unhandledrejection", function(event) {
+        showCrashAlert("⚠️ Unhandled Promise Rejection", event.reason);
+      });
+
+      console.log("[Diagnostics] Advanced Capturing Error Boundary & Protocol Guard registered.");
+    })();
+  </script>
+
+  <!-- Application Scripts (Non-module standard scripts to allow double-clicking file:// directly) -->
+  <script src="state.js?v=8"></script>
+  <script src="database.js?v=8"></script>
+  <script src="scanner.js?v=8"></script>
+  <script src="charts.js?v=8"></script>
+  <script src="controllers/calendar.js?v=8"></script>
+  <script src="controllers/dashboard.js?v=8"></script>
+  <script src="controllers/food.js?v=8"></script>
+  <script src="controllers/food_selector.js?v=8"></script>
+  <script src="controllers/recipe.js?v=8"></script>
+  <script src="controllers/settings.js?v=8"></script>
+  <script src="controllers/strategy.js?v=8"></script>
+  <script src="controllers/weight.js?v=8"></script>
+  <script src="controllers/scanner_view.js?v=8"></script>
+  <script src="router.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
