@@ -2438,7 +2438,7 @@ select:focus {
 }
 
 /* Immersive Full-Screen Barcode Scanner Modal View */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) {
+.scanner-activation-card.active-scanning {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -2471,7 +2471,7 @@ select:focus {
 }
 
 /* Large dedicated camera viewport */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .camera-viewport {
+.scanner-activation-card.active-scanning .camera-viewport {
   width: 100% !important;
   max-width: 100% !important;
   height: 60vh !important;
@@ -2483,19 +2483,19 @@ select:focus {
 }
 
 /* Ensure video stream scales to cover the viewport perfectly */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .camera-viewport video {
+.scanner-activation-card.active-scanning .camera-viewport video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
 }
 
 /* Elevated target targeting box on the full-screen camera stream */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .camera-viewport::after {
+.scanner-activation-card.active-scanning .camera-viewport::after {
   z-index: 2;
 }
 
 /* Elegant manual input overlay during active camera scan */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input {
+.scanner-activation-card.active-scanning .manual-barcode-input {
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
@@ -2507,17 +2507,17 @@ select:focus {
   box-sizing: border-box !important;
 }
 
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input .divider-text {
+.scanner-activation-card.active-scanning .manual-barcode-input .divider-text {
   display: none !important;
 }
 
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .manual-barcode-input .input-inline {
+.scanner-activation-card.active-scanning .manual-barcode-input .input-inline {
   max-width: 320px;
   margin: 0 auto;
 }
 
 /* Dedicated controls bar filling the remaining height */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-controls {
+.scanner-activation-card.active-scanning .scanner-controls {
   flex-grow: 1 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -2531,9 +2531,9 @@ select:focus {
 }
 
 /* Clean exit / Stop Camera button display */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-controls #btn-stop-scan-dashboard,
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-controls #btn-stop-scan-food,
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-controls #btn-stop-scan-recipe {
+.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-dashboard,
+.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-food,
+.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-recipe {
   width: 100% !important;
   max-width: 280px !important;
   margin: 0 auto !important;
@@ -2546,9 +2546,9 @@ select:focus {
 }
 
 /* Hide other non-active layout elements during scanner mode */
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .scanner-header,
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .btn-scan-dashboard,
-.scanner-activation-card:has(.camera-viewport:not(.hidden)) .btn-add-food-small {
+.scanner-activation-card.active-scanning .scanner-header,
+.scanner-activation-card.active-scanning .btn-scan-dashboard,
+.scanner-activation-card.active-scanning .btn-add-food-small {
   display: none !important;
 }
 
@@ -2935,4 +2935,142 @@ select:focus {
   background: rgba(37, 99, 235, 0.15) !important;
   border-color: rgba(37, 99, 235, 0.5) !important;
   box-shadow: 0 0 15px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* ==========================================================================
+   Dashboard Floating / Persistent Barcode Scanner & Add Food Button
+   ========================================================================== */
+
+/* Persistent/Floating Barcode Scanner Container (Dashboard Tab) */
+#scanner-view-container-dashboard:not(.active-scanning) {
+  position: fixed !important;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important; /* Float right above tabs */
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: calc(100% - 32px) !important;
+  max-width: 428px !important;
+  z-index: 90 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 44px !important; /* Sleek, thin bar (thinner than tabs) */
+  background: rgba(10, 15, 30, 0.85) !important; /* Premium dark blue-sapphire glass */
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 30px !important; /* Capsule shape */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  overflow: hidden !important; /* Clips child hover borders */
+}
+
+/* Hide header on the dashboard in the persistent state */
+#scanner-view-container-dashboard:not(.active-scanning) .scanner-header {
+  display: none !important;
+}
+
+/* Force flex alignment inside the persistent container */
+#scanner-view-container-dashboard:not(.active-scanning) .scanner-controls {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  gap: 0 !important;
+  margin: 0 !important;
+}
+
+/* Left Section - Scan Barcode Button */
+.btn-scan-dashboard-pill {
+  flex: 1 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important; /* Vertical separator */
+  border-radius: 0 !important;
+  padding: 0 12px !important;
+  color: var(--color-text-secondary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all var(--transition-fast) !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.btn-scan-dashboard-pill .pill-search-icon {
+  color: var(--color-text-secondary) !important;
+  margin-right: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.btn-scan-dashboard-pill .pill-text {
+  font-family: var(--font-body) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  color: var(--color-text-secondary) !important;
+  flex-grow: 0 !important;
+  text-align: center !important;
+  letter-spacing: -0.1px !important;
+}
+
+.btn-scan-dashboard-pill .pill-barcode-icon {
+  color: var(--color-text-secondary) !important;
+  margin-left: 4px !important;
+  flex-shrink: 0 !important;
+  opacity: 0.85 !important;
+}
+
+/* Right Section - Add Food Button */
+.btn-add-food-pill {
+  flex: 1 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 12px !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all var(--transition-fast) !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.btn-add-food-pill .pill-add-icon {
+  color: var(--color-text-primary) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Hover and Press interactions for both sections */
+.btn-scan-dashboard-pill:hover,
+.btn-add-food-pill:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.btn-scan-dashboard-pill:active,
+.btn-add-food-pill:active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: scale(0.98) !important;
+}
+
+/* Hide controls in active fullscreen camera view */
+.scanner-activation-card.active-scanning .btn-scan-dashboard-pill,
+.scanner-activation-card.active-scanning .btn-add-food-pill {
+  display: none !important;
+}
+
+/* Extra padding to prevent scrolling overlap on the Dashboard tab */
+#panel-dashboard {
+  padding-bottom: 140px !important;
 }
