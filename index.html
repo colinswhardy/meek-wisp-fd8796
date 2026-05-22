@@ -1452,10 +1452,15 @@
           </div>
         </div>
 
-        <!-- Horizontal scroll wrapper -->
-        <div class="detail-chart-scroll-wrapper" id="detail-chart-scroll-wrapper">
-          <div class="detail-chart-container" id="detail-chart-container">
-            <canvas id="weightDetailChart"></canvas>
+        <!-- Chart layout: sticky Y-axis + scrollable data -->
+        <div class="detail-chart-layout">
+          <!-- Sticky Y-axis overlay canvas -->
+          <canvas id="weightDetailYAxis" class="detail-yaxis-canvas"></canvas>
+          <!-- Horizontal scroll wrapper -->
+          <div class="detail-chart-scroll-wrapper" id="detail-chart-scroll-wrapper">
+            <div class="detail-chart-container" id="detail-chart-container">
+              <canvas id="weightDetailChart"></canvas>
+            </div>
           </div>
         </div>
 
