@@ -17,12 +17,13 @@ window.WeightChartManager = {
     if (!canvas) return;
 
     // 1. Generate 7-day range ending at the selected date
-    const targetDate = new Date(selectedDateISO + "T00:00:00");
+    const targetDate = new Date(selectedDateISO + "T12:00:00");
     const datesInRange = [];
     
     for (let i = 6; i >= 0; i--) {
       const d = new Date(targetDate);
       d.setDate(targetDate.getDate() - i);
+      d.setHours(12, 0, 0, 0); // Guarantee DST/timezone shift immunity
       datesInRange.push(d);
     }
 
@@ -31,7 +32,7 @@ window.WeightChartManager = {
 
     // Get display labels e.g. "May 14"
     const displayLabels = datesInRange.map(d => {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     });
 
     // 2. Map weight values (null if not logged)
