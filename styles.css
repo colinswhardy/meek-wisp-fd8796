@@ -1953,6 +1953,7 @@ select:focus {
   align-items: flex-start !important;
   justify-content: flex-start !important;
   gap: 4px !important;
+  scroll-margin-top: 75px !important;
 }
 
 .clickable-selector-item .meal-info {
@@ -2131,6 +2132,8 @@ select:focus {
 
 .weight-input-container input:focus {
   outline: none;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .weight-input-container .weight-unit {

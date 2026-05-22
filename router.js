@@ -6,8 +6,18 @@
 window.appRouter = {
   panels: {},
   navItems: [],
+  scrollPositions: {},
+  lastActivePanelByTab: {},
 
   init() {
+    this.scrollPositions = {};
+    this.lastActivePanelByTab = {
+      dashboard: "dashboard",
+      food: "food",
+      weight: "weight",
+      strategy: "strategy"
+    };
+
     this.panels = {
       dashboard: document.getElementById("panel-dashboard"),
       food: document.getElementById("panel-food"),
@@ -24,7 +34,18 @@ window.appRouter = {
     this.navItems.forEach((btn) => {
       btn.addEventListener("click", () => {
         const tab = btn.getAttribute("data-tab");
-        this.navigate(tab);
+        const activeNavTab = this.getNavbarTabForPanel(AppState.activeTab);
+        
+        if (activeNavTab === tab) {
+          // Re-clicked the currently active tab button: reset its root scroll to 0 and navigate there
+          const rootPanel = tab;
+          this.scrollPositions[rootPanel] = 0;
+          this.navigate(rootPanel);
+        } else {
+          // Clicked a different tab button: restore last active sub-panel in that group
+          const targetPanel = this.lastActivePanelByTab[tab] || tab;
+          this.navigate(targetPanel);
+        }
       });
     });
 
@@ -38,6 +59,43 @@ window.appRouter = {
     history.replaceState({ tab: "dashboard" }, "", "#dashboard");
   },
 
+  getNavbarTabForPanel(panelName) {
+    if (panelName === "dashboard" || panelName === "settings") {
+      return "dashboard";
+    }
+    if (panelName === "food" || panelName === "add_recipe" || panelName === "food_selector") {
+      return "food";
+    }
+    if (panelName === "weight" || panelName === "weight_planner" || panelName === "weight_budgets") {
+      return "weight";
+    }
+    if (panelName === "strategy") {
+      return "strategy";
+    }
+    return null;
+  },
+
+  isBackNavigation(previousTab, tabName, pushState) {
+    if (!pushState) return true; // browser popstate / back gestures
+
+    const parentOf = {
+      settings: "dashboard",
+      add_recipe: "food",
+      weight_planner: "strategy",
+      weight_budgets: "strategy"
+    };
+
+    if (parentOf[previousTab] === tabName) {
+      return true;
+    }
+
+    if (previousTab === "food_selector" && (tabName === "food" || tabName === "add_recipe")) {
+      return true;
+    }
+
+    return false;
+  },
+
   navigate(tabName, pushState = true) {
     if (!this.panels[tabName]) return;
     
@@ -47,7 +105,26 @@ window.appRouter = {
     }
 
     const previousTab = AppState.activeTab;
+    const targetGroup = this.getNavbarTabForPanel(tabName);
+
+    // Save scroll position of the outgoing panel
+    const viewport = document.querySelector(".app-viewport");
+    if (viewport && previousTab) {
+      this.scrollPositions[previousTab] = viewport.scrollTop;
+    }
+
+    // Reset scroll of incoming panel if this is a back navigation
+    const isBack = this.isBackNavigation(previousTab, tabName, pushState);
+    if (isBack) {
+      this.scrollPositions[tabName] = 0;
+    }
+
     AppState.activeTab = tabName;
+
+    // Update last active panel under the target group
+    if (targetGroup) {
+      this.lastActivePanelByTab[targetGroup] = tabName;
+    }
 
     // Toggle panels
     Object.keys(this.panels).forEach((key) => {
@@ -78,6 +155,16 @@ window.appRouter = {
 
     // Render contents specific to active tabs
     this.refreshCurrentView();
+
+    // Restore scroll position instantly
+    if (viewport) {
+      const targetScrollTop = this.scrollPositions[tabName] || 0;
+      const originalScrollBehavior = viewport.style.scrollBehavior;
+      viewport.style.scrollBehavior = "auto";
+      viewport.scrollTop = targetScrollTop;
+      viewport.offsetHeight; // force synchronous reflow to ensure instant scroll is rendered
+      viewport.style.scrollBehavior = originalScrollBehavior;
+    }
   },
 
   refreshCurrentView() {
