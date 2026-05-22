@@ -29,6 +29,12 @@ window.WeightDetailController = {
       btnFit.addEventListener("click", () => this.resetZoom());
     }
 
+    // Bind Wipe All Weights button
+    const btnWipe = document.getElementById("btn-wipe-all-weights");
+    if (btnWipe) {
+      btnWipe.addEventListener("click", () => this.confirmWipeAllWeights());
+    }
+
     this.isInitialized = true;
 
     // Fullscreen button
@@ -53,7 +59,19 @@ window.WeightDetailController = {
   },
 
   adjustZoom(delta) {
-    const newZoom = Math.max(10, Math.min(this.zoomLevel + delta, 1000));
+    // Dynamic step based on zoom level: if high, step is larger (e.g. 50 or 100), if low, step is smaller
+    let step = 25;
+    if (this.zoomLevel >= 1000) {
+      step = 250;
+    } else if (this.zoomLevel >= 500) {
+      step = 100;
+    } else if (this.zoomLevel >= 200) {
+      step = 50;
+    } else if (this.zoomLevel <= 25) {
+      step = 5;
+    }
+    const realDelta = delta > 0 ? step : -step;
+    const newZoom = Math.max(5, Math.min(this.zoomLevel + realDelta, 3000));
     if (newZoom !== this.zoomLevel) {
       this.zoomLevel = newZoom;
       this.applyZoomAndScroll(true);
@@ -62,8 +80,8 @@ window.WeightDetailController = {
   },
 
   resetZoom() {
-    const totalDays = this.totalDays || 45;
-    const fitZoom = Math.max(10, Math.round((14 / totalDays) * 100));
+    const totalDays = this.totalDays || 14;
+    const fitZoom = Math.max(5, Math.round((14 / totalDays) * 100));
     if (this.zoomLevel !== fitZoom) {
       this.zoomLevel = fitZoom;
       this.applyZoomAndScroll(false); // don't scroll to end, just fit all
@@ -75,10 +93,17 @@ window.WeightDetailController = {
     const container = document.getElementById("detail-chart-container");
     const badge = document.getElementById("zoom-level-badge");
     const scrollWrapper = document.getElementById("detail-chart-scroll-wrapper");
-    const totalDays = this.totalDays || 45;
+    const totalDays = this.totalDays || 14;
 
     // Default 100% zoom shows exactly 2 weeks (14 days)
-    const widthPercent = Math.max(100, (totalDays / 14) * this.zoomLevel);
+    let widthPercent = (totalDays / 14) * this.zoomLevel;
+    if (widthPercent < 100) {
+      widthPercent = 100;
+    }
+    // Safe GPU limit: maximum 1500% of viewport width to avoid Canvas memory crash on mobile devices
+    if (widthPercent > 1500) {
+      widthPercent = 1500;
+    }
 
     if (container) {
       container.style.width = widthPercent + "%";
@@ -91,8 +116,10 @@ window.WeightDetailController = {
       } else if (visibleDays >= 7) {
         const wks = visibleDays / 7;
         badgeText = Number.isInteger(wks) ? `${wks} Wk${wks > 1 ? "s" : ""}` : `${wks.toFixed(1)} Wk${wks > 1 ? "s" : ""}`;
-      } else {
+      } else if (visibleDays >= 1) {
         badgeText = `${Math.round(visibleDays)} Day${Math.round(visibleDays) !== 1 ? "s" : ""}`;
+      } else {
+        badgeText = `${Math.round(visibleDays * 24)} Hr${Math.round(visibleDays * 24) !== 1 ? "s" : ""}`;
       }
       badge.textContent = badgeText;
     }
@@ -133,7 +160,7 @@ window.WeightDetailController = {
     today.setHours(12, 0, 0, 0);
 
     let startDate = new Date(today);
-    startDate.setDate(today.getDate() - 45);
+    startDate.setDate(today.getDate() - 14);
     startDate.setHours(12, 0, 0, 0);
 
     if (loggedDates.length > 0) {
@@ -235,6 +262,19 @@ window.WeightDetailController = {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        onClick: (event, elements) => {
+          if (elements && elements.length > 0) {
+            const el = elements[0];
+            if (el.datasetIndex === 0) {
+              const index = el.index;
+              const weight = actualWeights[index];
+              const dateKey = dateKeys[index];
+              if (weight !== null && weight !== undefined) {
+                this.showWeightActionModal(dateKey, weight, unit);
+              }
+            }
+          }
+        },
         layout: {
           padding: { left: 0, right: 8, top: 4, bottom: 0 }
         },
@@ -305,6 +345,9 @@ window.WeightDetailController = {
 
     // 7. Initial visible Y scale and overlay rendering
     this.updateVisibleYScale();
+
+    // 8. Render the chronological weight management list
+    this.renderWeightList(allWeightLogs, loggedDates, unit);
   },
 
   /**
@@ -659,6 +702,192 @@ window.WeightDetailController = {
       const predictedWeight = slope * elapsedDays + intercept;
       return parseFloat(predictedWeight.toFixed(1));
     });
+  },
+
+  renderWeightList(allWeightLogs, loggedDates, unit) {
+    const listContainer = document.getElementById("weight-history-list-container");
+    if (!listContainer) return;
+
+    listContainer.innerHTML = "";
+
+    if (loggedDates.length === 0) {
+      listContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">No weight logs recorded yet.</div>`;
+      return;
+    }
+
+    // Sort loggedDates descending to show most recent first in the history list!
+    const sortedDatesDesc = [...loggedDates].sort().reverse();
+
+    sortedDatesDesc.forEach(dateKey => {
+      const weight = allWeightLogs[dateKey];
+      if (weight === null || weight === undefined) return;
+
+      const dateObj = new Date(dateKey + "T12:00:00");
+      const formattedDate = dateObj.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "weight-history-item";
+      itemDiv.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; margin-bottom: 6px; transition: transform 0.2s, background-color 0.2s;";
+      
+      itemDiv.innerHTML = `
+        <div>
+          <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.95rem; color: #fff;">${Number(weight).toFixed(1)} ${unit}</span>
+          <span style="display: block; font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); margin-top: 2px;">${formattedDate}</span>
+        </div>
+        <button class="weight-row-delete-btn" data-date="${dateKey}" style="background: none; border: none; color: rgba(239, 68, 68, 0.7); cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        </button>
+      `;
+
+      // Hover effects
+      itemDiv.addEventListener("mouseenter", () => {
+        itemDiv.style.backgroundColor = "rgba(255, 255, 255, 0.06)";
+      });
+      itemDiv.addEventListener("mouseleave", () => {
+        itemDiv.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
+      });
+
+      const delBtn = itemDiv.querySelector(".weight-row-delete-btn");
+      delBtn.addEventListener("mouseenter", () => {
+        delBtn.style.color = "#ef4444";
+      });
+      delBtn.addEventListener("mouseleave", () => {
+        delBtn.style.color = "rgba(239, 68, 68, 0.7)";
+      });
+
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showWeightActionModal(dateKey, weight, unit);
+      });
+
+      listContainer.appendChild(itemDiv);
+    });
+  },
+
+  showWeightActionModal(dateKey, weight, unit) {
+    const modal = document.getElementById("weight-action-modal");
+    const dateEl = document.getElementById("weight-modal-date");
+    const valEl = document.getElementById("weight-modal-val");
+    const deleteBtn = document.getElementById("btn-delete-weight-modal");
+    const closeBtn = document.getElementById("btn-cancel-weight-modal");
+
+    if (!modal || !dateEl || !valEl) return;
+
+    // Parse date beautifully
+    const dateObj = new Date(dateKey + "T12:00:00");
+    const formattedDate = dateObj.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    dateEl.textContent = formattedDate;
+    valEl.textContent = `${Number(weight).toFixed(1)} ${unit}`;
+
+    // Show modal
+    modal.classList.remove("hidden");
+
+    // Clear event listeners from buttons to prevent multiple bindings
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    const newCloseBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+
+    newCloseBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    newDeleteBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+      this.confirmDeleteWeightEntry(dateKey, weight, unit);
+    });
+  },
+
+  confirmDeleteWeightEntry(dateKey, weight, unit) {
+    const modal = document.getElementById("confirm-weight-delete-modal");
+    const labelEl = document.getElementById("weight-delete-label");
+    const confirmBtn = document.getElementById("btn-confirm-weight-delete");
+    const cancelBtn = document.getElementById("btn-cancel-weight-delete");
+
+    if (!modal || !labelEl) {
+      if (confirm(`Are you sure you want to delete the weight record of ${weight} ${unit} on ${dateKey}?`)) {
+        this.deleteWeightEntry(dateKey);
+      }
+      return;
+    }
+
+    const dateObj = new Date(dateKey + "T12:00:00");
+    const formattedDate = dateObj.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    labelEl.textContent = `${Number(weight).toFixed(1)} ${unit} on ${formattedDate}`;
+
+    modal.classList.remove("hidden");
+
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    newCancelBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    newConfirmBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+      this.deleteWeightEntry(dateKey);
+    });
+  },
+
+  deleteWeightEntry(dateKey) {
+    if (AppState.data.weights[dateKey] !== undefined) {
+      delete AppState.data.weights[dateKey];
+      AppState.saveToStorage();
+      
+      // Refresh both pages
+      this.render();
+      if (window.WeightController && typeof window.WeightController.render === "function") {
+        window.WeightController.render();
+      }
+      
+      AppState.showToast("Weight entry successfully removed.");
+    }
+  },
+
+  confirmWipeAllWeights() {
+    const modal = document.getElementById("confirm-weight-wipe-modal");
+    const confirmBtn = document.getElementById("btn-confirm-weight-wipe");
+    const cancelBtn = document.getElementById("btn-cancel-weight-wipe");
+
+    if (!modal) {
+      if (confirm("WARNING: Are you absolutely sure you want to wipe your entire weight history? This will delete all manual and imported weight data permanently!")) {
+        this.wipeAllWeights();
+      }
+      return;
+    }
+
+    modal.classList.remove("hidden");
+
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    newCancelBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    newConfirmBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+      this.wipeAllWeights();
+    });
+  },
+
+  wipeAllWeights() {
+    AppState.data.weights = {};
+    AppState.saveToStorage();
+    
+    // Refresh both pages
+    this.render();
+    if (window.WeightController && typeof window.WeightController.render === "function") {
+      window.WeightController.render();
+    }
+    
+    AppState.showToast("All weight records have been wiped.");
   },
 
   formatISODate(date) {
