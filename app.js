@@ -68,6 +68,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // Run initial dashboard view render
   try {
     appRouter.navigate("dashboard");
+    
+    // Clear recovery timer and set initialized status
+    window.AppInitialized = true;
+    if (window.appLoadTimer) {
+      clearTimeout(window.appLoadTimer);
+      console.log("[Init] App loaded successfully. PWA Recovery timer cleared.");
+    }
   } catch (err) {
     console.error("[Init] Failed initial navigation:", err);
     showCrashAlert("appRouter.navigate('dashboard')", err);

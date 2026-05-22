@@ -1,5 +1,6 @@
-const CACHE_NAME = "colins-charts-macros-v8";
+const CACHE_NAME = "colins-charts-macros-v10";
 const ASSETS_TO_CACHE = [
+  "./",
   "./index.html",
   "./styles.css",
   "./app.js",
@@ -74,7 +75,7 @@ self.addEventListener("fetch", (event) => {
       return networkResponse;
     } catch (err) {
       // Fallback to cache if network request fails (offline mode)
-      const cachedResponse = await caches.match(event.request);
+      const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
       if (cachedResponse) {
         return cachedResponse;
       }

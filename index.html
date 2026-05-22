@@ -7,6 +7,85 @@
   <meta name="mobile-web-app-capable" content="yes">
   <title>ColinsChartsMacros - Weight & Macro Tracker</title>
   
+  <!-- PWA Load Guard & Self-Healing Console -->
+  <script>
+    window.APP_START_TIME = Date.now();
+    window.AppInitialized = false;
+    
+    // Set a self-healing load timer: 3.5 seconds. If the app fails to load, display the recovery overlay
+    window.appLoadTimer = setTimeout(function() {
+      if (!window.AppInitialized) {
+        console.warn("[PWA Guard] App load timer exceeded. Invoking recovery console.");
+        showRecoveryConsole();
+      }
+    }, 3500);
+
+    function showRecoveryConsole() {
+      if (document.getElementById("pwa-recovery-overlay")) return;
+      
+      const overlay = document.createElement("div");
+      overlay.id = "pwa-recovery-overlay";
+      overlay.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(2, 4, 10, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; padding: 24px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; text-align: center;";
+      
+      overlay.innerHTML = `
+        <div style="max-width: 420px; width: 100%; padding: 30px; border-radius: 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.6); box-sizing: border-box;">
+          <div style="font-size: 56px; margin-bottom: 20px; animation: recovery-spin 3s linear infinite;">🔄</div>
+          <h2 style="font-size: 1.4rem; font-weight: 700; margin: 0 0 12px 0; background: linear-gradient(135deg, #ff6b6b, #ff8e8e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">App Loading Issue</h2>
+          <p style="font-size: 0.9rem; color: rgba(255,255,255,0.75); line-height: 1.6; margin: 0 0 24px 0;">
+            The browser has cached an older version of this application. Press below to clear the cache and load the fresh version. Your weight logs and custom food settings are safe.
+          </p>
+          <button id="btn-pwa-recovery" style="background: linear-gradient(135deg, #0d6efd, #0b58ca); color: white; border: none; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; cursor: pointer; box-shadow: 0 5px 15px rgba(13,110,253,0.3); transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
+            Clear Cache & Force Update
+          </button>
+          <div style="margin-top: 18px; font-size: 0.75rem; color: rgba(255,255,255,0.4);">
+            Secure Context: \${window.isSecureContext ? "Yes" : "No"} | Version: v10
+          </div>
+        </div>
+        <style>
+          @keyframes recovery-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          #btn-pwa-recovery:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+          }
+        </style>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      document.getElementById("btn-pwa-recovery").onclick = async () => {
+        const btn = document.getElementById("btn-pwa-recovery");
+        btn.disabled = true;
+        btn.textContent = "Updating app... Please wait.";
+        btn.style.background = "rgba(255,255,255,0.15)";
+        btn.style.boxShadow = "none";
+        
+        try {
+          if ("serviceWorker" in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
+              await reg.unregister();
+            }
+          }
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            for (let name of cacheNames) {
+              await caches.delete(name);
+            }
+          }
+          window.sessionStorage.clear();
+          console.log("[PWA Guard] PWA assets cleared successfully.");
+        } catch (err) {
+          console.error("[PWA Guard] Failed to wipe cache storage:", err);
+        } finally {
+          window.location.reload(true);
+        }
+      };
+    }
+  </script>
+  
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
   
@@ -1497,20 +1576,20 @@
   </script>
 
   <!-- Application Scripts (Non-module standard scripts to allow double-clicking file:// directly) -->
-  <script src="state.js?v=8"></script>
-  <script src="database.js?v=8"></script>
-  <script src="scanner.js?v=8"></script>
-  <script src="charts.js?v=8"></script>
-  <script src="controllers/calendar.js?v=8"></script>
-  <script src="controllers/dashboard.js?v=8"></script>
-  <script src="controllers/food.js?v=8"></script>
-  <script src="controllers/food_selector.js?v=8"></script>
-  <script src="controllers/recipe.js?v=8"></script>
-  <script src="controllers/settings.js?v=8"></script>
-  <script src="controllers/strategy.js?v=8"></script>
-  <script src="controllers/weight.js?v=8"></script>
-  <script src="controllers/scanner_view.js?v=8"></script>
-  <script src="router.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="state.js"></script>
+  <script src="database.js"></script>
+  <script src="scanner.js"></script>
+  <script src="charts.js"></script>
+  <script src="controllers/calendar.js"></script>
+  <script src="controllers/dashboard.js"></script>
+  <script src="controllers/food.js"></script>
+  <script src="controllers/food_selector.js"></script>
+  <script src="controllers/recipe.js"></script>
+  <script src="controllers/settings.js"></script>
+  <script src="controllers/strategy.js"></script>
+  <script src="controllers/weight.js"></script>
+  <script src="controllers/scanner_view.js"></script>
+  <script src="router.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
