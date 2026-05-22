@@ -128,12 +128,16 @@ window.WeightDetailController = {
     this.renderStats(allWeightLogs, loggedDates, unit);
 
     // 2. Generate contiguous dates from the earliest log or the last 45 days (whichever is older) ending today
+    // Normalize today to local noon to avoid any midnight-crossing or timezone shift mismatches
     const today = new Date();
-    let startDate = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    let startDate = new Date(today);
     startDate.setDate(today.getDate() - 45);
+    startDate.setHours(12, 0, 0, 0);
 
     if (loggedDates.length > 0) {
-      const earliestLogDate = new Date(loggedDates[0] + "T00:00:00");
+      const earliestLogDate = new Date(loggedDates[0] + "T12:00:00");
       if (earliestLogDate < startDate) {
         startDate = earliestLogDate;
       }
@@ -141,11 +145,21 @@ window.WeightDetailController = {
 
     const datesInRange = [];
     const currentIter = new Date(startDate);
+    const seenDateKeys = new Set();
     
     // Safety check to prevent infinite loop
     let safetyCounter = 0;
     while (currentIter <= today && safetyCounter < 2000) {
-      datesInRange.push(new Date(currentIter));
+      // Force hours to local noon to prevent DST hours arithmetic drift crossing calendar days
+      currentIter.setHours(12, 0, 0, 0);
+      const isoKey = this.formatISODate(currentIter);
+      
+      // Absolute guarantee of calendar date deduplication
+      if (!seenDateKeys.has(isoKey)) {
+        seenDateKeys.add(isoKey);
+        datesInRange.push(new Date(currentIter));
+      }
+      
       currentIter.setDate(currentIter.getDate() + 1);
       safetyCounter++;
     }
@@ -308,15 +322,15 @@ window.WeightDetailController = {
       let lastShownIndex = -999;
       for (let i = 0; i < totalDays; i++) {
         const d = datesInRange[i];
-        const dayOfMonth = d.getUTCDate();
+        const dayOfMonth = d.getDate();
         // Show label on 1st of month, or every ~7 days
         const isFirstOfMonth = dayOfMonth === 1;
         const isWeekBoundary = (i - lastShownIndex) >= 7;
         if (isFirstOfMonth || isWeekBoundary) {
-          const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${dayOfMonth}`;
+          const key = `${d.getFullYear()}-${d.getMonth()}-${dayOfMonth}`;
           if (!seen.has(key)) {
             seen.add(key);
-            const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+            const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             labels[i] = label;
             lastShownIndex = i;
           }
@@ -326,10 +340,10 @@ window.WeightDetailController = {
       // Show "Mon YYYY" only on the first day of each new month in the range
       for (let i = 0; i < totalDays; i++) {
         const d = datesInRange[i];
-        const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
         if (!seen.has(monthKey)) {
           seen.add(monthKey);
-          const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+          const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
           labels[i] = label;
         }
       }
