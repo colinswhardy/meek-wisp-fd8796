@@ -5,8 +5,11 @@
 
 window.WeightDetailController = {
   chartInstance: null,
-  zoomLevel: 100, // percentage: default is 100% (shows 6 months of data fitting the screen)
+  yAxisChart: null,
+  zoomLevel: 100,
   isInitialized: false,
+  isFreshNavigation: true,
+  _popstateHandler: null,
 
   init() {
     if (this.isInitialized) return;
@@ -27,6 +30,26 @@ window.WeightDetailController = {
     }
 
     this.isInitialized = true;
+
+    // Fullscreen button
+    const btnFullscreen = document.getElementById("btn-fullscreen-chart");
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener("click", () => this.toggleFullscreen());
+    }
+
+    // Back button wiring: if in fullscreen, exit fullscreen instead of navigating
+    const btnBack = document.querySelector("#panel-weight-history-detail .btn-back");
+    if (btnBack) {
+      btnBack.addEventListener("click", (e) => {
+        const panel = document.getElementById("panel-weight-history-detail");
+        if (panel && panel.classList.contains("chart-fullscreen-mode")) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleFullscreen();
+        }
+        // Otherwise the inline onclick="appRouter.navigate('weight')" runs normally
+      }, true);
+    }
   },
 
   adjustZoom(delta) {
@@ -61,11 +84,16 @@ window.WeightDetailController = {
       this.chartInstance.resize();
     }
 
+    // Re-render Y-axis overlay after resize
+    if (this.chartInstance) {
+      setTimeout(() => this.renderYAxisOverlay(), 50);
+    }
+
     // Scroll to the far right (most recent weights) after rendering/scaling
     if (scrollToEnd && scrollWrapper) {
       setTimeout(() => {
         scrollWrapper.scrollLeft = scrollWrapper.scrollWidth - scrollWrapper.clientWidth;
-      }, 50);
+      }, 80);
     }
   },
 
@@ -82,10 +110,17 @@ window.WeightDetailController = {
     // Calculate and display historical metrics
     this.renderStats(allWeightLogs, loggedDates, unit);
 
-    // 2. Generate contiguous dates for the last 90 days (3 months) ending today
+    // 2. Generate contiguous dates from the earliest log or the last 45 days (whichever is older) ending today
     const today = new Date();
-    const startDate = new Date();
-    startDate.setDate(today.getDate() - 90);
+    let startDate = new Date();
+    startDate.setDate(today.getDate() - 45);
+
+    if (loggedDates.length > 0) {
+      const earliestLogDate = new Date(loggedDates[0] + "T00:00:00");
+      if (earliestLogDate < startDate) {
+        startDate = earliestLogDate;
+      }
+    }
 
     const datesInRange = [];
     const currentIter = new Date(startDate);
@@ -98,13 +133,19 @@ window.WeightDetailController = {
       safetyCounter++;
     }
 
+    const totalDays = datesInRange.length;
+
+    // Set comfortable default zoom when entering this view, so that the density is roughly ~45 days per screen width (100% of wrapper)
+    if (this.isFreshNavigation) {
+      this.zoomLevel = Math.max(100, Math.round((totalDays / 45) * 100));
+      this.isFreshNavigation = false;
+    }
+
     // Format keys ("YYYY-MM-DD")
     const dateKeys = datesInRange.map(d => this.formatISODate(d));
 
-    // Display labels e.g. "May 14"
-    const displayLabels = datesInRange.map(d => {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-    });
+    // Build smart deduplicated labels
+    const displayLabels = this.buildSmartLabels(datesInRange);
 
     // 3. Map weight values (null if day skipped)
     const actualWeights = dateKeys.map(key => allWeightLogs[key] || null);
@@ -138,7 +179,7 @@ window.WeightDetailController = {
             pointBackgroundColor: "#3b82f6",
             pointBorderColor: "rgba(255,255,255,0.8)",
             pointBorderWidth: 1.5,
-            pointRadius: datesInRange.length > 90 ? 2 : 4, // smaller points if huge range
+            pointRadius: datesInRange.length > 90 ? 2 : 4,
             pointHoverRadius: 6,
             backgroundColor: weightGradient,
             fill: true,
@@ -160,10 +201,11 @@ window.WeightDetailController = {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: { left: 0, right: 8, top: 4, bottom: 0 }
+        },
         plugins: {
-          legend: {
-            display: false
-          },
+          legend: { display: false },
           tooltip: {
             backgroundColor: "rgba(18, 20, 28, 0.95)",
             titleFont: { family: "Outfit", size: 13, weight: "bold" },
@@ -182,33 +224,26 @@ window.WeightDetailController = {
         },
         scales: {
           x: {
-            grid: {
-              display: false
-            },
+            grid: { display: false },
             ticks: {
               color: "#909bb2",
-              font: {
-                family: "Inter",
-                size: 11
-              },
-              maxRotation: 45,
-              autoSkip: true,
-              autoSkipPadding: 15
+              font: { family: "Inter", size: 10 },
+              maxRotation: 35,
+              autoSkip: false,
+              // Show tick only if label is non-empty
+              callback: function(val, index) {
+                return displayLabels[index] || "";
+              }
             }
           },
           y: {
-            grid: {
-              color: "rgba(255, 255, 255, 0.03)"
-            },
+            // Hide the Y-axis on the scrollable chart — we'll draw it on the sticky overlay
+            display: false,
+            grid: { color: "rgba(255, 255, 255, 0.03)" },
             ticks: {
               color: "#909bb2",
-              font: {
-                family: "Inter",
-                size: 11
-              },
-              callback: function(value) {
-                return value.toFixed(1);
-              }
+              font: { family: "Inter", size: 11 },
+              callback: function(value) { return value.toFixed(1); }
             }
           }
         }
@@ -217,35 +252,214 @@ window.WeightDetailController = {
 
     // 6. Apply Current Zoom and automatically scroll to the most recent data
     this.applyZoomAndScroll(this.zoomLevel !== 100);
+
+    // 7. Draw the sticky Y-axis overlay
+    setTimeout(() => this.renderYAxisOverlay(), 80);
+  },
+
+  /**
+   * Build smart, deduplicated X-axis labels.
+   * - Spans <= 60 days: show "Mon DD" on the first of the month and every ~7 days; suppress duplicates.
+   * - Spans > 60 days: show "Mon YYYY" only on the first occurrence of each month; rest empty.
+   */
+  buildSmartLabels(datesInRange) {
+    const totalDays = datesInRange.length;
+    const labels = Array(totalDays).fill("");
+    const seen = new Set();
+
+    if (totalDays <= 60) {
+      // Show "Mon DD" format, one per ~7 days, no duplicates
+      let lastShownIndex = -999;
+      for (let i = 0; i < totalDays; i++) {
+        const d = datesInRange[i];
+        const dayOfMonth = d.getUTCDate();
+        // Show label on 1st of month, or every ~7 days
+        const isFirstOfMonth = dayOfMonth === 1;
+        const isWeekBoundary = (i - lastShownIndex) >= 7;
+        if (isFirstOfMonth || isWeekBoundary) {
+          const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${dayOfMonth}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+            labels[i] = label;
+            lastShownIndex = i;
+          }
+        }
+      }
+    } else {
+      // Show "Mon YYYY" only on the first day of each new month in the range
+      for (let i = 0; i < totalDays; i++) {
+        const d = datesInRange[i];
+        const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        if (!seen.has(monthKey)) {
+          seen.add(monthKey);
+          const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+          labels[i] = label;
+        }
+      }
+    }
+
+    return labels;
+  },
+
+  /**
+   * Renders the sticky Y-axis overlay canvas to the left of the scrolling chart.
+   * Reads scale state from the main chartInstance.
+   */
+  renderYAxisOverlay() {
+    const mainChart = this.chartInstance;
+    const overlayCanvas = document.getElementById("weightDetailYAxis");
+    if (!mainChart || !overlayCanvas) return;
+
+    // Get the chart area and Y scale from the main chart
+    // Since the Y axis is hidden on the main chart, we need to derive min/max from its data
+    const datasets = mainChart.data.datasets;
+    let minVal = Infinity, maxVal = -Infinity;
+    datasets.forEach(ds => {
+      ds.data.forEach(v => {
+        if (v !== null && v !== undefined) {
+          if (v < minVal) minVal = v;
+          if (v > maxVal) maxVal = v;
+        }
+      });
+    });
+    if (minVal === Infinity) { minVal = 0; maxVal = 100; }
+
+    // Add a small padding to min/max so points aren't clipped at the edge
+    const range = maxVal - minVal || 1;
+    const pad = range * 0.1;
+    minVal = minVal - pad;
+    maxVal = maxVal + pad;
+
+    // Nice tick generation
+    const nTicks = 5;
+    const rawStep = (maxVal - minVal) / nTicks;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const step = Math.ceil(rawStep / magnitude) * magnitude;
+    const tickMin = Math.floor(minVal / step) * step;
+    const ticks = [];
+    for (let t = tickMin; t <= maxVal + step * 0.01; t += step) {
+      ticks.push(parseFloat(t.toFixed(2)));
+    }
+
+    // Style the overlay canvas to match the chart height
+    const chartCanvas = mainChart.canvas;
+    const chartHeight = chartCanvas.offsetHeight;
+    overlayCanvas.width = overlayCanvas.offsetWidth * (window.devicePixelRatio || 1);
+    overlayCanvas.height = chartHeight * (window.devicePixelRatio || 1);
+    overlayCanvas.style.height = chartHeight + "px";
+
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = overlayCanvas.getContext("2d");
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    const canvasH = chartHeight;
+    const canvasW = overlayCanvas.offsetWidth;
+
+    // Chart area top/bottom padding mirroring Chart.js internal layout
+    const topPad = 10;
+    const bottomPad = 30; // approximate x-axis tick height
+    const plotH = canvasH - topPad - bottomPad;
+
+    const valueToY = (v) => topPad + plotH * (1 - (v - minVal) / (maxVal - minVal));
+
+    // Draw background matching the surface
+    ctx.fillStyle = "rgba(13, 15, 22, 0.97)";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Draw a right border line
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(canvasW - 0.5, topPad);
+    ctx.lineTo(canvasW - 0.5, canvasH - bottomPad);
+    ctx.stroke();
+
+    // Draw grid lines + tick labels
+    ctx.font = `600 11px Inter, sans-serif`;
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#909bb2";
+
+    ticks.forEach(tick => {
+      const y = valueToY(tick);
+      if (y < topPad || y > canvasH - bottomPad) return;
+      ctx.fillText(tick.toFixed(1), canvasW - 6, y + 4);
+    });
+
+    ctx.restore();
+  },
+
+  toggleFullscreen() {
+    const panel = document.getElementById("panel-weight-history-detail");
+    const btnBack = document.querySelector("#panel-weight-history-detail .subpage-header");
+    if (!panel) return;
+
+    if (panel.classList.contains("chart-fullscreen-mode")) {
+      // Exit fullscreen
+      panel.classList.remove("chart-fullscreen-mode");
+      if (btnBack) btnBack.style.display = "";
+      // Remove popstate intercept
+      if (this._popstateHandler) {
+        window.removeEventListener("popstate", this._popstateHandler);
+        this._popstateHandler = null;
+      }
+      if (screen.orientation && screen.orientation.unlock) {
+        try { screen.orientation.unlock(); } catch(e) {}
+      }
+    } else {
+      // Enter fullscreen — hide the back button
+      panel.classList.add("chart-fullscreen-mode");
+      if (btnBack) btnBack.style.display = "none";
+      // Lock to landscape if supported
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch(() => {});
+      }
+      // Intercept the next popstate (back gesture) to exit fullscreen instead
+      this._popstateHandler = (e) => {
+        e.stopImmediatePropagation();
+        // Push a dummy state forward so we stay on this page
+        history.pushState({ tab: "weight_history_detail" }, "", "#weight_history_detail");
+        this.toggleFullscreen();
+      };
+      window.addEventListener("popstate", this._popstateHandler, { once: true });
+    }
+
+    // Resize chart after DOM update
+    setTimeout(() => {
+      if (this.chartInstance) this.chartInstance.resize();
+      this.applyZoomAndScroll(true);
+      this.renderYAxisOverlay();
+    }, 100);
   },
 
   renderStats(allWeightLogs, loggedDates, unit) {
     const elCurrent = document.getElementById("detail-val-current");
     const elChange = document.getElementById("detail-val-change");
-    const elPeak = document.getElementById("detail-val-peak");
-    const elFloor = document.getElementById("detail-val-floor");
-    const elAvg = document.getElementById("detail-val-avg");
+    const elTimeframe = document.getElementById("detail-val-timeframe");
+    const elGoalDate = document.getElementById("detail-val-goaldate");
 
-    if (!elCurrent || !elChange || !elPeak || !elFloor || !elAvg) return;
+    if (!elCurrent || !elChange || !elTimeframe || !elGoalDate) return;
 
     if (loggedDates.length === 0) {
       elCurrent.textContent = "--";
       elChange.textContent = "--";
       elChange.className = "";
-      elPeak.textContent = "--";
-      elFloor.textContent = "--";
-      elAvg.textContent = "--";
+      elTimeframe.textContent = "--";
+      elGoalDate.textContent = "--";
       return;
     }
 
     const weights = loggedDates.map(d => allWeightLogs[d]);
     const current = weights[weights.length - 1];
-    const earliest = weights[0];
-    const netChange = current - earliest;
-    const peak = Math.max(...weights);
-    const floor = Math.min(...weights);
-    const sum = weights.reduce((a, b) => a + b, 0);
-    const avg = sum / weights.length;
+
+    // Use starting weight from profile for Total Change comparison
+    const profile = AppState.data.profile || {};
+    const startingWeight = profile.startingWeight;
+    const referenceWeight = startingWeight !== null && startingWeight !== undefined ? startingWeight : weights[0];
+    const netChange = current - referenceWeight;
 
     elCurrent.textContent = `${current.toFixed(1)} ${unit}`;
     
@@ -259,9 +473,21 @@ window.WeightDetailController = {
       elChange.className = "";
     }
 
-    elPeak.textContent = `${peak.toFixed(1)} ${unit}`;
-    elFloor.textContent = `${floor.toFixed(1)} ${unit}`;
-    elAvg.textContent = `${avg.toFixed(1)} ${unit}`;
+    // Estimated Timeframe & Goal Date from planner profile data
+    const targetWeight = parseFloat(profile.targetWeight) || 0;
+    const weeklyRate = parseFloat(profile.weeklyRate) || 0;
+    const weightDiff = Math.abs(current - targetWeight);
+    const weeksToGoal = weeklyRate > 0 ? (weightDiff / weeklyRate) : 0;
+
+    if (weeksToGoal > 0) {
+      elTimeframe.textContent = `${weeksToGoal.toFixed(1)} Weeks`;
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + Math.round(weeksToGoal * 7));
+      elGoalDate.textContent = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } else {
+      elTimeframe.textContent = "0 Weeks";
+      elGoalDate.textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
   },
 
   computeRegressionDataset(datesInRange, dateKeys, allWeightLogs) {
