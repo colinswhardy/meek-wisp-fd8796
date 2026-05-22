@@ -102,12 +102,15 @@ window.WeightDetailController = {
       this.chartInstance.resize();
     }
 
-    // Scroll to the far right (most recent weights) after rendering/scaling
+    // Scroll to the far right (most recent weights) synchronously if scrollToEnd is true
     if (scrollToEnd && scrollWrapper) {
+      this.isProgrammaticScroll = true;
+      const maxScroll = scrollWrapper.scrollWidth - scrollWrapper.clientWidth;
+      scrollWrapper.scrollLeft = maxScroll;
+      // Clear programmatic flag on next animation frame/tick
       setTimeout(() => {
-        scrollWrapper.scrollLeft = scrollWrapper.scrollWidth - scrollWrapper.clientWidth;
-        this.updateVisibleYScale(); // recalculate Y scale once scroll is positioned
-      }, 80);
+        this.isProgrammaticScroll = false;
+      }, 50);
     }
   },
 
@@ -273,6 +276,7 @@ window.WeightDetailController = {
       let scrollTimeout = null;
       scrollWrapper.onscroll = () => {
         if (!this.chartInstance) return;
+        if (this.isProgrammaticScroll) return; // Ignore programmatic scroll events
         if (scrollTimeout) {
           cancelAnimationFrame(scrollTimeout);
         }
@@ -282,8 +286,8 @@ window.WeightDetailController = {
       };
     }
 
-    // 6. Apply Current Zoom and automatically scroll to the most recent data
-    this.applyZoomAndScroll(this.zoomLevel !== 100);
+    // 6. Apply Current Zoom and automatically scroll to the most recent data (always true)
+    this.applyZoomAndScroll(true);
 
     // 7. Initial visible Y scale and overlay rendering
     this.updateVisibleYScale();
