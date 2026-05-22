@@ -86,8 +86,54 @@ window.FoodController = {
         </div>
       `;
 
-      item.querySelector(".btn-delete-meal").addEventListener("click", () => {
-        this.deleteMeal(meal.id);
+      let pressTimer = null;
+      let isLongPress = false;
+
+      const startPress = (e) => {
+        // If it's a right click or clicking the delete button, ignore
+        if (e.type === "mousedown" && e.button !== 0) return;
+        if (e.target.closest(".btn-delete-meal")) return;
+
+        isLongPress = false;
+        item.classList.add("long-pressing");
+
+        pressTimer = setTimeout(() => {
+          isLongPress = true;
+          item.classList.remove("long-pressing");
+          this.showMoveModal(meal);
+        }, 600); // 600ms hold time
+      };
+
+      const cancelPress = (e) => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+        item.classList.remove("long-pressing");
+      };
+
+      // Touch hold / Long press event listeners
+      item.addEventListener("mousedown", startPress);
+      item.addEventListener("touchstart", startPress, { passive: true });
+
+      item.addEventListener("mouseup", cancelPress);
+      item.addEventListener("touchend", cancelPress);
+      item.addEventListener("touchmove", cancelPress);
+      item.addEventListener("touchcancel", cancelPress);
+      item.addEventListener("mouseleave", cancelPress);
+
+      // Tap / Click handler
+      item.addEventListener("click", (e) => {
+        if (isLongPress) {
+          isLongPress = false;
+          return;
+        }
+        if (e.target.closest(".btn-delete-meal")) {
+          e.stopPropagation();
+          this.showDeleteConfirmation(meal);
+          return;
+        }
+        this.showEditModal(meal);
       });
 
       container.appendChild(item);
@@ -107,6 +153,214 @@ window.FoodController = {
 
     AppState.saveToStorage();
     this.render();
+
+    // Re-render dashboard totals in case we are looking at them or navigated
+    if (window.DashboardController && typeof window.DashboardController.render === "function") {
+      window.DashboardController.render();
+    }
+  },
+
+  showDeleteConfirmation(meal) {
+    const modal = document.getElementById("confirm-delete-modal");
+    const nameSpan = document.getElementById("delete-food-name");
+    const btnCancel = document.getElementById("btn-cancel-delete");
+    const btnConfirm = document.getElementById("btn-confirm-delete");
+
+    if (!modal || !nameSpan || !btnCancel || !btnConfirm) return;
+
+    nameSpan.textContent = `${meal.name} (${meal.weight}g)`;
+    modal.classList.remove("hidden");
+
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      btnCancel.removeEventListener("click", onCancel);
+      btnConfirm.removeEventListener("click", onConfirm);
+    };
+
+    const onCancel = (e) => {
+      e.preventDefault();
+      closeModal();
+    };
+
+    const onConfirm = (e) => {
+      e.preventDefault();
+      this.deleteMeal(meal.id);
+      closeModal();
+      AppState.showToast("Food deleted.");
+    };
+
+    btnCancel.addEventListener("click", onCancel);
+    btnConfirm.addEventListener("click", onConfirm);
+  },
+
+  showMoveModal(meal) {
+    const modal = document.getElementById("move-food-modal");
+    const nameSpan = document.getElementById("move-food-name");
+    const dateInput = document.getElementById("move-food-date-input");
+    const btnCancel = document.getElementById("btn-cancel-move");
+    const btnConfirm = document.getElementById("btn-confirm-move");
+
+    if (!modal || !nameSpan || !dateInput || !btnCancel || !btnConfirm) return;
+
+    nameSpan.textContent = `${meal.name} (${meal.weight}g)`;
+    dateInput.value = AppState.selectedDateISO;
+    modal.classList.remove("hidden");
+
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      btnCancel.removeEventListener("click", onCancel);
+      btnConfirm.removeEventListener("click", onConfirm);
+    };
+
+    const onCancel = (e) => {
+      e.preventDefault();
+      closeModal();
+    };
+
+    const onConfirm = (e) => {
+      e.preventDefault();
+      const targetDate = dateInput.value;
+      if (!targetDate) {
+        alert("Please select a target date.");
+        return;
+      }
+
+      const sourceDate = AppState.selectedDateISO;
+      
+      // Remove from source
+      let sourceMeals = AppState.data.meals[sourceDate] || [];
+      const mealToMove = sourceMeals.find(m => m.id === meal.id);
+      if (!mealToMove) {
+        closeModal();
+        return;
+      }
+      
+      sourceMeals = sourceMeals.filter(m => m.id !== meal.id);
+      if (sourceMeals.length === 0) {
+        delete AppState.data.meals[sourceDate];
+      } else {
+        AppState.data.meals[sourceDate] = sourceMeals;
+      }
+
+      // Add to target
+      if (!AppState.data.meals[targetDate]) {
+        AppState.data.meals[targetDate] = [];
+      }
+      AppState.data.meals[targetDate].push(mealToMove);
+
+      AppState.saveToStorage();
+      closeModal();
+      
+      this.render();
+      
+      if (window.DashboardController && typeof window.DashboardController.render === "function") {
+        window.DashboardController.render();
+      }
+
+      AppState.showToast(`Moved to ${targetDate}`);
+    };
+
+    btnCancel.addEventListener("click", onCancel);
+    btnConfirm.addEventListener("click", onConfirm);
+  },
+
+  showEditModal(meal) {
+    const modal = document.getElementById("edit-food-modal");
+    const nameInput = document.getElementById("edit-food-name-input");
+    const brandInput = document.getElementById("edit-food-brand-input");
+    const weightInput = document.getElementById("edit-food-weight-input");
+    const caloriesInput = document.getElementById("edit-food-calories-input");
+    const proteinInput = document.getElementById("edit-food-protein-input");
+    const carbsInput = document.getElementById("edit-food-carbs-input");
+    const fatsInput = document.getElementById("edit-food-fats-input");
+    const btnCancel = document.getElementById("btn-cancel-edit");
+    const btnSave = document.getElementById("btn-save-edit");
+
+    if (!modal || !nameInput || !brandInput || !weightInput || !caloriesInput || 
+        !proteinInput || !carbsInput || !fatsInput || !btnCancel || !btnSave) return;
+
+    nameInput.value = meal.name || "";
+    brandInput.value = meal.brand || "";
+    weightInput.value = meal.weight || 0;
+    caloriesInput.value = meal.calories || 0;
+    proteinInput.value = meal.protein || 0;
+    carbsInput.value = meal.carbs || 0;
+    fatsInput.value = meal.fats || 0;
+
+    modal.classList.remove("hidden");
+
+    const originalWeight = parseFloat(meal.weight) || 0;
+    const originalCalories = parseFloat(meal.calories) || 0;
+    const originalProtein = parseFloat(meal.protein) || 0;
+    const originalCarbs = parseFloat(meal.carbs) || 0;
+    const originalFats = parseFloat(meal.fats) || 0;
+
+    const onWeightChange = () => {
+      const newWeight = parseFloat(weightInput.value) || 0;
+      if (originalWeight > 0 && newWeight > 0) {
+        const factor = newWeight / originalWeight;
+        caloriesInput.value = Math.round(originalCalories * factor);
+        proteinInput.value = parseFloat((originalProtein * factor).toFixed(1));
+        carbsInput.value = parseFloat((originalCarbs * factor).toFixed(1));
+        fatsInput.value = parseFloat((originalFats * factor).toFixed(1));
+      }
+    };
+
+    weightInput.addEventListener("input", onWeightChange);
+
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      weightInput.removeEventListener("input", onWeightChange);
+      btnCancel.removeEventListener("click", onCancel);
+      btnSave.removeEventListener("click", onSave);
+    };
+
+    const onCancel = (e) => {
+      e.preventDefault();
+      closeModal();
+    };
+
+    const onSave = (e) => {
+      e.preventDefault();
+      const newName = nameInput.value.trim();
+      const newWeight = parseFloat(weightInput.value);
+
+      if (!newName) {
+        alert("Please enter a valid food name.");
+        return;
+      }
+      if (isNaN(newWeight) || newWeight <= 0) {
+        alert("Please enter a valid weight.");
+        return;
+      }
+
+      const dateKey = AppState.selectedDateISO;
+      const meals = AppState.data.meals[dateKey] || [];
+      const mealToEdit = meals.find(m => m.id === meal.id);
+      
+      if (mealToEdit) {
+        mealToEdit.name = newName;
+        mealToEdit.brand = brandInput.value.trim() || "Generic";
+        mealToEdit.weight = newWeight;
+        mealToEdit.calories = Math.round(parseFloat(caloriesInput.value) || 0);
+        mealToEdit.protein = parseFloat(parseFloat(proteinInput.value).toFixed(1)) || 0;
+        mealToEdit.carbs = parseFloat(parseFloat(carbsInput.value).toFixed(1)) || 0;
+        mealToEdit.fats = parseFloat(parseFloat(fatsInput.value).toFixed(1)) || 0;
+
+        AppState.saveToStorage();
+        AppState.showToast("Food entry updated!");
+      }
+
+      closeModal();
+      this.render();
+      
+      if (window.DashboardController && typeof window.DashboardController.render === "function") {
+        window.DashboardController.render();
+      }
+    };
+
+    btnCancel.addEventListener("click", onCancel);
+    btnSave.addEventListener("click", onSave);
   },
 
   renderCalorieHistory() {
