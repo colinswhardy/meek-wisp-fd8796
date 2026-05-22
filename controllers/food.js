@@ -5,6 +5,8 @@
 
 window.FoodController = {
   _scrollHandler: null,
+  _touchHandler: null,
+  hasTouchedOrScrolled: false,
 
   render() {
     const dateKey = AppState.selectedDateISO;
@@ -23,25 +25,81 @@ window.FoodController = {
   initFloatingScanner() {
     const viewport = document.querySelector('.app-viewport');
     const floatCard = document.getElementById('scanner-view-container-food');
-    if (!viewport || !floatCard) return;
+    const panelFood = document.getElementById('panel-food');
+    if (!viewport || !floatCard || !panelFood) return;
 
-    // Remove any previous listener
-    if (this._scrollHandler) {
-      viewport.removeEventListener('scroll', this._scrollHandler);
-      this._scrollHandler = null;
+    // Clean up any previous listeners first
+    this.cleanupFloatingScannerListeners();
+
+    // If already touched/scrolled, position card statically at the bottom
+    if (this.hasTouchedOrScrolled) {
+      floatCard.classList.remove('scanner-float', 'scanner-float--hidden');
+      panelFood.classList.add('panel-food--no-float');
+      panelFood.appendChild(floatCard);
+      return;
     }
 
+    // Ensure initial state starts as floating card at the top
+    floatCard.classList.add('scanner-float');
+    floatCard.classList.remove('scanner-float--hidden');
+    panelFood.classList.remove('panel-food--no-float');
+    panelFood.insertBefore(floatCard, panelFood.firstChild);
+
+    // Scroll handler - scroll triggers dismissal
     this._scrollHandler = () => {
-      if (viewport.scrollTop > 10) {
-        floatCard.classList.add('scanner-float--hidden');
-      } else {
-        floatCard.classList.remove('scanner-float--hidden');
-      }
+      this.dismissFloatingScanner();
+    };
+
+    // Touch/click handler - touch/mousedown outside card triggers dismissal
+    this._touchHandler = (e) => {
+      if (floatCard.contains(e.target)) return;
+      this.dismissFloatingScanner();
     };
 
     viewport.addEventListener('scroll', this._scrollHandler, { passive: true });
-    // Ensure correct initial state
-    floatCard.classList.remove('scanner-float--hidden');
+    panelFood.addEventListener('touchstart', this._touchHandler, { passive: true });
+    panelFood.addEventListener('mousedown', this._touchHandler);
+  },
+
+  dismissFloatingScanner() {
+    if (this.hasTouchedOrScrolled) return;
+    this.hasTouchedOrScrolled = true;
+
+    const floatCard = document.getElementById('scanner-view-container-food');
+    const panelFood = document.getElementById('panel-food');
+
+    if (!floatCard || !panelFood) return;
+
+    // Clean up event listeners so they don't fire again
+    this.cleanupFloatingScannerListeners();
+
+    // Animate floating card down (hide it)
+    floatCard.classList.add('scanner-float--hidden');
+    // Reduce bottom padding on the food tab panel immediately for a smooth container resize transition
+    panelFood.classList.add('panel-food--no-float');
+
+    // Wait for transition to complete (350ms) and move it statically to the bottom
+    setTimeout(() => {
+      if (AppState.activeTab === 'food' && this.hasTouchedOrScrolled) {
+         floatCard.classList.remove('scanner-float', 'scanner-float--hidden');
+         panelFood.appendChild(floatCard);
+      }
+    }, 350);
+  },
+
+  cleanupFloatingScannerListeners() {
+    const viewport = document.querySelector('.app-viewport');
+    const panelFood = document.getElementById('panel-food');
+
+    if (viewport && this._scrollHandler) {
+      viewport.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = null;
+    }
+    if (panelFood && this._touchHandler) {
+      panelFood.removeEventListener('touchstart', this._touchHandler);
+      panelFood.removeEventListener('mousedown', this._touchHandler);
+      this._touchHandler = null;
+    }
   },
 
   renderMealList(meals) {
