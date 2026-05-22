@@ -27,7 +27,8 @@ window.appRouter = {
       weight_budgets: document.getElementById("panel-weight-budgets"),
       settings: document.getElementById("panel-settings"),
       add_recipe: document.getElementById("panel-add-recipe"),
-      food_selector: document.getElementById("panel-food-selector")
+      food_selector: document.getElementById("panel-food-selector"),
+      weight_history_detail: document.getElementById("panel-weight-history-detail")
     };
     this.navItems = document.querySelectorAll(".app-navbar .nav-item");
 
@@ -66,7 +67,7 @@ window.appRouter = {
     if (panelName === "food" || panelName === "add_recipe" || panelName === "food_selector") {
       return "food";
     }
-    if (panelName === "weight" || panelName === "weight_planner" || panelName === "weight_budgets") {
+    if (panelName === "weight" || panelName === "weight_planner" || panelName === "weight_budgets" || panelName === "weight_history_detail") {
       return "weight";
     }
     if (panelName === "strategy") {
@@ -82,7 +83,8 @@ window.appRouter = {
       settings: "dashboard",
       add_recipe: "food",
       weight_planner: "strategy",
-      weight_budgets: "strategy"
+      weight_budgets: "strategy",
+      weight_history_detail: "weight"
     };
 
     if (parentOf[previousTab] === tabName) {
@@ -139,7 +141,7 @@ window.appRouter = {
     // Toggle bottom navigation active buttons
     this.navItems.forEach((btn) => {
       const btnTab = btn.getAttribute("data-tab");
-      const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets");
+      const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets" || tabName === "weight_history_detail");
       const isStrategyRelated = (tabName === "strategy");
       const isFoodRelated = (tabName === "food" || tabName === "add_recipe" || tabName === "food_selector");
       if (btnTab === tabName || (btnTab === "weight" && isWeightRelated) || (btnTab === "strategy" && isStrategyRelated) || (btnTab === "food" && isFoodRelated)) {
@@ -185,6 +187,8 @@ window.appRouter = {
       FoodController.render();
     } else if (AppState.activeTab === "weight") {
       WeightController.render();
+    } else if (AppState.activeTab === "weight_history_detail") {
+      WeightDetailController.render();
     } else if (AppState.activeTab === "strategy") {
       StrategyController.render();
     } else if (AppState.activeTab === "weight_planner" || AppState.activeTab === "weight_budgets" || AppState.activeTab === "settings") {

@@ -1425,6 +1425,78 @@
       </button>
     </section>
 
+    <!-- SUBPAGE: WEIGHT HISTORY DETAIL (SCROLLABLE & ZOOMABLE) -->
+    <section id="panel-weight-history-detail" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('weight')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Weight</span>
+        </button>
+      </div>
+
+      <!-- Detail Statistics Card -->
+      <div class="glass-card detail-stats-card">
+        <h3>Weight Analytics</h3>
+        <p class="card-subtitle">Detailed insights calculated over your entire logging history.</p>
+        
+        <div class="detail-stats-grid">
+          <div class="d-stat-box">
+            <label>Current Weight</label>
+            <span id="detail-val-current">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Total Change</label>
+            <span id="detail-val-change">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Peak Weight</label>
+            <span id="detail-val-peak">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Floor Weight</label>
+            <span id="detail-val-floor">--</span>
+          </div>
+          <div class="d-stat-box" style="grid-column: span 2;">
+            <label>All-Time Average Weight</label>
+            <span id="detail-val-avg">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Chart Card -->
+      <div class="glass-card chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Weight Trend Timeline</h3>
+            <p class="card-subtitle">Scroll left/right to view. Dotted line indicates regression trend.</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot dot-actual"></span>Actual
+            <span class="legend-dot dot-trend"></span>Trend
+          </div>
+        </div>
+
+        <!-- Horizontal scroll wrapper -->
+        <div class="detail-chart-scroll-wrapper" id="detail-chart-scroll-wrapper">
+          <div class="detail-chart-container" id="detail-chart-container">
+            <canvas id="weightDetailChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Zoom Control Toolbar -->
+        <div class="zoom-toolbar">
+          <button class="zoom-btn" id="btn-zoom-out" aria-label="Zoom Out" title="Show More Days">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="zoom-btn btn-fit" id="btn-zoom-fit" title="Fit Entire History to Screen">Fit</button>
+          <button class="zoom-btn" id="btn-zoom-in" aria-label="Zoom In" title="Show Fewer Days (More Detail)">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span class="zoom-level-badge" id="zoom-level-badge">200%</span>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Bottom Navigation Tab Bar -->
@@ -1588,6 +1660,7 @@
   <script src="controllers/settings.js"></script>
   <script src="controllers/strategy.js"></script>
   <script src="controllers/weight.js"></script>
+  <script src="controllers/weight_detail.js"></script>
   <script src="controllers/scanner_view.js"></script>
   <script src="router.js"></script>
   <script src="app.js"></script>
