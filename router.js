@@ -109,6 +109,13 @@ window.appRouter = {
     const previousTab = AppState.activeTab;
     const targetGroup = this.getNavbarTabForPanel(tabName);
 
+    // Reset food controller's floating scanner state when entering food tab from another panel
+    if (tabName === "food" && previousTab !== "food") {
+      if (window.FoodController) {
+        window.FoodController.hasTouchedOrScrolled = false;
+      }
+    }
+
     // Save scroll position of the outgoing panel (handles both window-level and viewport-level scrolling)
     const viewport = document.querySelector(".app-viewport");
     const scrollTop = window.scrollY || document.documentElement.scrollTop || (viewport ? viewport.scrollTop : 0);
