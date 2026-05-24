@@ -260,7 +260,127 @@ window.FoodDatabase = {
   ],
 
   /**
-   * Keyword search across Local Fallback Database, USDA FoodData Central and Open Food Facts.
+   * Helper function to calculate the Levenshtein distance between two strings.
+   * Enables robust client-side typo tolerance.
+   */
+  levenshteinDistance(str1, str2) {
+    const track = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    for (let i = 0; i <= str1.length; i += 1) track[0][i] = i;
+    for (let j = 0; j <= str2.length; j += 1) track[j][0] = j;
+    for (let j = 1; j <= str2.length; j += 1) {
+      for (let i = 1; i <= str1.length; i += 1) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        track[j][i] = Math.min(
+          track[j][i - 1] + 1, // deletion
+          track[j - 1][i] + 1, // insertion
+          track[j - 1][i - 1] + indicator // substitution
+        );
+      }
+    }
+    return track[str2.length][str1.length];
+  },
+
+  /**
+   * Computes a similarity score between 0.0 and 1.0 for a query and target string.
+   * Handles multi-word substring match and typo-tolerance matches.
+   */
+  fuzzyScore(query, target) {
+    if (!query || !target) return 0;
+    const q = query.toLowerCase();
+    const t = target.toLowerCase();
+    
+    // Perfect substring match
+    if (t.includes(q)) {
+      // Reward matches that start with the query
+      return t.startsWith(q) ? 1.0 : 0.9;
+    }
+
+    const qWords = q.split(/\s+/).filter(w => w.length > 0);
+    const tWords = t.split(/\s+/).filter(w => w.length > 0);
+    let matchedWords = 0;
+    let totalWordScore = 0;
+
+    qWords.forEach(qw => {
+      let bestWordScore = 0;
+      tWords.forEach(tw => {
+        if (tw.includes(qw)) {
+          bestWordScore = Math.max(bestWordScore, qw.length / tw.length);
+        } else if (qw.length > 2 && tw.length > 2) {
+          // Typo tolerance via Levenshtein distance
+          const dist = this.levenshteinDistance(qw, tw);
+          const maxLen = Math.max(qw.length, tw.length);
+          if (dist <= 2) { // Allow up to 2 character edits
+            bestWordScore = Math.max(bestWordScore, (maxLen - dist) / maxLen * 0.85);
+          }
+        }
+      });
+      if (bestWordScore > 0) {
+        matchedWords++;
+        totalWordScore += bestWordScore;
+      }
+    });
+
+    if (qWords.length === 0) return 0;
+    // Overlap percentage multiplied by average similarity
+    return (matchedWords / qWords.length) * (totalWordScore / qWords.length);
+  },
+
+  /**
+   * Queries the configured Typesense cluster for matching products.
+   * @param {string} query Search keyword
+   * @returns {Promise<Array>} Normalized product hits
+   */
+  async queryTypesense(query) {
+    const config = AppState.data.settings.typesenseConfig;
+    if (!config || !config.enabled || !config.host) return [];
+
+    const host = config.host.trim();
+    const port = config.port || 443;
+    const protocol = config.protocol || "https";
+    const apiKey = config.apiKey ? config.apiKey.trim() : "";
+    const collection = config.collection ? config.collection.trim() : "foods";
+
+    const url = `${protocol}://${host}:${port}/collections/${collection}/documents/search?q=${encodeURIComponent(query)}&query_by=name,brand,keywords&prefix=true&typo_tolerance=2&prioritize_exact_match=true`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-TYPESENSE-API-KEY": apiKey,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Typesense request failed with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const hits = data.hits || [];
+
+    return hits.map(hit => {
+      const doc = hit.document || {};
+      const rawNutrients = doc.nutrients || {};
+      const nutrients = {
+        calories: Math.round(Number(doc.calories !== undefined ? doc.calories : (rawNutrients.calories || doc.energy_kcal || doc.energy || 0))),
+        protein: parseFloat(Number(doc.protein !== undefined ? doc.protein : (rawNutrients.protein || doc.proteins || 0)).toFixed(1)),
+        carbs: parseFloat(Number(doc.carbs !== undefined ? doc.carbs : (rawNutrients.carbs || doc.carbohydrates || 0)).toFixed(1)),
+        fats: parseFloat(Number(doc.fats !== undefined ? doc.fats : (rawNutrients.fats || doc.fat || 0)).toFixed(1)),
+        fiber: parseFloat(Number(doc.fiber !== undefined ? doc.fiber : (rawNutrients.fiber || doc.fiber || 0)).toFixed(1))
+      };
+
+      return {
+        name: doc.name || doc.product_name || doc.description || "Unknown Item",
+        brand: doc.brand || doc.brands || doc.brand_owner || "Generic Brand",
+        source: "Typesense",
+        servingSize: doc.serving_size || doc.servingSize || null,
+        servingQuantity: doc.serving_quantity ? parseFloat(doc.serving_quantity) : (doc.servingQuantity ? parseFloat(doc.servingQuantity) : null),
+        nutrients: nutrients
+      };
+    });
+  },
+
+  /**
+   * Keyword search across Typesense, Local Fallback Database, USDA FoodData Central and Open Food Facts.
    * Returns an array of normalized food objects sorted by relevance.
    * @param {string} query  Free-text food name, e.g. "cooked chicken breast"
    * @returns {Promise<Array>} Array of { name, brand, source, nutrients: {calories, protein, carbs, fats, fiber} }
@@ -280,24 +400,33 @@ window.FoodDatabase = {
       }
     };
 
-    // 1. Search Local Fallback Dictionary
-    this.COMMON_WHOLE_FOODS.forEach(food => {
-      const foodNameLower = food.name.toLowerCase();
-      let matchCount = 0;
-      
-      qWords.forEach(word => {
-        if (food.keywords.includes(word) || foodNameLower.includes(word)) {
-          matchCount++;
+    // --- Direct Typesense Sync Routing ---
+    const tsConfig = AppState.data.settings.typesenseConfig;
+    if (tsConfig && tsConfig.enabled && tsConfig.host) {
+      try {
+        console.log(`[Database] Routing query to Typesense: "${q}"...`);
+        const tsResults = await this.queryTypesense(q);
+        if (tsResults && tsResults.length > 0) {
+          // If Typesense successfully finds matches, return them as absolute truth
+          return tsResults;
         }
-      });
+      } catch (err) {
+        console.warn("[Database] Typesense search failed. Falling back to default APIs:", err);
+      }
+    }
 
-      // If all words in the query match, add it
-      if (qWords.length > 0 && matchCount >= qWords.length) {
+    // --- Fallback Pipeline: Local Fuzzy + USDA + OFF ---
+
+    // 1. Search Local Fallback Dictionary (Fuzzy match)
+    this.COMMON_WHOLE_FOODS.forEach(food => {
+      const score = this.fuzzyScore(q, food.name);
+      if (score > 0.28) { // Similarity threshold
         addResult({
           name: food.name,
           brand: food.brand,
           source: food.source,
-          nutrients: { ...food.nutrients }
+          nutrients: { ...food.nutrients },
+          fuzzyScore: score
         });
       }
     });
@@ -328,7 +457,6 @@ window.FoodDatabase = {
                 }
               });
             }
-            // Only include items that have at least some calorie data
             if (nutrients.calories > 0 || nutrients.protein > 0) {
               const servingSize = food.householdServingFullText || (food.servingSize ? `${food.servingSize} ${food.servingSizeUnit || 'g'}` : null);
               const servingQuantity = food.servingSize ? parseFloat(food.servingSize) : null;
@@ -392,9 +520,13 @@ window.FoodDatabase = {
       
       let score = 0;
       
+      // Compute fuzzy baseline (0.0 to 1.0) and map to significant scale
+      const baseFuzzy = item.fuzzyScore || this.fuzzyScore(q, name);
+      score += baseFuzzy * 1200;
+      
       // Local DB items get absolute priority
       if (item.source === "Local DB") {
-        return 10000;
+        score += 8000;
       }
       
       // Exact full match (case insensitive)
@@ -402,29 +534,11 @@ window.FoodDatabase = {
         score += 2000;
       }
       
-      const qNormalized = q.replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ");
-      const nameNormalized = name.replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ");
-      
-      // Exact phrase match
-      if (nameNormalized.includes(qNormalized)) {
-        score += 800;
-        
-        // Starts with the phrase
-        if (nameNormalized.startsWith(qNormalized)) {
-          score += 400;
-        }
-      }
-      
-      // Word match count
-      let matchCount = 0;
-      qWords.forEach(word => {
-        if (nameNormalized.split(" ").includes(word)) {
-          matchCount++;
-        }
-      });
-      
-      if (matchCount > 0) {
-        score += (matchCount / qWords.length) * 500;
+      // Prefix string match
+      const qNormalized = q.replace(/[^a-z0-9 ]/g, "");
+      const nameNormalized = name.replace(/[^a-z0-9 ]/g, "");
+      if (nameNormalized.startsWith(qNormalized)) {
+        score += 500;
       }
       
       // Prioritize generic whole foods
@@ -433,13 +547,12 @@ window.FoodDatabase = {
         score += 300;
       }
       
-      // USDA source boost (USDA legacy/foundation data has extremely high quality nutrition info for whole foods)
       if (item.source === "USDA" && isGenericBrand) {
         score += 200;
       }
       
       // Length penalty (favor shorter, cleaner names)
-      score -= name.length * 0.8;
+      score -= name.length * 0.7;
       
       return score;
     };

@@ -29,6 +29,14 @@ window.AppState = {
         thursday: { enabled: false, type: "flat", value: 300 },
         friday: { enabled: false, type: "flat", value: 300 },
         saturday: { enabled: false, type: "flat", value: 300 }
+      },
+      typesenseConfig: {
+        enabled: false,
+        host: "",
+        port: 443,
+        protocol: "https",
+        apiKey: "",
+        collection: "foods"
       }
     },
     profile: {
@@ -103,6 +111,27 @@ window.AppState = {
           // Clean up legacy root-level calorie cycling variables
           delete this.data.settings.highCalorieSurplusType;
           delete this.data.settings.highCalorieSurplusValue;
+
+          // Migrate/initialize Typesense settings safely
+          if (!this.data.settings.typesenseConfig) {
+            this.data.settings.typesenseConfig = {
+              enabled: false,
+              host: "",
+              port: 443,
+              protocol: "https",
+              apiKey: "",
+              collection: "foods"
+            };
+          } else {
+            this.data.settings.typesenseConfig = {
+              enabled: this.data.settings.typesenseConfig.enabled || false,
+              host: this.data.settings.typesenseConfig.host || "",
+              port: this.data.settings.typesenseConfig.port || 443,
+              protocol: this.data.settings.typesenseConfig.protocol || "https",
+              apiKey: this.data.settings.typesenseConfig.apiKey || "",
+              collection: this.data.settings.typesenseConfig.collection || "foods"
+            };
+          }
         }
         if (parsed.profile) this.data.profile = { ...this.data.profile, ...parsed.profile };
       } catch (e) {

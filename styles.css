@@ -3564,3 +3564,13 @@ select:focus {
   padding: 10px !important; /* Make the button slightly more compact */
 }
 
+
+
+/* Typesense Configuration Card Animations and Focus Glow */
+.typesense-config-card {
+  transition: all var(--transition-normal);
+}
+.typesense-config-card input:focus, .typesense-config-card select:focus {
+  border-color: var(--color-calories) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}

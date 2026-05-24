@@ -24,17 +24,17 @@ graph TD
 * **Lines 100-158**: Low-latency gesture accelerator (`handleGlobalPointerDown`) which bypasses mobile click delay and forces instant keyboard focusing/text selection on form inputs.
 
 ### 2. [state.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/state.js)
-* **Lines 9-44**: `AppState.data` Schema definition:
+* **Lines 9-52**: `AppState.data` Schema definition:
   * `standardGoals`: Default budget parameters (Protein, Carbs, Fats, Calories).
   * `dailyGoals`: overrides keyed by `YYYY-MM-DD`.
   * `meals`: Logged item arrays keyed by `YYYY-MM-DD`.
   * `weights`: Imperial/Metric logged weights keyed by `YYYY-MM-DD`.
-  * `settings`: Conversion metrics (`lbs`/`kg`) and Calorie Cycling high-calorie day maps.
+  * `settings`: Conversion metrics (`lbs`/`kg`), Calorie Cycling day maps, and `typesenseConfig` parameters.
   * `recipes` / `customBarcodes`: Custom databases.
-* **Lines 55-115**: Deep Schema Migration (`loadFromStorage`). Safely reconciles old database versions and converts legacy calorie cycling formats.
-* **Lines 126-171**: Calorie Cycling Engine (`getGoalsForDate`). Adjusts base target calories with flat or percentage surpluses for high-calorie days and proportionally scales protein, carbs, and fats.
-* **Lines 173-193**: `showToast(message)` layout trigger.
-* **Lines 195-236**: Timestamp parsing and user-friendly relative date-string formatters.
+* **Lines 63-145**: Deep Schema Migration (`loadFromStorage`). Safely reconciles old database versions, converts legacy formats, and initializes Typesense parameters.
+* **Lines 156-200**: Calorie Cycling Engine (`getGoalsForDate`). Adjusts base target calories with flat or percentage surpluses for high-calorie days and proportionally scales protein, carbs, and fats.
+* **Lines 202-222**: `showToast(message)` layout trigger.
+* **Lines 224-263**: Timestamp parsing and user-friendly relative date-string formatters.
 
 ### 3. [database.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/database.js)
 * **Lines 12-123**: Sequential barcode lookup cascading fallback engine:
@@ -42,7 +42,7 @@ graph TD
   2. **USDA FoodData Central API** (Foundation/Survey datasets)
   3. **UPCitemdb Trial API** (metadata match fallback)
 * **Lines 125-260**: `COMMON_WHOLE_FOODS` fallback whole food database for high-quality generic offline searches.
-* **Lines 268-450**: `searchFoods(query)` engine. Queries Local, USDA, and OFF concurrently and runs a **Smart Relevance Scoring & Sorting Algorithm** based on phrase starts, generic status, and name length penalties.
+* **Lines 262-571**: Levenshtein, `fuzzyScore`, and `queryTypesense` engines. Implements direct Typesense cluster queries and client-side fuzzy string matching fallback.
 
 ### 4. [router.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/router.js)
 * **Lines 12-58**: Initializes active panels, binds navbar listeners, and registers popstate back actions.
@@ -66,7 +66,7 @@ graph TD
 
 ## 🗂️ index.html Screen Section Index
 
-[index.html](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/index.html) is exactly **2,279 lines** long. Below is a line-indexed catalog of all core containers:
+[index.html](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/index.html) is exactly **2,329 lines** long. Below is a line-indexed catalog of all core containers:
 
 | Line Range | Container ID | Purpose / Content |
 | :--- | :--- | :--- |
@@ -77,12 +77,12 @@ graph TD
 | **L869 - L1050** | `panel-strategy` | **Calorie Cycling**: Enable switches and day-by-day surplus/percentage cycling overrides |
 | **L1051 - L1154** | `panel-weight-planner` | **MSJ Planner**: Sex, age, physical activity select dropdowns, target rates, and expected timeline results |
 | **L1155 - L1294** | `panel-weight-budgets` | **Macro Budgets**: Custom nutrient budget parameters and diet presets grid buttons |
-| **L1295 - L1414** | `panel-settings` | **Settings**: Backups (CSV/JSON), clear data triggers, mock logs, and Renpho CSV import overlay |
-| **L1415 - L1582** | `panel-food-selector` | **Food Selector**: Recipes list, food log history lookup tab, online API search subpage, and collapsible Quick Add form |
-| **L1583 - L1850** | `panel-add-recipe` | **Recipe Builder**: Ingredients tally compiler, custom ingredient input cards, and totals tracker |
-| **L1851 - L1985** | `panel-weight-history-detail` | **Weight Details**: Deep history chart, zoom buttons (3 days to 2 years), panning, and goal timelines |
-| **L1986 - L2175** | Global Modals Overlay | Overlays for confirmation, copy/move segment logs, inline edits, and weight pruners |
-| **L2176 - L2279** | Safety Scripts & Imports | Diagnostic capturing error blocks, protocol guards, and PWA script lists |
+| **L1295 - L1464** | `panel-settings` | **Settings**: Backups (CSV/JSON), clear data triggers, mock logs, Typesense configurations, and Renpho CSV import overlay |
+| **L1465 - L1632** | `panel-food-selector` | **Food Selector**: Recipes list, food log history lookup tab, online search-as-you-type fuzzy subpage, and collapsible Quick Add form |
+| **L1633 - L1900** | `panel-add-recipe` | **Recipe Builder**: Ingredients tally compiler, custom ingredient input cards, and totals tracker |
+| **L1901 - L2035** | `panel-weight-history-detail` | **Weight Details**: Deep history chart, zoom buttons (3 days to 2 years), panning, and goal timelines |
+| **L2036 - L2225** | Global Modals Overlay | Overlays for confirmation, copy/move segment logs, inline edits, and weight pruners |
+| **L2226 - L2329** | Safety Scripts & Imports | Diagnostic capturing error blocks, protocol guards, and PWA script lists |
 
 ---
 
@@ -141,11 +141,11 @@ graph TD
 * **`showEditModal(meal)`**: Handles clicked log edits. Scales macros and calories dynamically using proportional weight factors if a user overrides the weight value.
 
 ### 4. [food_selector.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/controllers/food_selector.js)
-* **`setTabActive(tabName)`**: Manages selector subpages (Recipes, History, and Search Online).
+* **`setTabActive(tabName)`**: Manages selector subpages, focuses the search inputs, and auto-selects text.
 * **`getFoodHistory()`**: Walks through historical log databases and sorts them in reverse chronological order (newest logged items first).
 * **`selectFoodItem(food, type, clickedEl)`**: Implements inline toggling (opening the portion selector directly below clicked items and auto-scrolling to the top).
 * **`logSelectedFood()`**: Computes multipliers and submits results back to Daily Meals logs or Recipe Builders based on active contexts.
-* **Collapsible Quick Add Form Formulator (Lines 205-304)**: Supports quick carbs, protein, and fat inputs with live calorie calculations.
+* **Collapsible Quick Add Form Formulator (Lines 214-313)**: Supports quick carbs, protein, and fat inputs with live calorie calculations.
 
 ### 5. [recipe.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/controllers/recipe.js)
 * **`addCustomIngredientSubmit()`**: Validates, maps, and registers custom manual ingredients to compilers.
@@ -158,12 +158,12 @@ graph TD
 * **`registerCustomBarcode(context)`**: Dynamically maps custom portion weights, normalizes nutrients back to standard 100g database bases, and saves locally to prevent duplicate requests.
 
 ### 7. [settings.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/controllers/settings.js)
-* **Diet Presets Configurator (Lines 11-90, 224-362)**: Core science engine mapping scientific rationales, joint stood stands, and clinical study lists for normal, high, and ultra protein diets. Clamps max protein kcal safely to 45% of total budgets.
-* **`calculateTargetPlanner()` (Lines 492-615)**: Mifflin-St Jeor TDEE bodyweight loss rate planner. Outputs weekly timeline estimates and triggers health/safety warnings for aggressive rate drops or low daily calories.
+* **Diet Presets Configurator (Lines 11-90, 258-396)**: Core science engine mapping scientific rationales, joint stood stands, and clinical study lists for normal, high, and ultra protein diets. Clamps max protein kcal safely to 45% of total budgets.
+* **`calculateTargetPlanner()` (Lines 557-680)**: Mifflin-St Jeor TDEE bodyweight loss rate planner. Outputs weekly timeline estimates and triggers health/safety warnings for aggressive rate drops or low daily calories.
 * **`applyPlannerTarget()`**: Recalculates standard base target calories and scales macronutrient targets proportionally.
-* **`toggleWeightUnit(targetUnit)` (Lines 683-722)**: Converts all historical weight logs, profile settings, and weekly rates accurately between Imperial `lbs` and Metric `kg` without data loss.
-* **`importRenphoCSV(...)` (Lines 794-938)**: Parses Renpho smart scale CSV exports, extracts measurement times and weights, performs automatic unit conversions if necessary, and saves logs.
-* **Backups Manager (Lines 940-1037)**: Exports Google Sheets compatible CSV logs and raw JSON database files.
+* **`toggleWeightUnit(targetUnit)` (Lines 748-817)**: Converts all historical weight logs, profile settings, and weekly rates accurately between Imperial `lbs` and Metric `kg` without data loss.
+* **`importRenphoCSV(...)` (Lines 859-1003)**: Parses Renpho smart scale CSV exports, extracts measurement times and weights, performs automatic unit conversions if necessary, and saves logs.
+* **Backups Manager (Lines 1005-1102)**: Exports Google Sheets compatible CSV logs and raw JSON database files.
 
 ### 8. [strategy.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/controllers/strategy.js)
 * **`init()` / `render()`**: Binds Calorie Cycling weekend switches, tracks high-calorie day configs (+ kcal flat surpluses or + % percentage increases), and dynamically reveals day inputs.
