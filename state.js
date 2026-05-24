@@ -19,6 +19,7 @@ window.AppState = {
     weights: {},    // "YYYY-MM-DD": weightNumeric
     settings: {
       unit: "lbs",   // "lbs" or "kg"
+      activePreset: null, // "normal-protein", "high-protein", etc.
       highCalorieDaysEnabled: false,
       highCalorieDays: {
         sunday: { enabled: false, type: "flat", value: 300 },

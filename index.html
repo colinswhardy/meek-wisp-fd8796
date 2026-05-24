@@ -877,7 +877,7 @@
             <div class="tool-info">
               <span class="tool-icon">⚖️</span>
               <div>
-                <span class="tool-title">Weight Goal & Calorie Planner</span>
+                <span class="tool-title">Weight Goal, Calorie Target and Timelines</span>
                 <p class="tool-desc">Calculate TDEE, BMR, and safe deficit targets</p>
               </div>
             </div>
@@ -890,8 +890,8 @@
             <div class="tool-info">
               <span class="tool-icon">🎯</span>
               <div>
-                <span class="tool-title">Set Budgets & Target Goals</span>
-                <p class="tool-desc">Manually configure calorie and macro budgets</p>
+                <span class="tool-title">Diet Type &amp; Macro Breakdown</span>
+                <p class="tool-desc">Select diet style and manually adjust your macros</p>
               </div>
             </div>
             <span class="tool-arrow">❯</span>
@@ -1047,7 +1047,7 @@
       </div>
     </section>
 
-    <!-- SUBPAGE: CALORIE PLANNER -->
+    <!-- SUBPAGE: WEIGHT GOAL, CALORIE TARGET AND TIMELINES -->
     <section id="panel-weight-planner" class="app-panel">
       <div class="subpage-header">
         <button class="btn-back" onclick="appRouter.navigate('strategy')">
@@ -1056,10 +1056,9 @@
         </button>
       </div>
 
-      <!-- Weight Goal & Calorie Planner -->
+      <!-- Weight Goal, Calorie Target and Timelines -->
       <div class="glass-card planner-card">
-        <h3>Weight Goal & Calorie Planner</h3>
-        <p class="card-subtitle">Calculate dynamic daily targets based on your biological statistics and safe weekly rate.</p>
+        <h3>Weight Goal, Calorie Target and Timelines</h3>
 
         <form id="planner-form" oninput="return false;">
           <div class="form-grid-2x2">
@@ -1162,18 +1161,40 @@
 
       <!-- Edit Daily Budget Goals -->
       <div class="glass-card targets-config-card">
-        <h3>Set Budgets &amp; Target Goals</h3>
+        <h3>Diet Type &amp; Macro Breakdown</h3>
         <p class="card-subtitle">Select a diet preset to auto-calculate macros, or enter values manually below.</p>
 
         <form id="targets-form">
           <!-- Calorie Budget (always based on base calories, never re-feed adjusted) -->
           <div class="form-group">
             <label for="target-calories">Calorie Budget (kcal)</label>
-            <input type="number" id="target-calories" value="2000" min="500" max="10000" required pattern="[0-9]*" inputmode="numeric">
+            <input type="number" id="target-calories" value="2000" min="500" max="10000" readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; pointer-events: none;">
             <p class="budget-note">⚡ Always reflects your base daily calorie goal — re-feed &amp; cycling days are applied separately.</p>
           </div>
 
-          <!-- Diet Style Preset Selectors -->
+          <!-- Macro Input Fields (always editable — preset fills these in, custom typing deselects preset) -->
+          <div class="form-grid-3x" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="target-protein">Protein (g)</label>
+              <input type="number" id="target-protein" value="150" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-carbs">Carbs (g)</label>
+              <input type="number" id="target-carbs" value="250" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-fats">Fats (g)</label>
+              <input type="number" id="target-fats" value="65" min="0" max="500" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+          </div>
+
+          <!-- Macro Warning Container -->
+          <div class="planner-warning hidden" id="macro-warning-box" style="margin-top: 4px; margin-bottom: 16px;">
+            <span class="warning-icon">⚠️</span>
+            <span id="macro-warning-text">Your macros do not match your totaled daily calories.</span>
+          </div>
+
+          <!-- Diet Preset Selectors -->
           <div class="diet-preset-container">
             <!-- Protein Tier -->
             <div class="diet-preset-section">
@@ -1232,22 +1253,6 @@
           <!-- Dynamic Explanation Box (revealed when a preset is selected) -->
           <div class="diet-explanation-box hidden" id="diet-explanation-box">
             <!-- Populated dynamically by settings.js -->
-          </div>
-
-          <!-- Macro Input Fields (always editable — preset fills these in, custom typing deselects preset) -->
-          <div class="form-grid-3x">
-            <div class="form-group">
-              <label for="target-protein">Protein (g)</label>
-              <input type="number" id="target-protein" value="150" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
-            </div>
-            <div class="form-group">
-              <label for="target-carbs">Carbs (g)</label>
-              <input type="number" id="target-carbs" value="250" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
-            </div>
-            <div class="form-group">
-              <label for="target-fats">Fats (g)</label>
-              <input type="number" id="target-fats" value="65" min="0" max="500" required pattern="[0-9]*" inputmode="numeric">
-            </div>
           </div>
 
           <button type="submit" class="btn btn-success btn-block">Save Target Budgets</button>

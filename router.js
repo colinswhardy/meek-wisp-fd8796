@@ -67,10 +67,10 @@ window.appRouter = {
     if (panelName === "food" || panelName === "add_recipe" || panelName === "food_selector") {
       return "food";
     }
-    if (panelName === "weight" || panelName === "weight_planner" || panelName === "weight_budgets" || panelName === "weight_history_detail") {
+    if (panelName === "weight" || panelName === "weight_history_detail") {
       return "weight";
     }
-    if (panelName === "strategy") {
+    if (panelName === "strategy" || panelName === "weight_planner" || panelName === "weight_budgets") {
       return "strategy";
     }
     return null;
@@ -148,8 +148,8 @@ window.appRouter = {
     // Toggle bottom navigation active buttons
     this.navItems.forEach((btn) => {
       const btnTab = btn.getAttribute("data-tab");
-      const isWeightRelated = (tabName === "weight" || tabName === "weight_planner" || tabName === "weight_budgets" || tabName === "weight_history_detail");
-      const isStrategyRelated = (tabName === "strategy");
+      const isWeightRelated = (tabName === "weight" || tabName === "weight_history_detail");
+      const isStrategyRelated = (tabName === "strategy" || tabName === "weight_planner" || tabName === "weight_budgets");
       const isFoodRelated = (tabName === "food" || tabName === "add_recipe" || tabName === "food_selector");
       if (btnTab === tabName || (btnTab === "weight" && isWeightRelated) || (btnTab === "strategy" && isStrategyRelated) || (btnTab === "food" && isFoodRelated)) {
         btn.classList.add("active");
