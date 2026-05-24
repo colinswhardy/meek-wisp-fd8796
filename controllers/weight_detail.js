@@ -224,6 +224,7 @@ window.WeightDetailController = {
             pointBorderWidth: 1.5,
             pointRadius: pointRadius,
             pointHoverRadius: 6,
+            pointHitRadius: 25,
             backgroundColor: weightGradient,
             fill: true,
             tension: 0.15,
@@ -232,7 +233,7 @@ window.WeightDetailController = {
           {
             label: "Trendline",
             data: regressionDataset,
-            borderColor: "#ff7a00",
+            borderColor: "#ffffff",
             borderWidth: 2.5,
             borderDash: [6, 4],
             pointRadius: 0,
@@ -244,6 +245,11 @@ window.WeightDetailController = {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          intersect: false,
+          axis: "x"
+        },
         layout: {
           padding: { left: 5, right: 15, top: 10, bottom: 0 }
         },
