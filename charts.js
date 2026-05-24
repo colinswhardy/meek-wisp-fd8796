@@ -73,6 +73,7 @@ window.WeightChartManager = {
             pointBorderWidth: 1.5,
             pointRadius: 5,
             pointHoverRadius: 7,
+            pointHitRadius: 25,
             backgroundColor: weightGradient,
             fill: true,
             tension: 0.15,
@@ -81,7 +82,7 @@ window.WeightChartManager = {
           {
             label: "Trendline",
             data: regressionDataset,
-            borderColor: "#cbd5e1",
+            borderColor: "#ffffff",
             borderWidth: 2,
             borderDash: [5, 5],
             pointRadius: 0, // Dotted line only, no points
@@ -93,6 +94,11 @@ window.WeightChartManager = {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          intersect: false,
+          axis: "x"
+        },
         plugins: {
           legend: {
             display: false // We use our custom styled HTML legend

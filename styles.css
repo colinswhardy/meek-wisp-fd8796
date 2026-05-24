@@ -1034,7 +1034,7 @@ input:focus {
 }
 
 .dot-actual { background-color: var(--color-weight); box-shadow: 0 0 4px var(--color-weight); }
-.dot-trend { background-color: #ff7a00; box-shadow: 0 0 4px #ff7a00; }
+.dot-trend { background-color: #ffffff; box-shadow: 0 0 4px #ffffff; }
 
 .chart-canvas-wrapper {
   position: relative;
@@ -3563,3 +3563,4 @@ select:focus {
   margin-top: 8px !important; /* Reduced from 16px */
   padding: 10px !important; /* Make the button slightly more compact */
 }
+

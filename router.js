@@ -38,15 +38,12 @@ window.appRouter = {
         const activeNavTab = this.getNavbarTabForPanel(AppState.activeTab);
         
         if (activeNavTab === tab) {
-          // Re-clicked the currently active tab button: reset its root scroll to 0 and navigate there
-          const rootPanel = tab;
-          this.scrollPositions[rootPanel] = 0;
-          this.navigate(rootPanel);
-        } else {
-          // Clicked a different tab button: restore last active sub-panel in that group
-          const targetPanel = this.lastActivePanelByTab[tab] || tab;
-          this.navigate(targetPanel);
+          // Re-clicked the currently active tab button: reset its root scroll to 0
+          this.scrollPositions[tab] = 0;
         }
+        
+        // Always navigate to the root panel of the clicked tab
+        this.navigate(tab);
       });
     });
 
@@ -217,12 +214,6 @@ window.appRouter = {
         const recipeName = document.getElementById("recipe-name-field");
         if (recipeName && !recipeName.value) {
           recipeName.focus();
-        }
-      } else if (tabName === "weight_planner") {
-        const startingWt = document.getElementById("profile-starting-weight");
-        if (startingWt) {
-          startingWt.focus();
-          try { startingWt.select(); } catch (err) {}
         }
       } else if (tabName === "weight_budgets") {
         const targetCal = document.getElementById("target-calories");
