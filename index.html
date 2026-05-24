@@ -173,7 +173,7 @@
         <!-- Carbs Row -->
         <div class="macro-bar-row">
           <div class="macro-meta">
-            <span class="macro-name"><span class="dot dot-carbs"></span>Carbohydrates</span>
+            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs (Net)</span>
             <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
           </div>
           <div class="macro-progress-track">
@@ -264,10 +264,15 @@
         <!-- User serving size weight input & macro scaling display -->
         <div class="serving-scaling-form">
           <div class="form-group">
-            <label for="food-weight-input-dashboard">Weight Eaten (grams)</label>
-            <div class="weight-input-container">
-              <input type="number" id="food-weight-input-dashboard" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
-              <span class="weight-unit">g</span>
+            <label for="food-weight-input-dashboard" id="food-weight-label-dashboard">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-dashboard" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-dashboard" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-dashboard">g</span>
+              </div>
             </div>
           </div>
 
@@ -288,6 +293,10 @@
             <div class="scale-item">
               <label>Fats</label>
               <strong id="scaled-fats-dashboard">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-dashboard">0g</strong>
             </div>
           </div>
 
@@ -323,8 +332,18 @@
             <label for="not-found-brand-dashboard">Brand / Manufacturer</label>
             <input type="text" id="not-found-brand-dashboard" placeholder="e.g. Local Dairy" value="Generic Brand">
           </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-dashboard">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-dashboard" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-dashboard">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-dashboard" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
           
-          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-dashboard" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
           <div class="form-grid-2x2" style="margin-bottom: 8px;">
             <div class="form-group">
               <label for="not-found-calories-dashboard">Calories (kcal)</label>
@@ -342,13 +361,17 @@
               <label for="not-found-fats-dashboard">Fats (g)</label>
               <input type="number" id="not-found-fats-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
+            <div class="form-group">
+              <label for="not-found-fiber-dashboard">Fiber (g)</label>
+              <input type="number" id="not-found-fiber-dashboard" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
         </form>
       </div>
 
       <!-- Weight Analytics Card (Dashboard version) -->
-      <div class="glass-card detail-stats-card" id="dashboard-weight-analytics" style="margin-top: 15px;">
+      <div class="glass-card detail-stats-card" id="dashboard-weight-analytics">
         <h3>Weight Analytics</h3>
         <p class="card-subtitle">Detailed insights calculated over your entire logging history.</p>
         
@@ -376,25 +399,29 @@
 
     <!-- TAB 2: FOOD LOG -->
     <section id="panel-food" class="app-panel">
-      <!-- Floating Barcode Scanner (Food Tab) -->
-      <div class="glass-card scanner-activation-card scanner-float" id="scanner-view-container-food">
-        <div class="scanner-header">
-          <h3>Barcode Scan</h3>
-          <p>Scan a product's barcode to auto-import macros</p>
-        </div>
-
+      <!-- Active Barcode Scanner Section (Food Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-food">
         <!-- Camera scanning display box -->
         <div id="camera-scanner-food" class="camera-viewport hidden"></div>
 
         <!-- Scan action triggers -->
         <div class="scanner-controls">
-          <button id="btn-start-scan-food" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard" style="flex: 1.5;">
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <span>Scan Barcode</span>
+          <button id="btn-start-scan-food" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
           </button>
           <button id="btn-stop-scan-food" class="btn btn-danger hidden">Stop Camera</button>
-          <button id="btn-food-selector-food" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+          <button id="btn-food-selector-food" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-add-icon">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
             <span>Add Food</span>
           </button>
         </div>
@@ -443,10 +470,15 @@
         <!-- User serving size weight input & macro scaling display -->
         <div class="serving-scaling-form">
           <div class="form-group">
-            <label for="food-weight-input-food">Weight Eaten (grams)</label>
-            <div class="weight-input-container">
-              <input type="number" id="food-weight-input-food" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
-              <span class="weight-unit">g</span>
+            <label for="food-weight-input-food" id="food-weight-label-food">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-food" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-food" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-food">g</span>
+              </div>
             </div>
           </div>
 
@@ -467,6 +499,10 @@
             <div class="scale-item">
               <label>Fats</label>
               <strong id="scaled-fats-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-food">0g</strong>
             </div>
           </div>
 
@@ -502,8 +538,18 @@
             <label for="not-found-brand-food">Brand / Manufacturer</label>
             <input type="text" id="not-found-brand-food" placeholder="e.g. Local Dairy" value="Generic Brand">
           </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-food">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-food" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-food">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-food" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
           
-          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-food" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
           <div class="form-grid-2x2" style="margin-bottom: 8px;">
             <div class="form-group">
               <label for="not-found-calories-food">Calories (kcal)</label>
@@ -520,6 +566,10 @@
             <div class="form-group">
               <label for="not-found-fats-food">Fats (g)</label>
               <input type="number" id="not-found-fats-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fiber-food">Fiber (g)</label>
+              <input type="number" id="not-found-fiber-food" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
@@ -552,6 +602,10 @@
             <label for="custom-name">Food / Meal Name</label>
             <input type="text" id="custom-name" placeholder="e.g. Chicken breast or Custom Shake" required>
           </div>
+          <div class="form-group">
+            <label for="custom-weight">Weight Eaten (grams)</label>
+            <input type="number" id="custom-weight" min="0.1" step="any" value="100" required pattern="[0-9]*" inputmode="numeric">
+          </div>
           <div class="form-grid-2x2">
             <div class="form-group">
               <label for="custom-calories">Calories (kcal)</label>
@@ -568,6 +622,10 @@
             <div class="form-group">
               <label for="custom-fats">Fats (g)</label>
               <input type="number" id="custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="custom-fiber">Fiber (g)</label>
+              <input type="number" id="custom-fiber" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Add Custom Log</button>
@@ -643,6 +701,183 @@
           <span class="status-icon">✓</span>
           <span id="today-weight-text">Logged weight for today: <strong>--</strong></span>
         </div>
+      </div>
+
+      <!-- Active Barcode Scanner Section (Weight Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-weight">
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-weight" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-weight" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
+          </button>
+          <button id="btn-stop-scan-weight" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-weight" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-add-icon">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Food</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-weight">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-weight" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-weight" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-weight">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-weight">Product Name</h3>
+            <p id="preview-food-brand-weight">Brand</p>
+          </div>
+          <button id="btn-close-preview-weight" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-weight">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-weight">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-weight">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-weight">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-weight" id="food-weight-label-weight">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-weight" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-weight" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-weight">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-weight">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-weight">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-weight" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-weight">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-weight"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-weight" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-weight" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-weight">Product Name</label>
+            <input type="text" id="not-found-name-weight" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-weight">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-weight" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-weight">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-weight" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-weight">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-weight" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-weight" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-weight">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-weight" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-weight">Protein (g)</label>
+              <input type="number" id="not-found-protein-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-weight">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-weight">Fats (g)</label>
+              <input type="number" id="not-found-fats-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fiber-weight">Fiber (g)</label>
+              <input type="number" id="not-found-fiber-weight" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
       </div>
     </section>
 
@@ -1125,6 +1360,46 @@
 
         <!-- Recipes Tab Content -->
         <div class="selector-tab-content hidden" id="tab-content-recipes">
+          <!-- Quick Add Button & Collapsible Form -->
+          <div class="quick-add-wrapper" style="margin-bottom: 16px;">
+            <button id="btn-recipes-quick-add" class="btn btn-secondary btn-block btn-iconic" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 12px 16px; font-weight: 600;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="color: #60a5fa;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Quick Add</span>
+            </button>
+
+            <!-- Collapsible Form -->
+            <form id="recipe-quick-add-form" class="custom-form-body hidden" style="margin-top: 12px; padding: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--radius-md); gap: 12px; animation: fadeIn var(--transition-fast);">
+              <div class="form-group">
+                <label for="quick-add-name">Food Name (Optional)</label>
+                <input type="text" id="quick-add-name" placeholder="e.g. Quick Snack" style="padding: 10px 14px; font-size: 0.9rem;">
+              </div>
+              <div class="form-grid-3x" style="gap: 8px;">
+                <div class="form-group">
+                  <label for="quick-add-protein">Protein (g)</label>
+                  <input type="number" id="quick-add-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+                <div class="form-group">
+                  <label for="quick-add-carbs">Carbs (g)</label>
+                  <input type="number" id="quick-add-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+                <div class="form-group">
+                  <label for="quick-add-fats">Fats (g)</label>
+                  <input type="number" id="quick-add-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+              </div>
+              
+              <!-- Live Calorie Calculation summary -->
+              <div class="scaling-summary" style="padding: 8px 12px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); margin: 0;">Calculated Calories:</label>
+                <strong id="quick-add-calories-display" style="color: var(--color-calories); font-size: 1.1rem; font-family: var(--font-display); font-weight: 700;">0 kcal</strong>
+              </div>
+              
+              <button type="submit" class="btn btn-success btn-block" style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); font-size: 0.9rem; padding: 10px 20px;">
+                Log Quick Add
+              </button>
+            </form>
+          </div>
+
           <div class="recipes-list" id="selector-recipes-list">
             <!-- Dynamically rendered recipes -->
           </div>
@@ -1177,10 +1452,15 @@
         <!-- Input for weight or multiplier -->
         <div class="serving-scaling-form">
           <div class="form-group" id="selector-weight-group">
-            <label for="selector-weight-input" id="selector-weight-label">Weight Eaten (grams)</label>
-            <div class="weight-input-container">
-              <input type="number" id="selector-weight-input" min="0.1" step="any" value="100" pattern="[0-9]*" inputmode="numeric">
-              <span class="weight-unit" id="selector-weight-unit">g</span>
+            <label for="selector-weight-input" id="selector-weight-label">Amount Eaten</label>
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <select id="selector-portion-unit" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="selector-weight-input" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="selector-weight-unit">g</span>
+              </div>
             </div>
           </div>
 
@@ -1201,6 +1481,10 @@
             <div class="scale-item">
               <label>Fats</label>
               <strong id="selector-scaled-fats">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="selector-scaled-fiber">0g</strong>
             </div>
           </div>
 
@@ -1296,10 +1580,15 @@
         <!-- User serving size weight input & macro scaling display -->
         <div class="serving-scaling-form">
           <div class="form-group">
-            <label for="food-weight-input-recipe">Weight in Recipe (grams)</label>
-            <div class="weight-input-container">
-              <input type="number" id="food-weight-input-recipe" min="1" max="5000" value="100" pattern="[0-9]*" inputmode="numeric">
-              <span class="weight-unit">g</span>
+            <label for="food-weight-input-recipe" id="food-weight-label-recipe">Weight in Recipe</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-recipe" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-recipe" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-recipe">g</span>
+              </div>
             </div>
           </div>
 
@@ -1320,6 +1609,10 @@
             <div class="scale-item">
               <label>Fats</label>
               <strong id="scaled-fats-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-recipe">0g</strong>
             </div>
           </div>
 
@@ -1355,8 +1648,18 @@
             <label for="not-found-brand-recipe">Brand / Manufacturer</label>
             <input type="text" id="not-found-brand-recipe" placeholder="e.g. Local Dairy" value="Generic Brand">
           </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-recipe">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-recipe" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-recipe">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-recipe" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
           
-          <div class="nutri-label-100g" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g / 100ml</div>
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-recipe" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
           <div class="form-grid-2x2" style="margin-bottom: 8px;">
             <div class="form-group">
               <label for="not-found-calories-recipe">Calories (kcal)</label>
@@ -1373,6 +1676,10 @@
             <div class="form-group">
               <label for="not-found-fats-recipe">Fats (g)</label>
               <input type="number" id="not-found-fats-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fiber-recipe">Fiber (g)</label>
+              <input type="number" id="not-found-fiber-recipe" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
@@ -1407,6 +1714,10 @@
             <div class="form-group">
               <label for="recipe-custom-fats">Fats (g)</label>
               <input type="number" id="recipe-custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-fiber">Fiber (g)</label>
+              <input type="number" id="recipe-custom-fiber" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <div class="form-group">
@@ -1617,23 +1928,42 @@
   <div id="move-food-modal" class="custom-modal-overlay hidden">
     <div class="glass-card custom-modal-content">
       <div class="custom-modal-header">
-        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+        <h3 id="copy-move-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
           <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Move Food to Day
+          Copy / Move Food
         </h3>
       </div>
       <div class="custom-modal-body">
-        <p style="margin: 12px 0 16px 0; font-size: 0.9rem; color: var(--color-text-secondary);">
-          Select the target date to move <strong id="move-food-name" style="color: var(--color-text-primary);"></strong>:
+        <!-- Segmented Mode Control -->
+        <div class="modal-segmented-control">
+          <button id="btn-mode-copy" class="segment-btn active" type="button">Copy Food</button>
+          <button id="btn-mode-move" class="segment-btn" type="button">Move Food</button>
+        </div>
+
+        <p style="margin: 4px 0 12px 0; font-size: 0.9rem; color: var(--color-text-secondary);">
+          <span id="copy-move-prompt-action">Copy</span> <strong id="move-food-name" style="color: var(--color-text-primary);"></strong> to:
         </p>
+
+        <!-- Quick Dates Grid -->
+        <div class="quick-date-buttons">
+          <button id="btn-quick-today" class="btn-quick-date" type="button">
+            <strong>Today</strong>
+            <span style="font-size: 0.7rem; opacity: 0.6;" id="quick-today-date-label">--</span>
+          </button>
+          <button id="btn-quick-tomorrow" class="btn-quick-date" type="button">
+            <strong>Tomorrow</strong>
+            <span style="font-size: 0.7rem; opacity: 0.6;" id="quick-tomorrow-date-label">--</span>
+          </button>
+        </div>
+
         <div class="form-group">
-          <label for="move-food-date-input">Target Date</label>
+          <label for="move-food-date-input">Or select custom date</label>
           <input type="date" id="move-food-date-input" required style="width: 100%;">
         </div>
       </div>
       <div class="custom-modal-footer">
         <button id="btn-cancel-move" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-        <button id="btn-confirm-move" class="btn btn-primary" style="flex: 1;">Move Food</button>
+        <button id="btn-confirm-move" class="btn btn-primary" style="flex: 1;">Copy Food</button>
       </div>
     </div>
   </div>

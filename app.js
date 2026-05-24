@@ -96,4 +96,63 @@ window.addEventListener("DOMContentLoaded", () => {
       console.error("[Rollover Error]", err);
     }
   }, 30000); // Clock check once every 30 seconds
+
+  // Low-latency visual "clickable box" gesture accelerator
+  const handleGlobalPointerDown = (e) => {
+    const target = e.target;
+
+    // 1. If clicked inside an interactive element like a button, link, or switch toggle, let it handle its own click
+    if (target.closest('button, a, .switch-toggle, select, option, label[for]')) {
+      return;
+    }
+
+    // 2. If clicking a label, find the associated input by id and focus/select it immediately
+    if (target.tagName === 'LABEL') {
+      const htmlFor = target.getAttribute('for');
+      if (htmlFor) {
+        const input = document.getElementById(htmlFor);
+        if (input) {
+          input.focus();
+          if (input.tagName === 'INPUT' && (input.type === 'text' || input.type === 'number' || input.type === 'password')) {
+            try {
+              input.select();
+            } catch (err) {}
+          }
+        }
+      }
+      return;
+    }
+
+    // 3. If clicking directly on an input or textarea (except file/checkbox/radio), force focus and select to bring up keyboard instantly
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      if (target.type === 'file' || target.type === 'checkbox' || target.type === 'radio') {
+        return;
+      }
+      target.focus();
+      if (target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'number' || target.type === 'password')) {
+        try {
+          target.select();
+        } catch (err) {}
+      }
+      return;
+    }
+
+    // 4. Check if clicked inside a styled input box container/wrapper
+    const containerSelectors = '.form-group, .weight-input-container, .weight-input-wrapper, .input-inline, .pref-row';
+    const container = target.closest(containerSelectors);
+    if (container) {
+      const input = container.querySelector('input:not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea');
+      if (input) {
+        input.focus();
+        if (input.tagName === 'INPUT' && (input.type === 'text' || input.type === 'number' || input.type === 'password')) {
+          try {
+            input.select();
+          } catch (err) {}
+        }
+      }
+    }
+  };
+
+  // Listen to pointerdown on document to bypass mobile touch delay completely
+  document.addEventListener('pointerdown', handleGlobalPointerDown, { passive: true });
 });

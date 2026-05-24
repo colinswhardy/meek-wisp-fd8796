@@ -102,19 +102,12 @@ window.appRouter = {
     if (!this.panels[tabName]) return;
     
     // Close camera scanner stream cleanly if leaving the active camera tabs
-    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food" || AppState.activeTab === "add_recipe") && tabName !== AppState.activeTab) {
+    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food" || AppState.activeTab === "weight" || AppState.activeTab === "add_recipe") && tabName !== AppState.activeTab) {
       BarcodeScannerManager.stop();
     }
 
     const previousTab = AppState.activeTab;
     const targetGroup = this.getNavbarTabForPanel(tabName);
-
-    // Reset food controller's floating scanner state when entering food tab from another panel
-    if (tabName === "food" && previousTab !== "food") {
-      if (window.FoodController) {
-        window.FoodController.hasTouchedOrScrolled = false;
-      }
-    }
 
     // Reset weight history controller's fresh navigation flag to recalibrate comfortable zoom
     if (tabName === "weight_history_detail" && previousTab !== "weight_history_detail") {
@@ -192,6 +185,50 @@ window.appRouter = {
       viewport.offsetHeight; // force reflow
       viewport.style.scrollBehavior = originalScrollBehavior;
     }
+
+    // Auto-focus primary input elements on view transitions to bring up keyboard immediately
+    setTimeout(() => {
+      if (tabName === "weight") {
+        const wtInput = document.getElementById("weight-input");
+        if (wtInput) {
+          wtInput.focus();
+          try { wtInput.select(); } catch (err) {}
+        }
+      } else if (tabName === "food_selector") {
+        if (window.FoodSelectorController) {
+          if (FoodSelectorController.activeTab === "search") {
+            const searchInput = document.getElementById("online-search-input");
+            if (searchInput) {
+              searchInput.focus();
+              try { searchInput.select(); } catch (err) {}
+            }
+          } else if (FoodSelectorController.activeTab === "history") {
+            const histSearch = document.getElementById("history-search-input");
+            if (histSearch) {
+              histSearch.focus();
+              try { histSearch.select(); } catch (err) {}
+            }
+          }
+        }
+      } else if (tabName === "add_recipe") {
+        const recipeName = document.getElementById("recipe-name-field");
+        if (recipeName && !recipeName.value) {
+          recipeName.focus();
+        }
+      } else if (tabName === "weight_planner") {
+        const startingWt = document.getElementById("profile-starting-weight");
+        if (startingWt) {
+          startingWt.focus();
+          try { startingWt.select(); } catch (err) {}
+        }
+      } else if (tabName === "weight_budgets") {
+        const targetCal = document.getElementById("target-calories");
+        if (targetCal) {
+          targetCal.focus();
+          try { targetCal.select(); } catch (err) {}
+        }
+      }
+    }, 150); // Small delay to wait for panel active animations and browser layer rendering
   },
 
   refreshCurrentView() {

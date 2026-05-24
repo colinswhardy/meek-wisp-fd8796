@@ -1,8 +1,8 @@
-const CACHE_NAME = "colins-charts-macros-v11";
+const CACHE_NAME = "colins-charts-macros-v13";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
-  "./styles.css",
+  "./styles.css?v=12",
   "./app.js",
   "./state.js",
   "./router.js",

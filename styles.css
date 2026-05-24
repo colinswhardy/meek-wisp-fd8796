@@ -219,8 +219,8 @@ body {
 .calorie-bar-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 22px 20px;
+  gap: 10px;
+  padding: 16px 20px;
 }
 
 .calorie-bar-header {
@@ -521,33 +521,10 @@ body {
   gap: 16px;
 }
 
-/* Floating Barcode Scanner (Food Tab) */
-.scanner-float {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 88px; /* sit just above the nav bar */
-  width: calc(100% - 32px);
-  max-width: 428px;
-  z-index: 80;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-  will-change: transform, opacity;
-}
-
-.scanner-float.scanner-float--hidden {
-  transform: translateX(-50%) translateY(120%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Extra bottom space on food tab to clear the floating scanner */
-#panel-food {
-  padding-bottom: 160px;
-  transition: padding-bottom 0.35s ease;
-}
-
-#panel-food.panel-food--no-float {
-  padding-bottom: 0px !important;
+/* Standard bottom padding for panels with bottom-pinned capsule scanner cards */
+#panel-food,
+#panel-weight {
+  padding-bottom: 140px !important;
 }
 
 .scanner-header h3 {
@@ -2206,8 +2183,8 @@ select:focus {
 }
 
 .scanner-activation-card {
-  padding: 16px !important;
-  margin-bottom: 16px;
+  padding: 12px 16px !important;
+  margin-bottom: 0;
 }
 
 .scanner-activation-card .scanner-header h3 {
@@ -2396,44 +2373,51 @@ select:focus {
   transform: scale(0.96);
 }
 
-/* Condensed Barcode Scanner Card specifically on Dashboard and Food Tab */
+/* Condensed Barcode Scanner Card specifically on Dashboard, Food and Weight Tabs */
 #scanner-view-container-dashboard,
-#scanner-view-container-food {
+#scanner-view-container-food,
+#scanner-view-container-weight {
   padding: 10px 16px !important;
   gap: 8px;
   margin-bottom: 12px;
 }
 
 #scanner-view-container-dashboard .scanner-header h3,
-#scanner-view-container-food .scanner-header h3 {
+#scanner-view-container-food .scanner-header h3,
+#scanner-view-container-weight .scanner-header h3 {
   margin: 0;
 }
 
 #scanner-view-container-dashboard .scanner-header p,
-#scanner-view-container-food .scanner-header p {
+#scanner-view-container-food .scanner-header p,
+#scanner-view-container-weight .scanner-header p {
   margin: 2px 0 4px 0;
   font-size: 0.8rem;
 }
 
 #scanner-view-container-dashboard .btn-scan-dashboard,
-#scanner-view-container-food .btn-scan-dashboard {
+#scanner-view-container-food .btn-scan-dashboard,
+#scanner-view-container-weight .btn-scan-dashboard {
   padding: 10px 16px;
   font-size: 0.95rem;
 }
 
 #scanner-view-container-dashboard .btn-add-food-small,
-#scanner-view-container-food .btn-add-food-small {
+#scanner-view-container-food .btn-add-food-small,
+#scanner-view-container-weight .btn-add-food-small {
   padding: 10px 16px;
   font-size: 0.95rem;
 }
 
 #scanner-view-container-dashboard .manual-barcode-input,
-#scanner-view-container-food .manual-barcode-input {
+#scanner-view-container-food .manual-barcode-input,
+#scanner-view-container-weight .manual-barcode-input {
   margin-top: 4px;
 }
 
 #scanner-view-container-dashboard .divider-text,
-#scanner-view-container-food .divider-text {
+#scanner-view-container-food .divider-text,
+#scanner-view-container-weight .divider-text {
   margin: 2px 0;
 }
 
@@ -2533,7 +2517,8 @@ select:focus {
 /* Clean exit / Stop Camera button display */
 .scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-dashboard,
 .scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-food,
-.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-recipe {
+.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-recipe,
+.scanner-activation-card.active-scanning .scanner-controls #btn-stop-scan-weight {
   width: 100% !important;
   max-width: 280px !important;
   margin: 0 auto !important;
@@ -2953,8 +2938,10 @@ select:focus {
    Dashboard Floating / Persistent Barcode Scanner & Add Food Button
    ========================================================================== */
 
-/* Persistent/Floating Barcode Scanner Container (Dashboard Tab) */
-#scanner-view-container-dashboard:not(.active-scanning) {
+/* Persistent/Floating Barcode Scanner Container (Dashboard, Food and Weight Tabs) */
+#scanner-view-container-dashboard:not(.active-scanning),
+#scanner-view-container-food:not(.active-scanning),
+#scanner-view-container-weight:not(.active-scanning) {
   position: fixed !important;
   bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important; /* Float right above tabs */
   left: 50% !important;
@@ -2977,13 +2964,17 @@ select:focus {
   overflow: hidden !important; /* Clips child hover borders */
 }
 
-/* Hide header on the dashboard in the persistent state */
-#scanner-view-container-dashboard:not(.active-scanning) .scanner-header {
+/* Hide header on the dashboard/tabs in the persistent state */
+#scanner-view-container-dashboard:not(.active-scanning) .scanner-header,
+#scanner-view-container-food:not(.active-scanning) .scanner-header,
+#scanner-view-container-weight:not(.active-scanning) .scanner-header {
   display: none !important;
 }
 
 /* Force flex alignment inside the persistent container */
-#scanner-view-container-dashboard:not(.active-scanning) .scanner-controls {
+#scanner-view-container-dashboard:not(.active-scanning) .scanner-controls,
+#scanner-view-container-food:not(.active-scanning) .scanner-controls,
+#scanner-view-container-weight:not(.active-scanning) .scanner-controls {
   display: flex !important;
   width: 100% !important;
   height: 100% !important;
@@ -3082,7 +3073,80 @@ select:focus {
   display: none !important;
 }
 
-/* Extra padding to prevent scrolling overlap on the Dashboard tab */
+/* Optimize dashboard spacing and prevent unnecessary scrolling */
 #panel-dashboard {
-  padding-bottom: 140px !important;
+  gap: 10px !important;
+  padding-bottom: 0 !important;
 }
+
+/* Modal segmented control for Copy/Move food log */
+.modal-segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-glass);
+}
+
+.segment-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.segment-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.segment-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Quick Date Pill Buttons */
+.quick-date-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn-quick-date {
+  flex: 1;
+  background: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 8px;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-quick-date:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-quick-date:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.08);
+}
+

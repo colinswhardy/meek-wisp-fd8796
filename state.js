@@ -190,5 +190,47 @@ window.AppState = {
         toast.classList.add("hidden");
       }, 300); // Wait for transition fade-out
     }, 2500);
+  },
+
+  getMealTimestamp(meal) {
+    if (meal.loggedAt) return meal.loggedAt;
+    if (meal.id) {
+      const parts = meal.id.split("_");
+      for (const part of parts) {
+        if (/^\d{13}$/.test(part)) {
+          return parseInt(part);
+        }
+      }
+    }
+    return null;
+  },
+
+  formatTimeOfDay(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "";
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  },
+
+  formatLastLogged(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "";
+    const today = new Date();
+    const isToday = date.getDate() === today.getDate() &&
+                    date.getMonth() === today.getMonth() &&
+                    date.getFullYear() === today.getFullYear();
+    const timeStr = this.formatTimeOfDay(timestamp);
+    if (isToday) {
+      return `today at ${timeStr}`;
+    }
+    const options = { month: "short", day: "numeric" };
+    const dateStr = date.toLocaleDateString("en-US", options);
+    return `${dateStr} at ${timeStr}`;
   }
 };
