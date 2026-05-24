@@ -45,13 +45,13 @@ graph TD
 * **Lines 268-450**: `searchFoods(query)` engine. Queries Local, USDA, and OFF concurrently and runs a **Smart Relevance Scoring & Sorting Algorithm** based on phrase starts, generic status, and name length penalties.
 
 ### 4. [router.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/router.js)
-* **Lines 12-51**: Initializes active panels, binds navbar listeners, and registerspopstate / popstate back actions.
-* **Lines 63-100**: Panel groups navigator and back-gesture logic.
-* **Lines 101-235**: `navigate(tabName)`. Handles:
+* **Lines 12-58**: Initializes active panels, binds navbar listeners, and registers popstate back actions.
+* **Lines 60-96**: Panel groups navigator and back-gesture logic.
+* **Lines 98-220**: `navigate(tabName)`. Handles:
   * Pruning scanner streams when leaving camera pages.
   * Viewport-level scroll position backups and restorative auto-scroll reflows.
-  * Focus triggers (instantly focusing primary inputs with `.select()` on tab entry).
-* **Lines 237-256**: Refresh routing router.
+  * Focus triggers (instantly focusing primary inputs on tab entry).
+* **Lines 222-240**: Refresh routing router.
 
 ### 5. [scanner.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/scanner.js)
 * **Lines 18-110**: `start(context)`. Initializes `Html5Qrcode` camera stream wrapper configured for 1D wide barcodes (EAN/UPC) with custom ideal aspect constraints.

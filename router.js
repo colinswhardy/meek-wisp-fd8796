@@ -215,12 +215,6 @@ window.appRouter = {
         if (recipeName && !recipeName.value) {
           recipeName.focus();
         }
-      } else if (tabName === "weight_budgets") {
-        const targetCal = document.getElementById("target-calories");
-        if (targetCal) {
-          targetCal.focus();
-          try { targetCal.select(); } catch (err) {}
-        }
       }
     }, 150); // Small delay to wait for panel active animations and browser layer rendering
   },
