@@ -216,6 +216,40 @@ window.SettingsController = {
 
     const jsonFileInput = document.getElementById("json-file-input");
     if (jsonFileInput) jsonFileInput.addEventListener("change", (e) => this.importJSON(e));
+
+    // 11. Typesense Search Engine Config bindings
+    const tsEnabled = document.getElementById("typesense-enabled");
+    const tsFields = document.getElementById("typesense-fields");
+    const tsHost = document.getElementById("typesense-host");
+    const tsProtocol = document.getElementById("typesense-protocol");
+    const tsPort = document.getElementById("typesense-port");
+    const tsApiKey = document.getElementById("typesense-apikey");
+    const tsCollection = document.getElementById("typesense-collection");
+
+    const saveTypesenseConfig = () => {
+      const config = AppState.data.settings.typesenseConfig;
+      if (!config) return;
+      config.enabled = tsEnabled ? tsEnabled.checked : false;
+      config.host = tsHost ? tsHost.value.trim() : "";
+      config.protocol = tsProtocol ? tsProtocol.value : "https";
+      config.port = tsPort ? parseInt(tsPort.value) || 443 : 443;
+      config.apiKey = tsApiKey ? tsApiKey.value.trim() : "";
+      config.collection = tsCollection ? tsCollection.value.trim() : "foods";
+
+      AppState.saveToStorage();
+
+      if (tsFields) {
+        if (config.enabled) tsFields.classList.remove("hidden");
+        else tsFields.classList.add("hidden");
+      }
+    };
+
+    [tsEnabled, tsHost, tsProtocol, tsPort, tsApiKey, tsCollection].forEach(el => {
+      if (el) {
+        el.addEventListener("input", saveTypesenseConfig);
+        el.addEventListener("change", saveTypesenseConfig);
+      }
+    });
   },
 
   // -----------------------------------------------------------------------
@@ -426,6 +460,30 @@ window.SettingsController = {
       } else {
         lbsBtn.classList.remove("active");
         kgBtn.classList.add("active");
+      }
+    }
+
+    // --- Typesense Config Populating ---
+    const tsConfig = AppState.data.settings.typesenseConfig;
+    if (tsConfig) {
+      const tsEnabled = document.getElementById("typesense-enabled");
+      const tsFields = document.getElementById("typesense-fields");
+      const tsHost = document.getElementById("typesense-host");
+      const tsProtocol = document.getElementById("typesense-protocol");
+      const tsPort = document.getElementById("typesense-port");
+      const tsApiKey = document.getElementById("typesense-apikey");
+      const tsCollection = document.getElementById("typesense-collection");
+
+      if (tsEnabled) tsEnabled.checked = tsConfig.enabled || false;
+      if (tsHost) tsHost.value = tsConfig.host || "";
+      if (tsProtocol) tsProtocol.value = tsConfig.protocol || "https";
+      if (tsPort) tsPort.value = tsConfig.port || 443;
+      if (tsApiKey) tsApiKey.value = tsConfig.apiKey || "";
+      if (tsCollection) tsCollection.value = tsConfig.collection || "foods";
+
+      if (tsFields) {
+        if (tsConfig.enabled) tsFields.classList.remove("hidden");
+        else tsFields.classList.add("hidden");
       }
     }
 

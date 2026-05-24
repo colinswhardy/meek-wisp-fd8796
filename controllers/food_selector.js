@@ -49,11 +49,19 @@ window.FoodSelectorController = {
       else tabSearch.classList.add("hidden");
     }
 
-    // Clear online search results if they are empty
+    // Clear online search results if they are empty and focus search field
     if (tabName === "search") {
       const resultsEl = document.getElementById("online-search-results");
       if (resultsEl && resultsEl.innerHTML === "") {
         resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above and press Search.</p></div>`;
+      }
+      
+      const onlineInput = document.getElementById("online-search-input");
+      if (onlineInput) {
+        setTimeout(() => {
+          onlineInput.focus();
+          try { onlineInput.select(); } catch (e) {}
+        }, 50);
       }
     }
 
@@ -99,8 +107,17 @@ window.FoodSelectorController = {
       onlineSearchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
+          if (this.onlineSearchTimeout) clearTimeout(this.onlineSearchTimeout);
           this.performOnlineSearch();
         }
+      });
+
+      // Live search-as-you-type with 200ms debounce
+      onlineSearchInput.addEventListener("input", () => {
+        if (this.onlineSearchTimeout) clearTimeout(this.onlineSearchTimeout);
+        this.onlineSearchTimeout = setTimeout(() => {
+          this.performOnlineSearch();
+        }, 200);
       });
     }
 
