@@ -40,22 +40,18 @@ window.RecipeBuilderController = {
     const customFats = document.getElementById("recipe-custom-fats");
     const customCalInput = document.getElementById("recipe-custom-calories");
 
-    const customFiber = document.getElementById("recipe-custom-fiber");
-    if (customProtein && customCarbs && customFats && customFiber && customCalInput) {
+    if (customProtein && customCarbs && customFats && customCalInput) {
       const updateCalculatedCalories = () => {
         let p = parseFloat(customProtein.value) || 0;
         let c = parseFloat(customCarbs.value) || 0;
         let f = parseFloat(customFats.value) || 0;
-        let fib = parseFloat(customFiber.value) || 0;
-        let netC = Math.max(0, c - fib);
-        let kcal = Math.round((p * 4) + (netC * 4) + (f * 9));
+        let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
         customCalInput.value = kcal > 0 ? kcal : "";
       };
 
       customProtein.addEventListener("input", updateCalculatedCalories);
       customCarbs.addEventListener("input", updateCalculatedCalories);
       customFats.addEventListener("input", updateCalculatedCalories);
-      customFiber.addEventListener("input", updateCalculatedCalories);
     }
 
     // Submit custom ingredient form
@@ -97,7 +93,6 @@ window.RecipeBuilderController = {
     const protein = parseFloat(Number(document.getElementById("recipe-custom-protein").value).toFixed(1));
     const carbs = parseFloat(Number(document.getElementById("recipe-custom-carbs").value).toFixed(1));
     const fats = parseFloat(Number(document.getElementById("recipe-custom-fats").value).toFixed(1));
-    const fiber = parseFloat(Number(document.getElementById("recipe-custom-fiber").value).toFixed(1)) || 0;
     const weight = parseFloat(document.getElementById("recipe-custom-weight").value);
 
     if (!name || isNaN(weight) || weight <= 0) {
@@ -114,7 +109,7 @@ window.RecipeBuilderController = {
         protein: protein,
         carbs: carbs,
         fats: fats,
-        fiber: fiber
+        fiber: 0
       }
     };
 
@@ -144,7 +139,7 @@ window.RecipeBuilderController = {
           <p>No ingredients added yet.</p>
         </div>
       `;
-      this.updateRecipeTotals(0, 0, 0, 0, 0);
+      this.updateRecipeTotals(0, 0, 0, 0, 0, 0);
       return;
     }
 
@@ -200,7 +195,7 @@ window.RecipeBuilderController = {
     this.renderIngredients();
   },
 
-  updateRecipeTotals(kcal, protein, carbs, fats, fiber, weight) {
+  updateRecipeTotals(kcal = 0, protein = 0, carbs = 0, fats = 0, fiber = 0, weight = 0) {
     document.getElementById("recipe-total-kcal").textContent = Math.round(kcal);
     document.getElementById("recipe-total-protein").textContent = `${protein.toFixed(1)}g`;
     document.getElementById("recipe-total-carbs").textContent = `${carbs.toFixed(1)}g`;

@@ -4,8 +4,93 @@
  */
 
 window.SettingsController = {
+
+  // Track which diet preset is currently active (null = custom)
+  _activePreset: null,
+
+  // Diet preset definitions. Protein presets use g/lb of body weight.
+  // Carb/Fat presets use percentage of total calories.
+  DIET_PRESETS: {
+    "normal-protein":     { type: "protein", gPerLb: 0.8,  carbPct: 0.55, fatPct: 0.45 },
+    "high-protein":       { type: "protein", gPerLb: 1.0,  carbPct: 0.50, fatPct: 0.50 },
+    "ultra-high-protein": { type: "protein", gPerLb: 1.4,  carbPct: 0.50, fatPct: 0.50 },
+    "low-carb":           { type: "carb",    carbPct: 0.15, protGPerLb: 1.0  },
+    "regular-carb":       { type: "carb",    carbPct: 0.50, protGPerLb: 0.8  },
+    "high-carb":          { type: "carb",    carbPct: 0.65, protGPerLb: 0.8  },
+    "low-fat":            { type: "fat",     fatPct: 0.20,  protGPerLb: 0.8  },
+    "high-fat":           { type: "fat",     fatPct: 0.50,  protGPerLb: 0.8  }
+  },
+
+  // Verbose explanation data for each preset
+  PRESET_EXPLANATIONS: {
+    "normal-protein": {
+      icon: "💪",
+      title: "Normal Protein Diet",
+      subtitle: "0.8g per lb of bodyweight — the active lifestyle standard",
+      science: "Based on the <strong>ISSN and ACSM joint position stand</strong>, active adults need 1.4–2.0g/kg of protein daily to support muscle repair and nitrogen balance. 0.8g/lb (≈1.76g/kg) sits comfortably in the lower end of this range, providing sufficient protein to preserve lean mass during moderate activity without excessive caloric allocation to a single macronutrient. Remaining calories are split ~55% carbs / 45% fats, supporting energy availability and hormonal health.",
+      pros: ["Easy to meet through whole foods", "Supports muscle repair for recreational athletes", "Hormonal balance maintained with adequate fats", "Flexible — leaves room for carbs and fats", "Aligned with RDA recommendations for active adults"],
+      cons: ["May be insufficient during aggressive cutting phases", "Less effective at maximising muscle growth vs. High/Ultra", "Not optimal if training intensively 5+ days/week"]
+    },
+    "high-protein": {
+      icon: "🏋️",
+      title: "High Protein Diet",
+      subtitle: "1.0g per lb of bodyweight — the athletic gold standard",
+      science: "A landmark <strong>meta-analysis by Morton et al. (2018, British Journal of Sports Medicine)</strong> analysed 49 randomised controlled trials and found that muscle hypertrophy benefits plateau around <strong>1.62g/kg (0.73g/lb)</strong> under normal conditions, but can extend up to <strong>2.2g/kg (1.0g/lb)</strong> during intense physical training or moderate caloric deficits. At 1.0g/lb, this is the most widely cited athletic recommendation and the gold standard for bodybuilders and strength athletes. Higher protein also elevates the <strong>Thermic Effect of Food (TEF)</strong> — your body burns ~25–30% of protein calories just digesting it, effectively boosting your metabolic rate.",
+      pros: ["Maximises muscle protein synthesis", "Reduces muscle catabolism during deficits", "High TEF boosts total daily energy expenditure by ~80–100 kcal", "Strong satiety — reduces hunger hormones (ghrelin)", "Well-supported by extensive peer-reviewed literature"],
+      cons: ["Can be difficult to hit without protein supplements", "Higher food costs (lean meats, fish, whey)", "Excess protein above needs is oxidised or stored as fat", "May crowd out carbs needed for high-intensity training fuel"]
+    },
+    "ultra-high-protein": {
+      icon: "🔥",
+      title: "Ultra-High Protein Diet",
+      subtitle: "1.4g per lb of bodyweight — for cutting and muscle preservation",
+      science: "Research led by <strong>Dr. Jose Antonio (Nova Southeastern University)</strong> demonstrated that protein intakes of up to <strong>3.4g/kg (1.54g/lb)</strong> are safe in resistance-trained athletes and produce superior lean mass retention during caloric restriction. During a <em>cutting phase</em>, the body increasingly catabolises muscle tissue for energy. Ultra-high protein intakes of <strong>2.3–3.1g/kg (1.0–1.4g/lb)</strong> counteract this by providing a constant surplus of amino acids. The exceptionally high TEF of protein (~30%) also means ultra-high protein diets can create a larger effective calorie deficit than the numbers suggest. This preset is most appropriate when aggressively cutting body fat while preserving hard-earned muscle.",
+      pros: ["Maximally preserves lean muscle during hard cuts", "Extremely high satiety — reduced hunger", "TEF is highest of all macros (~30% of protein kcal)", "Prevents muscle catabolism in large caloric deficits", "Clinically validated safe up to 3.4g/kg in athletes"],
+      cons: ["Very hard to achieve through food alone without protein shakes", "Leaves limited caloric room for carbs and fats", "Not necessary during maintenance or bulk phases", "May cause digestive discomfort if increased too quickly", "Kidney load increased — stay well hydrated"]
+    },
+    "low-carb": {
+      icon: "🥩",
+      title: "Low Carb Diet",
+      subtitle: "~15% of calories from carbohydrates",
+      science: "Low carbohydrate diets (typically <20% of calories or <100–130g/day) reduce blood glucose and insulin levels, prompting the body to mobilise stored fat as its primary energy source through <strong>beta-oxidation</strong>. Studies published in <strong>JAMA and The Lancet</strong> show that low-carb diets produce superior short-term weight loss compared to low-fat diets, largely due to reduced water retention (glycogen stores water at a 3:1 ratio), improved insulin sensitivity, and reduced appetite from ketone production. At 15% carbs, the body is near-keto territory but not fully ketogenic (typically <5% or ~20–50g). Protein is set to 1.0g/lb to prevent muscle loss.",
+      pros: ["Rapid initial weight loss (water + fat)", "Stabilises blood sugar and insulin levels", "Reduced hunger — ketones suppress appetite hormones", "Effective for insulin resistance and metabolic syndrome", "Improves HDL cholesterol and triglyceride markers"],
+      cons: ["Restricts performance in high-intensity exercise (glycolytic activity requires glucose)", "'Keto flu' adaptation period (fatigue, headaches) for 1–2 weeks", "Difficult to maintain socially — most foods contain carbs", "Risk of electrolyte imbalances (sodium, potassium, magnesium)", "May negatively affect thyroid hormones over very long periods"]
+    },
+    "regular-carb": {
+      icon: "🌾",
+      title: "Regular Carb Diet",
+      subtitle: "~50% of calories from carbohydrates — standard dietary guidelines",
+      science: "The <strong>USDA Dietary Guidelines for Americans, WHO, and the Acceptable Macronutrient Distribution Range (AMDR)</strong> all recommend <strong>45–65% of calories from carbohydrates</strong> for healthy adults. At 50%, this preset aligns with the evidence-based default for sustainable energy, athletic performance, and long-term health. Carbohydrates provide <strong>glucose</strong> — the brain's primary fuel and the only fuel source for high-intensity anaerobic exercise. Protein is maintained at 0.8g/lb to support lean mass.",
+      pros: ["Balanced and sustainable long-term", "Fully supports both aerobic and anaerobic exercise performance", "Sufficient carbs to maintain glycogen stores", "Easy to meet with common whole foods", "Aligned with mainstream dietary guidelines"],
+      cons: ["Requires attention to carb quality (whole grains vs. refined)", "Less effective for rapid fat loss vs. low-carb approaches", "Blood sugar fluctuations possible with refined carb sources", "Not optimal during aggressive fat-loss phases"]
+    },
+    "high-carb": {
+      icon: "⚡",
+      title: "High Carb Diet",
+      subtitle: "~65% of calories from carbohydrates — for endurance athletes",
+      science: "High-carbohydrate diets are the gold standard for <strong>endurance and team sport athletes</strong>. Research consistently demonstrates that <strong>muscle glycogen</strong> is the primary limiting factor in endurance performance. At 65% carbohydrate intake, glycogen stores are maximised and replenished rapidly between training sessions. The <strong>American College of Sports Medicine (ACSM)</strong> recommends 6–10g/kg of carbohydrates per day for endurance athletes during heavy training. This preset is also commonly used as a <strong>re-feed strategy</strong> on high-training days to spike leptin levels (a key fat-burning hormone that drops during caloric restriction) and restore glycogen.",
+      pros: ["Maximises muscle and liver glycogen stores", "Optimal for endurance running, cycling, swimming", "Faster recovery between training sessions", "Supports leptin replenishment during dieting phases", "Reduces perceived exertion during long efforts"],
+      cons: ["Not ideal for fat loss — high insulin suppresses fat oxidation", "Excess refined carbs linked to inflammation and blood sugar dysregulation", "Leaves less room for protein and fat", "Can cause bloating if fibre intake is excessive", "Not appropriate for sedentary lifestyles"]
+    },
+    "low-fat": {
+      icon: "🥗",
+      title: "Low Fat Diet",
+      subtitle: "~20% of calories from fat — a classic dietary approach",
+      science: "Low-fat diets (<30% of calories from fat) were the cornerstone of mainstream dietary advice from the 1970s through the 1990s, based on the <strong>Seven Countries Study (Ancel Keys)</strong> linking saturated fat intake to cardiovascular disease. While later research has nuanced this relationship, low-fat diets remain clinically effective tools for <strong>reducing LDL cholesterol, lowering caloric density</strong>, and managing certain conditions. The critical trade-off: dietary fat is essential for absorbing <strong>fat-soluble vitamins (A, D, E, K)</strong> and producing steroid hormones (testosterone, estrogen, cortisol). At 20%, these critical functions are maintained while fat calories are minimised. Protein is held at 0.8g/lb.",
+      pros: ["Naturally reduces caloric density of diet", "Clinically validated for reducing LDL cholesterol", "Easier to track and implement than ketogenic approaches", "Leaves maximum calories for carbohydrates — great for athletes", "Reduces intake of unhealthy trans and saturated fats"],
+      cons: ["Very low fat can impair fat-soluble vitamin absorption", "Can reduce testosterone and estrogen production", "Fat is highly satiating — low fat may increase hunger", "Modern research disputes fat as the primary driver of CVD", "Risk of overconsumption of refined carbs to compensate"]
+    },
+    "high-fat": {
+      icon: "🥑",
+      title: "High Fat Diet",
+      subtitle: "~50% of calories from fat — the ketogenic approach",
+      science: "At 50% fat with 15% carbs, this preset borders the classical <strong>ketogenic diet</strong> threshold. When carbohydrate intake is sufficiently low, the liver converts fatty acids into <strong>ketone bodies</strong> (beta-hydroxybutyrate, acetoacetate, acetone), which cross the blood-brain barrier and serve as an alternative fuel for the brain and heart. <strong>Multiple RCTs (Yancy et al., Volek et al.)</strong> demonstrate superior fat mass loss, reduced triglycerides, and improved HDL cholesterol with ketogenic diets vs. low-fat diets over 6–12 months. The high-fat, very-low-carb combination also appears to have <strong>neurological benefits</strong> — ketogenic diets are an established treatment for drug-resistant epilepsy and are being studied in Alzheimer's disease (Type 3 Diabetes hypothesis).",
+      pros: ["Promotes fat oxidation and ketone production", "Dramatically reduces blood triglycerides", "Increases HDL (good) cholesterol", "Strong appetite suppression from ketones and dietary fat", "Stable energy without blood sugar spikes and crashes", "Neurological benefits — focus, cognitive clarity"],
+      cons: ["Glycogen depletion impairs high-intensity anaerobic performance", "Adaptation period (keto flu) 1–3 weeks", "Very restrictive — eliminates most fruits, grains, legumes", "Elevated LDL in some individuals (especially ApoE4 carriers)", "Requires careful electrolyte management", "Long-term sustainability is challenging socially"]
+    }
+  },
+
   init() {
-    // 1. Config form updates
+    // 1. Config form submit
     const targetForm = document.getElementById("targets-form");
     if (targetForm) {
       targetForm.addEventListener("submit", (e) => {
@@ -18,46 +103,80 @@ window.SettingsController = {
     const protEl = document.getElementById("target-protein");
     const carbEl = document.getElementById("target-carbs");
     const fatEl = document.getElementById("target-fats");
-    
+
     if (calEl && protEl && carbEl && fatEl) {
-      const updateCalculatedCalories = () => {
+      // When calories change with an active preset, recalculate macros
+      calEl.addEventListener("input", () => {
+        if (this._activePreset) {
+          this._applyPresetToInputs(this._activePreset, false);
+        } else {
+          // No preset — just update calorie display passively (don't touch macros)
+        }
+      });
+
+      // When macros are manually changed, deselect any active preset
+      const deactivatePreset = () => {
+        if (this._activePreset) {
+          this._activePreset = null;
+          document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+          const expBox = document.getElementById("diet-explanation-box");
+          if (expBox) expBox.classList.add("hidden");
+        }
+        // Recalculate calorie total from macros
         const p = parseFloat(protEl.value) || 0;
         const c = parseFloat(carbEl.value) || 0;
         const f = parseFloat(fatEl.value) || 0;
         calEl.value = Math.round(p * 4 + c * 4 + f * 9);
       };
-      
-      protEl.addEventListener("input", updateCalculatedCalories);
-      carbEl.addEventListener("input", updateCalculatedCalories);
-      fatEl.addEventListener("input", updateCalculatedCalories);
+
+      protEl.addEventListener("input", deactivatePreset);
+      carbEl.addEventListener("input", deactivatePreset);
+      fatEl.addEventListener("input", deactivatePreset);
     }
 
-    // 2. Unit selector adjustments
+    // 2. Diet preset buttons
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const preset = btn.getAttribute("data-preset");
+        if (!preset) return;
+
+        // Toggle — clicking the same button again deselects
+        if (this._activePreset === preset) {
+          this._activePreset = null;
+          document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+          const expBox = document.getElementById("diet-explanation-box");
+          if (expBox) expBox.classList.add("hidden");
+          return;
+        }
+
+        this._activePreset = preset;
+        // Highlight only this button
+        document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        // Apply macro calculations
+        this._applyPresetToInputs(preset, true);
+      });
+    });
+
+    // 3. Unit selector
     const btnLbs = document.getElementById("btn-unit-lbs");
     const btnKg = document.getElementById("btn-unit-kg");
-
     if (btnLbs) btnLbs.addEventListener("click", () => this.toggleWeightUnit("lbs"));
     if (btnKg) btnKg.addEventListener("click", () => this.toggleWeightUnit("kg"));
 
-    // 3. Mock Data trigger
+    // 4. Mock Data trigger
     const loadMockBtn = document.getElementById("btn-load-mock");
-    if (loadMockBtn) {
-      loadMockBtn.addEventListener("click", () => this.injectDemoLogs());
-    }
+    if (loadMockBtn) loadMockBtn.addEventListener("click", () => this.injectDemoLogs());
 
-    // 4. Data Wipe actions
+    // 5. Data Wipe
     const clearBtn = document.getElementById("btn-clear-data");
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => this.purgeStorageData());
-    }
+    if (clearBtn) clearBtn.addEventListener("click", () => this.purgeStorageData());
 
-    // 5. Renpho CSV Import
+    // 6. Renpho CSV Import
     const csvInput = document.getElementById("csv-file-input");
-    if (csvInput) {
-      csvInput.addEventListener("change", (e) => this.importRenphoCSV(e));
-    }
+    if (csvInput) csvInput.addEventListener("change", (e) => this.importRenphoCSV(e));
 
-    // 6. Danger Zone collapsible card toggle
+    // 7. Danger Zone collapsible
     const toggleDangerBtn = document.getElementById("toggle-danger-zone-btn");
     const dangerBody = document.getElementById("danger-zone-body");
     const dangerCard = document.getElementById("danger-zone-card");
@@ -74,18 +193,11 @@ window.SettingsController = {
       });
     }
 
-    // 7. Planner Form live updates on inputs
+    // 8. Planner Form live updates
     const plannerInputs = [
-      "profile-sex",
-      "profile-age",
-      "profile-height-ft",
-      "profile-height-in",
-      "profile-activity",
-      "profile-starting-weight",
-      "profile-target-weight",
-      "profile-weekly-rate"
+      "profile-sex", "profile-age", "profile-height-ft", "profile-height-in",
+      "profile-activity", "profile-starting-weight", "profile-target-weight", "profile-weekly-rate"
     ];
-
     plannerInputs.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -94,43 +206,178 @@ window.SettingsController = {
       }
     });
 
-    // 8. Apply Planner daily calories to budgets
+    // 9. Apply Planner
     const btnApply = document.getElementById("btn-apply-planner");
-    if (btnApply) {
-      btnApply.addEventListener("click", () => this.applyPlannerTarget());
-    }
+    if (btnApply) btnApply.addEventListener("click", () => this.applyPlannerTarget());
 
-    // 9. Backup & Restore Events
+    // 10. Backup & Restore
     const btnExportCSV = document.getElementById("btn-export-csv");
-    if (btnExportCSV) {
-      btnExportCSV.addEventListener("click", () => this.exportCSV());
-    }
+    if (btnExportCSV) btnExportCSV.addEventListener("click", () => this.exportCSV());
 
     const btnExportJSON = document.getElementById("btn-export-json");
-    if (btnExportJSON) {
-      btnExportJSON.addEventListener("click", () => this.exportJSON());
-    }
+    if (btnExportJSON) btnExportJSON.addEventListener("click", () => this.exportJSON());
 
     const jsonFileInput = document.getElementById("json-file-input");
-    if (jsonFileInput) {
-      jsonFileInput.addEventListener("change", (e) => this.importJSON(e));
+    if (jsonFileInput) jsonFileInput.addEventListener("change", (e) => this.importJSON(e));
+  },
+
+  // -----------------------------------------------------------------------
+  // Diet Preset Calculation Engine
+  // -----------------------------------------------------------------------
+
+  /**
+   * Returns the user's current body weight in lbs regardless of display unit.
+   */
+  getCurrentWeightLbs() {
+    const wt = this.getCurrentWeight();
+    const unit = AppState.data.settings.unit;
+    return unit === "kg" ? wt * 2.20462 : wt;
+  },
+
+  /**
+   * Apply a named preset to the macro input fields.
+   * @param {string} presetKey  - key in DIET_PRESETS
+   * @param {boolean} showExplanation - whether to show/update the explanation box
+   */
+  _applyPresetToInputs(presetKey, showExplanation) {
+    const def = this.DIET_PRESETS[presetKey];
+    if (!def) return;
+
+    const calEl  = document.getElementById("target-calories");
+    const protEl = document.getElementById("target-protein");
+    const carbEl = document.getElementById("target-carbs");
+    const fatEl  = document.getElementById("target-fats");
+    if (!calEl || !protEl || !carbEl || !fatEl) return;
+
+    const calories = parseFloat(calEl.value) || 2000;
+    const weightLbs = this.getCurrentWeightLbs();
+    const MAX_PROTEIN_PCT = 0.45; // Hard cap: protein can't exceed 45% of calories
+
+    let protein, carbs, fats;
+
+    if (def.type === "protein") {
+      // Protein determined by g/lb — remaining split between carbs & fats
+      const rawProtein = Math.round(weightLbs * def.gPerLb);
+      const proteinKcal = rawProtein * 4;
+      const maxProteinKcal = calories * MAX_PROTEIN_PCT;
+      const clampedProteinKcal = Math.min(proteinKcal, maxProteinKcal);
+      protein = Math.round(clampedProteinKcal / 4);
+
+      const remaining = calories - protein * 4;
+      carbs = Math.max(Math.round((remaining * def.carbPct) / 4), 10);
+      fats  = Math.max(Math.round((remaining * (1 - def.carbPct)) / 9), 5);
+
+    } else if (def.type === "carb") {
+      // Carb percentage is fixed; protein set by g/lb; fat fills remainder
+      const rawProtein = Math.round(weightLbs * def.protGPerLb);
+      const proteinKcal = rawProtein * 4;
+      const maxProteinKcal = calories * MAX_PROTEIN_PCT;
+      protein = Math.round(Math.min(proteinKcal, maxProteinKcal) / 4);
+
+      const carbKcal = Math.round(calories * def.carbPct);
+      carbs = Math.max(Math.round(carbKcal / 4), 10);
+      const fatKcal = calories - protein * 4 - carbs * 4;
+      fats  = Math.max(Math.round(fatKcal / 9), 5);
+
+    } else if (def.type === "fat") {
+      // Fat percentage is fixed; protein set by g/lb; carbs fill remainder
+      const rawProtein = Math.round(weightLbs * def.protGPerLb);
+      const proteinKcal = rawProtein * 4;
+      const maxProteinKcal = calories * MAX_PROTEIN_PCT;
+      protein = Math.round(Math.min(proteinKcal, maxProteinKcal) / 4);
+
+      const fatKcal = Math.round(calories * def.fatPct);
+      fats  = Math.max(Math.round(fatKcal / 9), 5);
+      const carbKcal = calories - protein * 4 - fats * 9;
+      carbs = Math.max(Math.round(carbKcal / 4), 10);
     }
+
+    // Reconcile calories to eliminate rounding errors
+    const reconciledKcal = Math.round(protein * 4 + carbs * 4 + fats * 9);
+
+    protEl.value = protein;
+    carbEl.value = carbs;
+    fatEl.value  = fats;
+    calEl.value  = reconciledKcal;
+
+    if (showExplanation) {
+      this._renderExplanationBox(presetKey, protein, carbs, fats, reconciledKcal);
+    }
+  },
+
+  /**
+   * Render the verbose explanation box for the given preset.
+   */
+  _renderExplanationBox(presetKey, protein, carbs, fats, calories) {
+    const box = document.getElementById("diet-explanation-box");
+    if (!box) return;
+
+    const exp = this.PRESET_EXPLANATIONS[presetKey];
+    if (!exp) {
+      box.classList.add("hidden");
+      return;
+    }
+
+    // Calculate percentages for display
+    const protPct = Math.round((protein * 4 / calories) * 100);
+    const carbPct = Math.round((carbs * 4 / calories) * 100);
+    const fatPct  = Math.round((fats * 9 / calories) * 100);
+
+    const prosHTML = exp.pros.map(p => `<li>${p}</li>`).join("");
+    const consHTML = exp.cons.map(c => `<li>${c}</li>`).join("");
+
+    box.innerHTML = `
+      <div class="diet-exp-header">
+        <span class="diet-exp-icon">${exp.icon}</span>
+        <div>
+          <div class="diet-exp-title">${exp.title}</div>
+          <div class="diet-exp-subtitle">${exp.subtitle}</div>
+        </div>
+      </div>
+
+      <div class="diet-exp-macro-pills">
+        <span class="diet-exp-pill pill-protein">Protein: ${protein}g <span class="pill-pct">(${protPct}%)</span></span>
+        <span class="diet-exp-pill pill-carbs">Carbs: ${carbs}g <span class="pill-pct">(${carbPct}%)</span></span>
+        <span class="diet-exp-pill pill-fats">Fats: ${fats}g <span class="pill-pct">(${fatPct}%)</span></span>
+      </div>
+
+      <div class="diet-exp-section">
+        <div class="diet-exp-section-title">Scientific Rationale</div>
+        <div class="diet-exp-body">${exp.science}</div>
+      </div>
+
+      <div class="diet-exp-pros-cons">
+        <div class="diet-exp-pros">
+          <div class="diet-exp-pros-title">✦ Pros</div>
+          <ul class="diet-exp-list">${prosHTML}</ul>
+        </div>
+        <div class="diet-exp-cons">
+          <div class="diet-exp-cons-title">⚠ Considerations</div>
+          <ul class="diet-exp-list">${consHTML}</ul>
+        </div>
+      </div>
+    `;
+
+    box.classList.remove("hidden");
   },
 
   render() {
     const dateKey = AppState.selectedDateISO;
-    const goals = AppState.getGoalsForDate(dateKey);
+
+    // IMPORTANT: Always use BASE goals (never re-feed/cycling adjusted) in the budget form.
+    // getGoalsForDate() returns re-feed adjusted values which is NOT what we want here.
+    const baseGoals = AppState.data.dailyGoals[dateKey] || AppState.data.standardGoals;
 
     // Form defaults populate
     const calEl = document.getElementById("target-calories");
     const protEl = document.getElementById("target-protein");
     const carbEl = document.getElementById("target-carbs");
     const fatEl = document.getElementById("target-fats");
-    
-    if (calEl) calEl.value = goals.calories;
-    if (protEl) protEl.value = goals.protein;
-    if (carbEl) carbEl.value = goals.carbs;
-    if (fatEl) fatEl.value = goals.fats;
+
+    if (calEl) calEl.value = baseGoals.calories;
+    if (protEl) protEl.value = baseGoals.protein;
+    if (carbEl) carbEl.value = baseGoals.carbs;
+    if (fatEl) fatEl.value = baseGoals.fats;
 
     // Weight active unit indicator
     const currentUnit = AppState.data.settings.unit;

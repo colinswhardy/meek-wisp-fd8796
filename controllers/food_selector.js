@@ -231,15 +231,16 @@ window.FoodSelectorController = {
     const qaProtein = document.getElementById("quick-add-protein");
     const qaCarbs = document.getElementById("quick-add-carbs");
     const qaFats = document.getElementById("quick-add-fats");
-    const qaCalDisplay = document.getElementById("quick-add-calories-display");
+    const qaCalInput = document.getElementById("quick-add-calories");
+    const qaWeight = document.getElementById("quick-add-weight");
 
     const updateQuickAddCalories = () => {
-      if (!qaProtein || !qaCarbs || !qaFats || !qaCalDisplay) return;
+      if (!qaProtein || !qaCarbs || !qaFats || !qaCalInput) return;
       const p = parseFloat(qaProtein.value) || 0;
       const c = parseFloat(qaCarbs.value) || 0;
       const f = parseFloat(qaFats.value) || 0;
       const calories = Math.round((p * 4) + (c * 4) + (f * 9));
-      qaCalDisplay.textContent = `${calories} kcal`;
+      qaCalInput.value = calories;
     };
 
     [qaProtein, qaCarbs, qaFats].forEach(input => {
@@ -255,6 +256,7 @@ window.FoodSelectorController = {
         const p = parseFloat(qaProtein.value) || 0;
         const c = parseFloat(qaCarbs.value) || 0;
         const f = parseFloat(qaFats.value) || 0;
+        const w = parseFloat(qaWeight.value) || 100;
         const nameVal = document.getElementById("quick-add-name").value.trim() || "Quick Add";
         const calories = Math.round((p * 4) + (c * 4) + (f * 9));
 
@@ -262,7 +264,7 @@ window.FoodSelectorController = {
           id: "quick_add_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
           name: nameVal,
           brand: "Quick Add",
-          weight: 100,
+          weight: w,
           calories: calories,
           protein: p,
           carbs: c,
@@ -280,7 +282,7 @@ window.FoodSelectorController = {
 
         // Reset and collapse form
         quickAddForm.reset();
-        if (qaCalDisplay) qaCalDisplay.textContent = "0 kcal";
+        if (qaCalInput) qaCalInput.value = "";
         quickAddForm.classList.add("hidden");
         if (btnQuickAddToggle) {
           btnQuickAddToggle.style.background = "rgba(255,255,255,0.03)";
@@ -318,8 +320,8 @@ window.FoodSelectorController = {
     if (quickAddForm) {
       quickAddForm.reset();
       quickAddForm.classList.add("hidden");
-      const qaCalDisplay = document.getElementById("quick-add-calories-display");
-      if (qaCalDisplay) qaCalDisplay.textContent = "0 kcal";
+      const qaCalInput = document.getElementById("quick-add-calories");
+      if (qaCalInput) qaCalInput.value = "";
       const btnQuickAddToggle = document.getElementById("btn-recipes-quick-add");
       if (btnQuickAddToggle) {
         btnQuickAddToggle.style.background = "rgba(255,255,255,0.03)";

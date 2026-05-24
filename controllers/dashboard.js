@@ -59,11 +59,10 @@ window.DashboardController = {
 
       if (targetCalories > 0 && eatenKcal > targetCalories) {
         const overPct = eatenKcal / targetCalories;
-        const leewayFactor = 1.15;
+        const leewayFactor = 1.05; // 5% overage leeway
         if (overPct > leewayFactor) {
-          const maxRedPct = 1.50; // fully red at 150% of target
-          const fraction = (overPct - leewayFactor) / (maxRedPct - leewayFactor);
-          const redStop = Math.max(0, Math.min(100, 100 - fraction * 100));
+          const overage = overPct - 1.00; // proportional overage fraction
+          const redStop = Math.max(0, 100 - (overage * 100));
           const transitionWidth = 15;
           const redStart = Math.min(100, redStop + transitionWidth);
           calBar.style.background = `linear-gradient(90deg, #1d4ed8 0%, #60a5fa ${redStop}%, var(--color-danger) ${redStart}%)`;
@@ -97,11 +96,10 @@ window.DashboardController = {
 
       if (target > 0 && eaten > target) {
         const overPct = eaten / target;
-        const leewayFactor = 1.15;
+        const leewayFactor = 1.05; // 5% overage leeway
         if (overPct > leewayFactor) {
-          const maxRedPct = 1.50; // fully red at 150% of target
-          const fraction = (overPct - leewayFactor) / (maxRedPct - leewayFactor);
-          const redStop = Math.max(0, Math.min(100, 100 - fraction * 100));
+          const overage = overPct - 1.00; // proportional overage fraction
+          const redStop = Math.max(0, 100 - (overage * 100));
           
           let startColor, brandColor;
           if (macroName === 'protein') {

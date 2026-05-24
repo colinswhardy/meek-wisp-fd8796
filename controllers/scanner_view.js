@@ -45,22 +45,18 @@ window.ScannerViewController = {
     const customFats = document.getElementById("custom-fats");
     const customCalInput = document.getElementById("custom-calories");
 
-    const customFiber = document.getElementById("custom-fiber");
-    if (customProtein && customCarbs && customFats && customFiber && customCalInput) {
+    if (customProtein && customCarbs && customFats && customCalInput) {
       const updateCalculatedCalories = () => {
         let p = parseFloat(customProtein.value) || 0;
         let c = parseFloat(customCarbs.value) || 0;
         let f = parseFloat(customFats.value) || 0;
-        let fib = parseFloat(customFiber.value) || 0;
-        let netC = Math.max(0, c - fib);
-        let kcal = Math.round((p * 4) + (netC * 4) + (f * 9));
+        let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
         customCalInput.value = kcal > 0 ? kcal : "";
       };
 
       customProtein.addEventListener("input", updateCalculatedCalories);
       customCarbs.addEventListener("input", updateCalculatedCalories);
       customFats.addEventListener("input", updateCalculatedCalories);
-      customFiber.addEventListener("input", updateCalculatedCalories);
     }
 
     const customFoodForm = document.getElementById("custom-food-form");
@@ -370,17 +366,14 @@ window.ScannerViewController = {
       const proteinInput = document.getElementById(`not-found-protein-${context}`);
       const carbsInput = document.getElementById(`not-found-carbs-${context}`);
       const fatsInput = document.getElementById(`not-found-fats-${context}`);
-      const fiberInput = document.getElementById(`not-found-fiber-${context}`);
       const calsInput = document.getElementById(`not-found-calories-${context}`);
 
-      if (proteinInput && carbsInput && fatsInput && fiberInput && calsInput) {
+      if (proteinInput && carbsInput && fatsInput && calsInput) {
         const updateCalculatedCalories = () => {
           let p = parseFloat(proteinInput.value) || 0;
           let c = parseFloat(carbsInput.value) || 0;
           let f = parseFloat(fatsInput.value) || 0;
-          let fib = parseFloat(fiberInput.value) || 0;
-          let netC = Math.max(0, c - fib);
-          let kcal = Math.round((p * 4) + (netC * 4) + (f * 9));
+          let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
           calsInput.value = kcal > 0 ? kcal : "";
         };
 
@@ -388,7 +381,6 @@ window.ScannerViewController = {
         proteinInput.oninput = updateCalculatedCalories;
         carbsInput.oninput = updateCalculatedCalories;
         fatsInput.oninput = updateCalculatedCalories;
-        fiberInput.oninput = updateCalculatedCalories;
       }
 
       this.closePreview(context);
@@ -434,8 +426,6 @@ window.ScannerViewController = {
     const rawProtein = Number(document.getElementById(`not-found-protein-${context}`).value);
     const rawCarbs = Number(document.getElementById(`not-found-carbs-${context}`).value);
     const rawFats = Number(document.getElementById(`not-found-fats-${context}`).value);
-    const rawFiber = Number(document.getElementById(`not-found-fiber-${context}`).value) || 0;
-
     if (!barcode || !name) {
       alert("Please fill out barcode and product name.");
       return;
@@ -447,7 +437,6 @@ window.ScannerViewController = {
     const protein = parseFloat((rawProtein * scale).toFixed(1));
     const carbs = parseFloat((rawCarbs * scale).toFixed(1));
     const fats = parseFloat((rawFats * scale).toFixed(1));
-    const fiber = parseFloat((rawFiber * scale).toFixed(1)) || 0;
 
     const newFood = {
       barcode: barcode,
@@ -460,7 +449,7 @@ window.ScannerViewController = {
         protein: protein,
         carbs: carbs,
         fats: fats,
-        fiber: fiber
+        fiber: 0
       }
     };
 
@@ -596,7 +585,6 @@ window.ScannerViewController = {
     const protein = parseFloat(Number(document.getElementById("custom-protein").value).toFixed(1));
     const carbs = parseFloat(Number(document.getElementById("custom-carbs").value).toFixed(1));
     const fats = parseFloat(Number(document.getElementById("custom-fats").value).toFixed(1));
-    const fiber = parseFloat(Number(document.getElementById("custom-fiber").value).toFixed(1)) || 0;
     
     const weightEl = document.getElementById("custom-weight");
     const weight = weightEl ? (parseFloat(weightEl.value) || 100) : 100;
@@ -610,7 +598,7 @@ window.ScannerViewController = {
       protein: protein,
       carbs: carbs,
       fats: fats,
-      fiber: fiber,
+      fiber: 0,
       loggedAt: Date.now()
     };
 
