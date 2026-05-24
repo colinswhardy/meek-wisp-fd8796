@@ -122,11 +122,8 @@ window.SettingsController = {
           const expBox = document.getElementById("diet-explanation-box");
           if (expBox) expBox.classList.add("hidden");
         }
-        // Recalculate calorie total from macros
-        const p = parseFloat(protEl.value) || 0;
-        const c = parseFloat(carbEl.value) || 0;
-        const f = parseFloat(fatEl.value) || 0;
-        calEl.value = Math.round(p * 4 + c * 4 + f * 9);
+        // Check macro match warning
+        this.checkMacroMatch();
       };
 
       protEl.addEventListener("input", deactivatePreset);
@@ -235,24 +232,14 @@ window.SettingsController = {
   },
 
   /**
-   * Apply a named preset to the macro input fields.
-   * @param {string} presetKey  - key in DIET_PRESETS
-   * @param {boolean} showExplanation - whether to show/update the explanation box
+   * Calculates macros based on a named preset, total calories, and body weight.
+   * Returns { protein, carbs, fats, calories } (reconciled calories).
    */
-  _applyPresetToInputs(presetKey, showExplanation) {
+  calculateMacrosForPreset(presetKey, calories, weightLbs) {
     const def = this.DIET_PRESETS[presetKey];
-    if (!def) return;
+    if (!def) return null;
 
-    const calEl  = document.getElementById("target-calories");
-    const protEl = document.getElementById("target-protein");
-    const carbEl = document.getElementById("target-carbs");
-    const fatEl  = document.getElementById("target-fats");
-    if (!calEl || !protEl || !carbEl || !fatEl) return;
-
-    const calories = parseFloat(calEl.value) || 2000;
-    const weightLbs = this.getCurrentWeightLbs();
     const MAX_PROTEIN_PCT = 0.45; // Hard cap: protein can't exceed 45% of calories
-
     let protein, carbs, fats;
 
     if (def.type === "protein") {
@@ -292,17 +279,42 @@ window.SettingsController = {
       carbs = Math.max(Math.round(carbKcal / 4), 10);
     }
 
-    // Reconcile calories to eliminate rounding errors
     const reconciledKcal = Math.round(protein * 4 + carbs * 4 + fats * 9);
+    return {
+      protein,
+      carbs,
+      fats,
+      calories: reconciledKcal
+    };
+  },
 
-    protEl.value = protein;
-    carbEl.value = carbs;
-    fatEl.value  = fats;
-    calEl.value  = reconciledKcal;
+  /**
+   * Apply a named preset to the macro input fields.
+   * @param {string} presetKey  - key in DIET_PRESETS
+   * @param {boolean} showExplanation - whether to show/update the explanation box
+   */
+  _applyPresetToInputs(presetKey, showExplanation) {
+    const calEl  = document.getElementById("target-calories");
+    const protEl = document.getElementById("target-protein");
+    const carbEl = document.getElementById("target-carbs");
+    const fatEl  = document.getElementById("target-fats");
+    if (!calEl || !protEl || !carbEl || !fatEl) return;
+
+    const calories = parseFloat(calEl.value) || 2000;
+    const weightLbs = this.getCurrentWeightLbs();
+
+    const macros = this.calculateMacrosForPreset(presetKey, calories, weightLbs);
+    if (!macros) return;
+
+    protEl.value = macros.protein;
+    carbEl.value = macros.carbs;
+    fatEl.value  = macros.fats;
 
     if (showExplanation) {
-      this._renderExplanationBox(presetKey, protein, carbs, fats, reconciledKcal);
+      this._renderExplanationBox(presetKey, macros.protein, macros.carbs, macros.fats, macros.calories);
     }
+
+    this.checkMacroMatch();
   },
 
   /**
@@ -364,6 +376,9 @@ window.SettingsController = {
   render() {
     const dateKey = AppState.selectedDateISO;
 
+    // Load active preset from state settings
+    this._activePreset = AppState.data.settings.activePreset || null;
+
     // IMPORTANT: Always use BASE goals (never re-feed/cycling adjusted) in the budget form.
     // getGoalsForDate() returns re-feed adjusted values which is NOT what we want here.
     const baseGoals = AppState.data.dailyGoals[dateKey] || AppState.data.standardGoals;
@@ -378,6 +393,26 @@ window.SettingsController = {
     if (protEl) protEl.value = baseGoals.protein;
     if (carbEl) carbEl.value = baseGoals.carbs;
     if (fatEl) fatEl.value = baseGoals.fats;
+
+    // Highlight active preset button if any
+    document.querySelectorAll(".preset-btn").forEach(b => {
+      const preset = b.getAttribute("data-preset");
+      if (this._activePreset && preset === this._activePreset) {
+        b.classList.add("active");
+      } else {
+        b.classList.remove("active");
+      }
+    });
+
+    // Render explanation box if active preset exists
+    const expBox = document.getElementById("diet-explanation-box");
+    if (this._activePreset) {
+      this._renderExplanationBox(this._activePreset, baseGoals.protein, baseGoals.carbs, baseGoals.fats, baseGoals.calories);
+    } else if (expBox) {
+      expBox.classList.add("hidden");
+    }
+
+    this.checkMacroMatch();
 
     // Weight active unit indicator
     const currentUnit = AppState.data.settings.unit;
@@ -612,25 +647,64 @@ window.SettingsController = {
         warningBox.classList.add("hidden");
       }
     }
+
+    // Automatically update the calorie budget in the Set Budgets page to match the planner calculator
+    const calEl = document.getElementById("target-calories");
+    if (calEl) {
+      calEl.value = targetCalories;
+      
+      // Update macros in real-time to match the new calories
+      if (this._activePreset) {
+        // If there is an active preset, re-apply it to update macros in real-time
+        this._applyPresetToInputs(this._activePreset, true);
+      } else {
+        // If it's custom macros, scale them proportionally based on the saved standard goals
+        const protEl = document.getElementById("target-protein");
+        const carbEl = document.getElementById("target-carbs");
+        const fatEl = document.getElementById("target-fats");
+        if (protEl && carbEl && fatEl) {
+          const oldCalories = AppState.data.standardGoals.calories || 2000;
+          const scale = oldCalories > 0 ? targetCalories / oldCalories : 1;
+          protEl.value = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+          carbEl.value = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+          fatEl.value = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+        }
+      }
+      this.checkMacroMatch();
+    }
   },
 
   applyPlannerTarget() {
     const calResultText = document.getElementById("planner-cal-result").textContent.replace(/,/g, "");
     const targetCalories = parseInt(calResultText) || 2000;
 
-    // Proportional Macro Scaling
-    const oldCalories = AppState.data.standardGoals.calories || 2000;
-    const scale = targetCalories / oldCalories;
+    let p, c, f, kcal;
 
-    const p = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
-    const c = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
-    const f = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
-    const reconciledKcal = Math.round(p * 4 + c * 4 + f * 9);
+    if (this._activePreset) {
+      const weightLbs = this.getCurrentWeightLbs();
+      const macros = this.calculateMacrosForPreset(this._activePreset, targetCalories, weightLbs);
+      p = macros.protein;
+      c = macros.carbs;
+      f = macros.fats;
+      kcal = macros.calories;
+    } else {
+      // Proportional Macro Scaling
+      const oldCalories = AppState.data.standardGoals.calories || 2000;
+      const scale = targetCalories / oldCalories;
 
-    AppState.data.standardGoals.calories = reconciledKcal;
+      p = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+      c = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+      f = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+      kcal = Math.round(p * 4 + c * 4 + f * 9);
+    }
+
+    AppState.data.standardGoals.calories = kcal;
     AppState.data.standardGoals.protein = p;
     AppState.data.standardGoals.carbs = c;
     AppState.data.standardGoals.fats = f;
+
+    // Persist activePreset in settings
+    AppState.data.settings.activePreset = this._activePreset;
 
     // Save Daily Override for current active date
     const dateKey = AppState.selectedDateISO;
@@ -642,7 +716,7 @@ window.SettingsController = {
     };
 
     AppState.saveToStorage();
-    AppState.showToast(`Applied ${targetCalories} kcal budget & scaled macros!`);
+    AppState.showToast(`Applied ${targetCalories} kcal budget & updated macros!`);
     
     // Refresh UI inputs
     this.render();
@@ -652,7 +726,7 @@ window.SettingsController = {
     const protein = Math.round(Number(document.getElementById("target-protein").value));
     const carbs = Math.round(Number(document.getElementById("target-carbs").value));
     const fats = Math.round(Number(document.getElementById("target-fats").value));
-    const kcal = Math.round(protein * 4 + carbs * 4 + fats * 9);
+    const kcal = Math.round(Number(document.getElementById("target-calories").value)) || 2000;
 
     // Support flexible overrides for currently selected date
     const dateKey = AppState.selectedDateISO;
@@ -672,6 +746,9 @@ window.SettingsController = {
       carbs: carbs,
       fats: fats
     };
+
+    // Persist activePreset in settings
+    AppState.data.settings.activePreset = this._activePreset;
 
     AppState.saveToStorage();
     AppState.showToast("Target budgets saved successfully!");
@@ -1034,5 +1111,30 @@ window.SettingsController = {
       }
     };
     reader.readAsText(file);
+  },
+
+  // Check if the sum of macro calories matches target calories (give or take a tiny bit)
+  checkMacroMatch() {
+    const calEl = document.getElementById("target-calories");
+    const protEl = document.getElementById("target-protein");
+    const carbEl = document.getElementById("target-carbs");
+    const fatEl = document.getElementById("target-fats");
+    const warningBox = document.getElementById("macro-warning-box");
+
+    if (!calEl || !protEl || !carbEl || !fatEl || !warningBox) return;
+
+    const targetKcal = parseFloat(calEl.value) || 0;
+    const p = parseFloat(protEl.value) || 0;
+    const c = parseFloat(carbEl.value) || 0;
+    const f = parseFloat(fatEl.value) || 0;
+
+    const totalMacroKcal = Math.round(p * 4 + c * 4 + f * 9);
+    const diff = Math.abs(totalMacroKcal - targetKcal);
+
+    if (diff > 10) {
+      warningBox.classList.remove("hidden");
+    } else {
+      warningBox.classList.add("hidden");
+    }
   }
 };

@@ -210,14 +210,10 @@ window.FoodController = {
     const tomorrowISO = `${tomorrowDateObj.getFullYear()}-${String(tomorrowDateObj.getMonth() + 1).padStart(2, "0")}-${String(tomorrowDateObj.getDate()).padStart(2, "0")}`;
     const tomorrowLabelText = tomorrowDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-    if (labelToday) labelToday.textContent = todayLabelText;
-    if (labelTomorrow) labelTomorrow.textContent = tomorrowLabelText;
-
-    // Set initial toggle state
-    if (btnModeCopy) btnModeCopy.classList.add("active");
-    if (btnModeMove) btnModeMove.classList.remove("active");
-    if (promptActionSpan) promptActionSpan.textContent = "Copy";
-    btnConfirm.textContent = "Copy Food";
+    const yesterdayDateObj = new Date(todayDateObj);
+    yesterdayDateObj.setDate(todayDateObj.getDate() - 1);
+    const yesterdayISO = `${yesterdayDateObj.getFullYear()}-${String(yesterdayDateObj.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDateObj.getDate()).padStart(2, "0")}`;
+    const yesterdayLabelText = yesterdayDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
     modal.classList.remove("hidden");
 
@@ -228,13 +224,26 @@ window.FoodController = {
         if (btnModeMove) btnModeMove.classList.remove("active");
         if (promptActionSpan) promptActionSpan.textContent = "Copy";
         btnConfirm.textContent = "Copy Food";
+
+        // "Copy food" should have "today and tomorrow"
+        const strongLeft = btnQuickToday ? btnQuickToday.querySelector("strong") : null;
+        if (strongLeft) strongLeft.textContent = "Today";
+        if (labelToday) labelToday.textContent = todayLabelText;
       } else {
         if (btnModeCopy) btnModeCopy.classList.remove("active");
         if (btnModeMove) btnModeMove.classList.add("active");
         if (promptActionSpan) promptActionSpan.textContent = "Move";
         btnConfirm.textContent = "Move Food";
+
+        // "Move food" should have "yesterday and tomorrow"
+        const strongLeft = btnQuickToday ? btnQuickToday.querySelector("strong") : null;
+        if (strongLeft) strongLeft.textContent = "Yesterday";
+        if (labelToday) labelToday.textContent = yesterdayLabelText;
       }
     };
+
+    // Set initial toggle state via helper
+    updateMode("copy");
 
     const onModeCopyClick = (e) => {
       e.preventDefault();
@@ -329,7 +338,7 @@ window.FoodController = {
 
     const onTodayClick = (e) => {
       e.preventDefault();
-      performAction(todayISO);
+      performAction(activeMode === "copy" ? todayISO : yesterdayISO);
     };
 
     const onTomorrowClick = (e) => {

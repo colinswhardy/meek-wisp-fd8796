@@ -141,14 +141,36 @@ window.WeightController = {
     }
     targetCalories = Math.max(Math.round(targetCalories), 500);
 
-    // Proportionally scale macros from old calorie base
-    const oldCalories = AppState.data.standardGoals.calories || 2000;
-    const scale = oldCalories > 0 ? targetCalories / oldCalories : 1;
+    let p, c, f, kcal;
+    const activePreset = AppState.data.settings.activePreset || null;
 
-    AppState.data.standardGoals.calories = targetCalories;
-    AppState.data.standardGoals.protein = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
-    AppState.data.standardGoals.carbs = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
-    AppState.data.standardGoals.fats = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+    if (activePreset && window.SettingsController && typeof window.SettingsController.calculateMacrosForPreset === "function") {
+      const weightLbs = unit === "kg" ? newWeightInActiveUnit * 2.20462 : newWeightInActiveUnit;
+      const macros = window.SettingsController.calculateMacrosForPreset(activePreset, targetCalories, weightLbs);
+      if (macros) {
+        p = macros.protein;
+        c = macros.carbs;
+        f = macros.fats;
+        kcal = macros.calories;
+      }
+    }
+
+    // Fallback if no active preset or calculations failed
+    if (p === undefined) {
+      // Proportionally scale macros from old calorie base
+      const oldCalories = AppState.data.standardGoals.calories || 2000;
+      const scale = oldCalories > 0 ? targetCalories / oldCalories : 1;
+
+      kcal = targetCalories;
+      p = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+      c = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+      f = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+    }
+
+    AppState.data.standardGoals.calories = kcal;
+    AppState.data.standardGoals.protein = p;
+    AppState.data.standardGoals.carbs = c;
+    AppState.data.standardGoals.fats = f;
 
     // Also update today's daily goal override so today reflects the new target immediately
     const dateKey = AppState.selectedDateISO;
@@ -160,6 +182,6 @@ window.WeightController = {
     };
 
     AppState.saveToStorage();
-    console.log(`[Weight] Recalculated calorie target: ${targetCalories} kcal (TDEE: ${Math.round(tdee)})`);
+    console.log(`[Weight] Recalculated calorie target: ${kcal} kcal (TDEE: ${Math.round(tdee)}) with preset: ${activePreset}`);
   }
 };
