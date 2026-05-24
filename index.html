@@ -361,10 +361,6 @@
               <label for="not-found-fats-dashboard">Fats (g)</label>
               <input type="number" id="not-found-fats-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
-            <div class="form-group">
-              <label for="not-found-fiber-dashboard">Fiber (g)</label>
-              <input type="number" id="not-found-fiber-dashboard" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
         </form>
@@ -567,10 +563,6 @@
               <label for="not-found-fats-food">Fats (g)</label>
               <input type="number" id="not-found-fats-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
-            <div class="form-group">
-              <label for="not-found-fiber-food">Fiber (g)</label>
-              <input type="number" id="not-found-fiber-food" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
         </form>
@@ -622,10 +614,6 @@
             <div class="form-group">
               <label for="custom-fats">Fats (g)</label>
               <input type="number" id="custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
-            <div class="form-group">
-              <label for="custom-fiber">Fiber (g)</label>
-              <input type="number" id="custom-fiber" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Add Custom Log</button>
@@ -870,10 +858,6 @@
             <div class="form-group">
               <label for="not-found-fats-weight">Fats (g)</label>
               <input type="number" id="not-found-fats-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
-            <div class="form-group">
-              <label for="not-found-fiber-weight">Fiber (g)</label>
-              <input type="number" id="not-found-fiber-weight" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
@@ -1178,15 +1162,79 @@
 
       <!-- Edit Daily Budget Goals -->
       <div class="glass-card targets-config-card">
-        <h3>Set Budgets & Target Goals</h3>
-        <p class="card-subtitle">Adjust your standard targets. You can modify daily limits for high-carb/re-feed days manually.</p>
+        <h3>Set Budgets &amp; Target Goals</h3>
+        <p class="card-subtitle">Select a diet preset to auto-calculate macros, or enter values manually below.</p>
 
         <form id="targets-form">
+          <!-- Calorie Budget (always based on base calories, never re-feed adjusted) -->
           <div class="form-group">
             <label for="target-calories">Calorie Budget (kcal)</label>
             <input type="number" id="target-calories" value="2000" min="500" max="10000" required pattern="[0-9]*" inputmode="numeric">
+            <p class="budget-note">⚡ Always reflects your base daily calorie goal — re-feed &amp; cycling days are applied separately.</p>
           </div>
 
+          <!-- Diet Style Preset Selectors -->
+          <div class="diet-preset-container">
+            <!-- Protein Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">💪 Protein Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-normal-protein" data-preset="normal-protein">
+                  Normal
+                  <span class="preset-btn-sub">0.8g / lb</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-protein" data-preset="high-protein">
+                  High
+                  <span class="preset-btn-sub">1.0g / lb</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-ultra-high-protein" data-preset="ultra-high-protein">
+                  Ultra High
+                  <span class="preset-btn-sub">1.4g / lb</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Carb Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">🌾 Carbohydrate Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-low-carb" data-preset="low-carb">
+                  Low Carb
+                  <span class="preset-btn-sub">~15% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-regular-carb" data-preset="regular-carb">
+                  Regular
+                  <span class="preset-btn-sub">~50% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-carb" data-preset="high-carb">
+                  High Carb
+                  <span class="preset-btn-sub">~65% of cal</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fat Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">🥑 Fat Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-low-fat" data-preset="low-fat">
+                  Low Fat
+                  <span class="preset-btn-sub">~20% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-fat" data-preset="high-fat">
+                  High Fat
+                  <span class="preset-btn-sub">~50% of cal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Explanation Box (revealed when a preset is selected) -->
+          <div class="diet-explanation-box hidden" id="diet-explanation-box">
+            <!-- Populated dynamically by settings.js -->
+          </div>
+
+          <!-- Macro Input Fields (always editable — preset fills these in, custom typing deselects preset) -->
           <div class="form-grid-3x">
             <div class="form-group">
               <label for="target-protein">Protein (g)</label>
@@ -1204,6 +1252,42 @@
 
           <button type="submit" class="btn btn-success btn-block">Save Target Budgets</button>
         </form>
+      </div>
+
+      <!-- Static Macro Science Card -->
+      <div class="glass-card">
+        <h3>How Macros Are Calculated</h3>
+        <p class="card-subtitle">The science behind calorie density and preset ratios.</p>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-protein">4<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Protein &mdash; 4 kcal per gram</div>
+            <div class="macro-science-detail">
+              Protein is the body's primary building material for muscle, enzymes, and hormones. The ISSN &amp; ACSM recommend <strong>1.6&ndash;2.2g/kg/day</strong> for active individuals. Our presets use body weight in lbs as the target gram intake &mdash; a practical rule-of-thumb aligned with this range. <strong>Normal (0.8g/lb &asymp; 1.76g/kg)</strong> suits active lifestyles. <strong>High (1.0g/lb &asymp; 2.2g/kg)</strong> is the athletic gold standard. <strong>Ultra-High (1.4g/lb &asymp; 3.1g/kg)</strong> is validated for muscle preservation during aggressive caloric deficits by clinical trials.
+            </div>
+          </div>
+        </div>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-carbs">4<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Carbohydrates &mdash; 4 kcal per gram</div>
+            <div class="macro-science-detail">
+              Carbohydrates are the body's preferred fuel source, especially for the brain and high-intensity exercise. <strong>High Carb (~65%)</strong> is ideal for endurance athletes to maximise glycogen stores. <strong>Regular Carb (~50%)</strong> is consistent with standard dietary guidelines (USDA, WHO). <strong>Low Carb (~15%)</strong> shifts the body toward fat oxidation &mdash; beneficial for metabolic flexibility, insulin sensitivity, and sustained energy without blood sugar spikes.
+            </div>
+          </div>
+        </div>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-fats">9<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Fats &mdash; 9 kcal per gram</div>
+            <div class="macro-science-detail">
+              Dietary fat is calorie-dense (9 kcal/g &mdash; more than double protein or carbs) and essential for fat-soluble vitamin absorption (A, D, E, K), hormone synthesis, and cellular membrane integrity. <strong>High Fat (~50%)</strong> is used in ketogenic and low-carb approaches where fat becomes the primary fuel. <strong>Low Fat (~20%)</strong> aligns with cardiovascular risk reduction protocols or high-carb endurance phases.
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1373,7 +1457,11 @@
                 <label for="quick-add-name">Food Name (Optional)</label>
                 <input type="text" id="quick-add-name" placeholder="e.g. Quick Snack" style="padding: 10px 14px; font-size: 0.9rem;">
               </div>
-              <div class="form-grid-3x" style="gap: 8px;">
+              <div class="form-grid-2x2">
+                <div class="form-group">
+                  <label for="quick-add-calories">Calculated Calories (kcal)</label>
+                  <input type="number" id="quick-add-calories" placeholder="0" readonly style="background: rgba(255,255,255,0.02); border-color: rgba(37, 99, 235, 0.2); color: var(--color-calories); font-weight: bold; pointer-events: none; padding: 10px 14px; font-size: 0.9rem;">
+                </div>
                 <div class="form-group">
                   <label for="quick-add-protein">Protein (g)</label>
                   <input type="number" id="quick-add-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
@@ -1387,11 +1475,9 @@
                   <input type="number" id="quick-add-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
                 </div>
               </div>
-              
-              <!-- Live Calorie Calculation summary -->
-              <div class="scaling-summary" style="padding: 8px 12px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <label style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); margin: 0;">Calculated Calories:</label>
-                <strong id="quick-add-calories-display" style="color: var(--color-calories); font-size: 1.1rem; font-family: var(--font-display); font-weight: 700;">0 kcal</strong>
+              <div class="form-group">
+                <label for="quick-add-weight">Weight (grams)</label>
+                <input type="number" id="quick-add-weight" min="0.1" step="any" value="100" required pattern="[0-9]*" inputmode="numeric" style="padding: 10px 14px; font-size: 0.9rem;">
               </div>
               
               <button type="submit" class="btn btn-success btn-block" style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); font-size: 0.9rem; padding: 10px 20px;">
@@ -1677,10 +1763,6 @@
               <label for="not-found-fats-recipe">Fats (g)</label>
               <input type="number" id="not-found-fats-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
-            <div class="form-group">
-              <label for="not-found-fiber-recipe">Fiber (g)</label>
-              <input type="number" id="not-found-fiber-recipe" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
           </div>
           <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
         </form>
@@ -1714,10 +1796,6 @@
             <div class="form-group">
               <label for="recipe-custom-fats">Fats (g)</label>
               <input type="number" id="recipe-custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
-            </div>
-            <div class="form-group">
-              <label for="recipe-custom-fiber">Fiber (g)</label>
-              <input type="number" id="recipe-custom-fiber" min="0" step="0.1" value="0" required pattern="[0-9]*" inputmode="decimal">
             </div>
           </div>
           <div class="form-group">

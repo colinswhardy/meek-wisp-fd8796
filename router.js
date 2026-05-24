@@ -189,10 +189,13 @@ window.appRouter = {
     // Auto-focus primary input elements on view transitions to bring up keyboard immediately
     setTimeout(() => {
       if (tabName === "weight") {
-        const wtInput = document.getElementById("weight-input");
-        if (wtInput) {
-          wtInput.focus();
-          try { wtInput.select(); } catch (err) {}
+        const loggedVal = AppState.data.weights[AppState.selectedDateISO] || null;
+        if (loggedVal === null) {
+          const wtInput = document.getElementById("weight-input");
+          if (wtInput) {
+            wtInput.focus();
+            try { wtInput.select(); } catch (err) {}
+          }
         }
       } else if (tabName === "food_selector") {
         if (window.FoodSelectorController) {
