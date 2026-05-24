@@ -14,6 +14,24 @@ window.SettingsController = {
       });
     }
 
+    const calEl = document.getElementById("target-calories");
+    const protEl = document.getElementById("target-protein");
+    const carbEl = document.getElementById("target-carbs");
+    const fatEl = document.getElementById("target-fats");
+    
+    if (calEl && protEl && carbEl && fatEl) {
+      const updateCalculatedCalories = () => {
+        const p = parseFloat(protEl.value) || 0;
+        const c = parseFloat(carbEl.value) || 0;
+        const f = parseFloat(fatEl.value) || 0;
+        calEl.value = Math.round(p * 4 + c * 4 + f * 9);
+      };
+      
+      protEl.addEventListener("input", updateCalculatedCalories);
+      carbEl.addEventListener("input", updateCalculatedCalories);
+      fatEl.addEventListener("input", updateCalculatedCalories);
+    }
+
     // 2. Unit selector adjustments
     const btnLbs = document.getElementById("btn-unit-lbs");
     const btnKg = document.getElementById("btn-unit-kg");
@@ -357,10 +375,15 @@ window.SettingsController = {
     const oldCalories = AppState.data.standardGoals.calories || 2000;
     const scale = targetCalories / oldCalories;
 
-    AppState.data.standardGoals.calories = targetCalories;
-    AppState.data.standardGoals.protein = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
-    AppState.data.standardGoals.carbs = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
-    AppState.data.standardGoals.fats = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+    const p = Math.max(Math.round((AppState.data.standardGoals.protein || 150) * scale), 10);
+    const c = Math.max(Math.round((AppState.data.standardGoals.carbs || 250) * scale), 10);
+    const f = Math.max(Math.round((AppState.data.standardGoals.fats || 65) * scale), 5);
+    const reconciledKcal = Math.round(p * 4 + c * 4 + f * 9);
+
+    AppState.data.standardGoals.calories = reconciledKcal;
+    AppState.data.standardGoals.protein = p;
+    AppState.data.standardGoals.carbs = c;
+    AppState.data.standardGoals.fats = f;
 
     // Save Daily Override for current active date
     const dateKey = AppState.selectedDateISO;
@@ -379,10 +402,10 @@ window.SettingsController = {
   },
 
   saveStandardTargets() {
-    const kcal = Math.round(Number(document.getElementById("target-calories").value));
     const protein = Math.round(Number(document.getElementById("target-protein").value));
     const carbs = Math.round(Number(document.getElementById("target-carbs").value));
     const fats = Math.round(Number(document.getElementById("target-fats").value));
+    const kcal = Math.round(protein * 4 + carbs * 4 + fats * 9);
 
     // Support flexible overrides for currently selected date
     const dateKey = AppState.selectedDateISO;
@@ -483,8 +506,15 @@ window.SettingsController = {
       const dayMeals = [];
       const mealIndices = i % 2 === 0 ? [0, 2, 4] : [1, 3, 5];
       
-      mealIndices.forEach((idx) => {
+      mealIndices.forEach((idx, step) => {
         const templ = mealTemplates[idx];
+        
+        // Calculate realistic loggedAt time spread through the day
+        const mealTime = new Date(d);
+        if (step === 0) mealTime.setHours(8, 30, 0, 0);       // Breakfast
+        else if (step === 1) mealTime.setHours(12, 45, 0, 0); // Lunch
+        else mealTime.setHours(19, 15, 0, 0);                 // Dinner
+
         dayMeals.push({
           id: `food_demo_${i}_${idx}_` + Math.random().toString(36).substr(2, 5),
           name: templ.name,
@@ -493,7 +523,8 @@ window.SettingsController = {
           calories: templ.calories,
           protein: templ.protein,
           carbs: templ.carbs,
-          fats: templ.fats
+          fats: templ.fats,
+          loggedAt: mealTime.getTime()
         });
       });
 
@@ -667,26 +698,34 @@ window.SettingsController = {
     ]);
     const sortedDates = Array.from(allDates).sort(); // oldest first is best for sheets
     
-    let csvContent = "Date,Weight (" + AppState.data.settings.unit + "),Calories Eaten (kcal),Protein Eaten (g),Carbs Eaten (g),Fats Eaten (g),Calorie Target (kcal)\n";
+    let csvContent = "Date,Weight (" + AppState.data.settings.unit + "),Calories Eaten (kcal),Protein Eaten (g),Carbs Eaten (g),Fats Eaten (g),Fiber Eaten (g),Net Carbs Eaten (g),Calorie Target (kcal)\n";
     
     sortedDates.forEach(dateISO => {
       const weight = AppState.data.weights[dateISO] !== undefined ? AppState.data.weights[dateISO] : "";
       const meals = AppState.data.meals[dateISO] || [];
       const goals = AppState.getGoalsForDate(dateISO);
       
-      let eatenKcal = 0;
       let eatenProtein = 0;
       let eatenCarbs = 0;
       let eatenFats = 0;
+      let eatenFiber = 0;
       
       meals.forEach(m => {
-        eatenKcal += m.calories;
-        eatenProtein += m.protein;
-        eatenCarbs += m.carbs;
-        eatenFats += m.fats;
+        eatenProtein += m.protein || 0;
+        eatenCarbs += m.carbs || 0;
+        eatenFats += m.fats || 0;
+        eatenFiber += m.fiber || 0;
       });
       
-      csvContent += `${dateISO},${weight},${Math.round(eatenKcal)},${eatenProtein.toFixed(1)},${eatenCarbs.toFixed(1)},${eatenFats.toFixed(1)},${goals.calories}\n`;
+      const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
+      const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+      
+      const targetProtein = goals.protein || 150;
+      const targetCarbs = goals.carbs || 250;
+      const targetFats = goals.fats || 65;
+      const targetKcal = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
+      
+      csvContent += `${dateISO},${weight},${eatenKcal},${eatenProtein.toFixed(1)},${eatenCarbs.toFixed(1)},${eatenFats.toFixed(1)},${eatenFiber.toFixed(1)},${eatenNetCarbs.toFixed(1)},${targetKcal}\n`;
     });
     
     // Download trigger

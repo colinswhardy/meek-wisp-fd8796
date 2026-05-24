@@ -10,22 +10,25 @@ window.DashboardController = {
     const goals = AppState.getGoalsForDate(dateKey) || {};
 
     // Cumulative tallies
-    let eatenKcal = 0;
     let eatenProtein = 0;
     let eatenCarbs = 0;
     let eatenFats = 0;
+    let eatenFiber = 0;
 
     meals.forEach((meal) => {
-      eatenKcal += meal.calories || 0;
       eatenProtein += meal.protein || 0;
       eatenCarbs += meal.carbs || 0;
       eatenFats += meal.fats || 0;
+      eatenFiber += meal.fiber || 0;
     });
 
-    const targetCalories = Number(goals.calories) || 2000;
+    const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
+    const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+
     const targetProtein = Number(goals.protein) || 150;
     const targetCarbs = Number(goals.carbs) || 250;
     const targetFats = Number(goals.fats) || 65;
+    const targetCalories = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
 
     // Update textual indicators
     document.getElementById("val-calories-eaten").textContent = Math.round(eatenKcal).toLocaleString();
@@ -52,11 +55,25 @@ window.DashboardController = {
     if (calBar) {
       const pct = targetCalories > 0 ? Math.min((eatenKcal / targetCalories) * 100, 100) : 0;
       calBar.style.width = `${pct}%`;
+      calBar.style.background = ''; // reset to stylesheet default
+
+      if (targetCalories > 0 && eatenKcal > targetCalories) {
+        const overPct = eatenKcal / targetCalories;
+        const leewayFactor = 1.15;
+        if (overPct > leewayFactor) {
+          const maxRedPct = 1.50; // fully red at 150% of target
+          const fraction = (overPct - leewayFactor) / (maxRedPct - leewayFactor);
+          const redStop = Math.max(0, Math.min(100, 100 - fraction * 100));
+          const transitionWidth = 15;
+          const redStart = Math.min(100, redStop + transitionWidth);
+          calBar.style.background = `linear-gradient(90deg, #1d4ed8 0%, #60a5fa ${redStop}%, var(--color-danger) ${redStart}%)`;
+        }
+      }
     }
 
     // Macro Progress Bars
     this.updateMacroRow("protein", eatenProtein, targetProtein);
-    this.updateMacroRow("carbs", eatenCarbs, targetCarbs);
+    this.updateMacroRow("carbs", eatenNetCarbs, targetCarbs);
     this.updateMacroRow("fats", eatenFats, targetFats);
 
     // Update Weight Analytics on Dashboard
@@ -76,6 +93,35 @@ window.DashboardController = {
     if (barEl) {
       const pct = target > 0 ? Math.min((eaten / target) * 100, 100) : 0;
       barEl.style.width = `${pct}%`;
+      barEl.style.background = ''; // reset to stylesheet default
+
+      if (target > 0 && eaten > target) {
+        const overPct = eaten / target;
+        const leewayFactor = 1.15;
+        if (overPct > leewayFactor) {
+          const maxRedPct = 1.50; // fully red at 150% of target
+          const fraction = (overPct - leewayFactor) / (maxRedPct - leewayFactor);
+          const redStop = Math.max(0, Math.min(100, 100 - fraction * 100));
+          
+          let startColor, brandColor;
+          if (macroName === 'protein') {
+            startColor = '#1d4ed8';
+            brandColor = 'var(--color-protein)';
+          } else if (macroName === 'carbs') {
+            startColor = '#94a3b8';
+            brandColor = 'var(--color-carbs)';
+          } else if (macroName === 'fats') {
+            startColor = '#1e3a8a';
+            brandColor = 'var(--color-fats)';
+          }
+
+          if (startColor && brandColor) {
+            const transitionWidth = 15;
+            const redStart = Math.min(100, redStop + transitionWidth);
+            barEl.style.background = `linear-gradient(90deg, ${startColor} 0%, ${brandColor} ${redStop}%, var(--color-danger) ${redStart}%)`;
+          }
+        }
+      }
     }
   }
 };

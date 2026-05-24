@@ -4,10 +4,6 @@
  */
 
 window.FoodController = {
-  _scrollHandler: null,
-  _touchHandler: null,
-  hasTouchedOrScrolled: false,
-
   render() {
     const dateKey = AppState.selectedDateISO;
     const meals = AppState.data.meals[dateKey] || [];
@@ -17,89 +13,6 @@ window.FoodController = {
     
     // 2. Render 7-day calorie history list
     this.renderCalorieHistory();
-
-    // 3. Set up floating scanner scroll behaviour
-    this.initFloatingScanner();
-  },
-
-  initFloatingScanner() {
-    const viewport = document.querySelector('.app-viewport');
-    const floatCard = document.getElementById('scanner-view-container-food');
-    const panelFood = document.getElementById('panel-food');
-    if (!viewport || !floatCard || !panelFood) return;
-
-    // Clean up any previous listeners first
-    this.cleanupFloatingScannerListeners();
-
-    // If already touched/scrolled, position card statically at the bottom
-    if (this.hasTouchedOrScrolled) {
-      floatCard.classList.remove('scanner-float', 'scanner-float--hidden');
-      panelFood.classList.add('panel-food--no-float');
-      panelFood.appendChild(floatCard);
-      return;
-    }
-
-    // Ensure initial state starts as floating card at the top
-    floatCard.classList.add('scanner-float');
-    floatCard.classList.remove('scanner-float--hidden');
-    panelFood.classList.remove('panel-food--no-float');
-    panelFood.insertBefore(floatCard, panelFood.firstChild);
-
-    // Scroll handler - scroll triggers dismissal
-    this._scrollHandler = () => {
-      this.dismissFloatingScanner();
-    };
-
-    // Touch/click handler - touch/mousedown outside card triggers dismissal
-    this._touchHandler = (e) => {
-      if (floatCard.contains(e.target)) return;
-      this.dismissFloatingScanner();
-    };
-
-    viewport.addEventListener('scroll', this._scrollHandler, { passive: true });
-    panelFood.addEventListener('touchstart', this._touchHandler, { passive: true });
-    panelFood.addEventListener('mousedown', this._touchHandler);
-  },
-
-  dismissFloatingScanner() {
-    if (this.hasTouchedOrScrolled) return;
-    this.hasTouchedOrScrolled = true;
-
-    const floatCard = document.getElementById('scanner-view-container-food');
-    const panelFood = document.getElementById('panel-food');
-
-    if (!floatCard || !panelFood) return;
-
-    // Clean up event listeners so they don't fire again
-    this.cleanupFloatingScannerListeners();
-
-    // Animate floating card down (hide it)
-    floatCard.classList.add('scanner-float--hidden');
-    // Reduce bottom padding on the food tab panel immediately for a smooth container resize transition
-    panelFood.classList.add('panel-food--no-float');
-
-    // Wait for transition to complete (350ms) and move it statically to the bottom
-    setTimeout(() => {
-      if (AppState.activeTab === 'food' && this.hasTouchedOrScrolled) {
-         floatCard.classList.remove('scanner-float', 'scanner-float--hidden');
-         panelFood.appendChild(floatCard);
-      }
-    }, 350);
-  },
-
-  cleanupFloatingScannerListeners() {
-    const viewport = document.querySelector('.app-viewport');
-    const panelFood = document.getElementById('panel-food');
-
-    if (viewport && this._scrollHandler) {
-      viewport.removeEventListener('scroll', this._scrollHandler);
-      this._scrollHandler = null;
-    }
-    if (panelFood && this._touchHandler) {
-      panelFood.removeEventListener('touchstart', this._touchHandler);
-      panelFood.removeEventListener('mousedown', this._touchHandler);
-      this._touchHandler = null;
-    }
   },
 
   renderMealList(meals) {
@@ -123,13 +36,23 @@ window.FoodController = {
 
     container.innerHTML = "";
     // Draw items in reverse chronological log (newest at top)
-    [...meals].reverse().forEach((meal) => {
+    const sortedMeals = [...meals].sort((a, b) => {
+      const tA = AppState.getMealTimestamp(a) || 0;
+      const tB = AppState.getMealTimestamp(b) || 0;
+      return tB - tA;
+    });
+
+    sortedMeals.forEach((meal) => {
+      const timestamp = AppState.getMealTimestamp(meal);
+      const timeStr = AppState.formatTimeOfDay(timestamp);
+      const timeDisplay = timeStr ? ` • ${timeStr}` : "";
+
       const item = document.createElement("div");
       item.className = "meal-item";
       item.innerHTML = `
         <div class="meal-info">
           <span class="meal-name">${meal.name}</span>
-          <span class="meal-sub">${meal.brand} • ${meal.weight}g</span>
+          <span class="meal-sub">${meal.brand} • ${meal.weight}g${timeDisplay}</span>
           <div class="meal-macros">
             <span class="m-tag p">P: ${meal.protein}g</span>
             <span class="m-tag c">C: ${meal.carbs}g</span>
@@ -258,16 +181,145 @@ window.FoodController = {
     const btnCancel = document.getElementById("btn-cancel-move");
     const btnConfirm = document.getElementById("btn-confirm-move");
 
+    // Copy / Move Segment controls
+    const btnModeCopy = document.getElementById("btn-mode-copy");
+    const btnModeMove = document.getElementById("btn-mode-move");
+    const promptActionSpan = document.getElementById("copy-move-prompt-action");
+
+    // Quick add controls
+    const btnQuickToday = document.getElementById("btn-quick-today");
+    const btnQuickTomorrow = document.getElementById("btn-quick-tomorrow");
+    const labelToday = document.getElementById("quick-today-date-label");
+    const labelTomorrow = document.getElementById("quick-tomorrow-date-label");
+
     if (!modal || !nameSpan || !dateInput || !btnCancel || !btnConfirm) return;
+
+    // Default mode is Copy
+    let activeMode = "copy";
 
     nameSpan.textContent = `${meal.name} (${meal.weight}g)`;
     dateInput.value = AppState.selectedDateISO;
+
+    // Calculate dates
+    const todayISO = AppState.getTodayISODate();
+    const todayDateObj = new Date(todayISO + "T12:00:00");
+    const todayLabelText = todayDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    const tomorrowDateObj = new Date(todayDateObj);
+    tomorrowDateObj.setDate(todayDateObj.getDate() + 1);
+    const tomorrowISO = `${tomorrowDateObj.getFullYear()}-${String(tomorrowDateObj.getMonth() + 1).padStart(2, "0")}-${String(tomorrowDateObj.getDate()).padStart(2, "0")}`;
+    const tomorrowLabelText = tomorrowDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    if (labelToday) labelToday.textContent = todayLabelText;
+    if (labelTomorrow) labelTomorrow.textContent = tomorrowLabelText;
+
+    // Set initial toggle state
+    if (btnModeCopy) btnModeCopy.classList.add("active");
+    if (btnModeMove) btnModeMove.classList.remove("active");
+    if (promptActionSpan) promptActionSpan.textContent = "Copy";
+    btnConfirm.textContent = "Copy Food";
+
     modal.classList.remove("hidden");
 
-    const closeModal = () => {
-      modal.classList.add("hidden");
-      btnCancel.removeEventListener("click", onCancel);
-      btnConfirm.removeEventListener("click", onConfirm);
+    const updateMode = (mode) => {
+      activeMode = mode;
+      if (activeMode === "copy") {
+        if (btnModeCopy) btnModeCopy.classList.add("active");
+        if (btnModeMove) btnModeMove.classList.remove("active");
+        if (promptActionSpan) promptActionSpan.textContent = "Copy";
+        btnConfirm.textContent = "Copy Food";
+      } else {
+        if (btnModeCopy) btnModeCopy.classList.remove("active");
+        if (btnModeMove) btnModeMove.classList.add("active");
+        if (promptActionSpan) promptActionSpan.textContent = "Move";
+        btnConfirm.textContent = "Move Food";
+      }
+    };
+
+    const onModeCopyClick = (e) => {
+      e.preventDefault();
+      updateMode("copy");
+    };
+
+    const onModeMoveClick = (e) => {
+      e.preventDefault();
+      updateMode("move");
+    };
+
+    const performAction = (targetDate) => {
+      if (!targetDate) {
+        alert("Please select a target date.");
+        return;
+      }
+
+      const sourceDate = AppState.selectedDateISO;
+
+      if (activeMode === "move") {
+        // Remove from source
+        let sourceMeals = AppState.data.meals[sourceDate] || [];
+        const mealToMove = sourceMeals.find(m => m.id === meal.id);
+        if (!mealToMove) {
+          closeModal();
+          return;
+        }
+
+        sourceMeals = sourceMeals.filter(m => m.id !== meal.id);
+        if (sourceMeals.length === 0) {
+          delete AppState.data.meals[sourceDate];
+        } else {
+          AppState.data.meals[sourceDate] = sourceMeals;
+        }
+
+        // Add to target
+        if (!AppState.data.meals[targetDate]) {
+          AppState.data.meals[targetDate] = [];
+        }
+        AppState.data.meals[targetDate].push(mealToMove);
+
+        AppState.saveToStorage();
+        closeModal();
+        this.render();
+
+        if (window.DashboardController && typeof window.DashboardController.render === "function") {
+          window.DashboardController.render();
+        }
+
+        AppState.showToast(`Moved to ${targetDate}`);
+      } else {
+        // Copy mode
+        const sourceMeals = AppState.data.meals[sourceDate] || [];
+        const mealToCopy = sourceMeals.find(m => m.id === meal.id);
+        if (!mealToCopy) {
+          closeModal();
+          return;
+        }
+
+        // Make clone with new unique ID
+        const copiedMeal = {
+          ...mealToCopy,
+          id: "food_copy_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5)
+        };
+
+        if (!AppState.data.meals[targetDate]) {
+          AppState.data.meals[targetDate] = [];
+        }
+        AppState.data.meals[targetDate].push(copiedMeal);
+
+        AppState.saveToStorage();
+        closeModal();
+        this.render();
+
+        if (window.DashboardController && typeof window.DashboardController.render === "function") {
+          window.DashboardController.render();
+        }
+
+        AppState.showToast(`Copied to ${targetDate}`);
+      }
+    };
+
+    const onConfirm = (e) => {
+      e.preventDefault();
+      performAction(dateInput.value);
     };
 
     const onCancel = (e) => {
@@ -275,51 +327,32 @@ window.FoodController = {
       closeModal();
     };
 
-    const onConfirm = (e) => {
+    const onTodayClick = (e) => {
       e.preventDefault();
-      const targetDate = dateInput.value;
-      if (!targetDate) {
-        alert("Please select a target date.");
-        return;
-      }
+      performAction(todayISO);
+    };
 
-      const sourceDate = AppState.selectedDateISO;
-      
-      // Remove from source
-      let sourceMeals = AppState.data.meals[sourceDate] || [];
-      const mealToMove = sourceMeals.find(m => m.id === meal.id);
-      if (!mealToMove) {
-        closeModal();
-        return;
-      }
-      
-      sourceMeals = sourceMeals.filter(m => m.id !== meal.id);
-      if (sourceMeals.length === 0) {
-        delete AppState.data.meals[sourceDate];
-      } else {
-        AppState.data.meals[sourceDate] = sourceMeals;
-      }
+    const onTomorrowClick = (e) => {
+      e.preventDefault();
+      performAction(tomorrowISO);
+    };
 
-      // Add to target
-      if (!AppState.data.meals[targetDate]) {
-        AppState.data.meals[targetDate] = [];
-      }
-      AppState.data.meals[targetDate].push(mealToMove);
-
-      AppState.saveToStorage();
-      closeModal();
-      
-      this.render();
-      
-      if (window.DashboardController && typeof window.DashboardController.render === "function") {
-        window.DashboardController.render();
-      }
-
-      AppState.showToast(`Moved to ${targetDate}`);
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      btnCancel.removeEventListener("click", onCancel);
+      btnConfirm.removeEventListener("click", onConfirm);
+      if (btnModeCopy) btnModeCopy.removeEventListener("click", onModeCopyClick);
+      if (btnModeMove) btnModeMove.removeEventListener("click", onModeMoveClick);
+      if (btnQuickToday) btnQuickToday.removeEventListener("click", onTodayClick);
+      if (btnQuickTomorrow) btnQuickTomorrow.removeEventListener("click", onTomorrowClick);
     };
 
     btnCancel.addEventListener("click", onCancel);
     btnConfirm.addEventListener("click", onConfirm);
+    if (btnModeCopy) btnModeCopy.addEventListener("click", onModeCopyClick);
+    if (btnModeMove) btnModeMove.addEventListener("click", onModeMoveClick);
+    if (btnQuickToday) btnQuickToday.addEventListener("click", onTodayClick);
+    if (btnQuickTomorrow) btnQuickTomorrow.addEventListener("click", onTomorrowClick);
   },
 
   showEditModal(meal) {
@@ -346,6 +379,14 @@ window.FoodController = {
     fatsInput.value = meal.fats || 0;
 
     modal.classList.remove("hidden");
+
+    // Auto-focus the food name input inside edit modal and select text
+    setTimeout(() => {
+      nameInput.focus();
+      try {
+        nameInput.select();
+      } catch (err) {}
+    }, 50);
 
     const originalWeight = parseFloat(meal.weight) || 0;
     const originalCalories = parseFloat(meal.calories) || 0;
@@ -438,11 +479,25 @@ window.FoodController = {
       const meals = AppState.data.meals[dateISO] || [];
       const goals = AppState.getGoalsForDate(dateISO);
       
-      let eatenKcal = 0;
-      meals.forEach(m => eatenKcal += m.calories);
-      eatenKcal = Math.round(eatenKcal);
+      let eatenProtein = 0;
+      let eatenCarbs = 0;
+      let eatenFats = 0;
+      let eatenFiber = 0;
 
-      const targetKcal = goals.calories;
+      meals.forEach(m => {
+        eatenProtein += m.protein || 0;
+        eatenCarbs += m.carbs || 0;
+        eatenFats += m.fats || 0;
+        eatenFiber += m.fiber || 0;
+      });
+
+      const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
+      const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+
+      const targetProtein = Number(goals.protein) || 150;
+      const targetCarbs = Number(goals.carbs) || 250;
+      const targetFats = Number(goals.fats) || 65;
+      const targetKcal = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
       const pct = targetKcal > 0 ? Math.min(Math.round((eatenKcal / targetKcal) * 100), 120) : 0;
       
       let label = "";

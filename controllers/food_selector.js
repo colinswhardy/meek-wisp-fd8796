@@ -126,6 +126,31 @@ window.FoodSelectorController = {
       });
     }
 
+    // Portion unit select dropdown listener
+    const portionSelect = document.getElementById("selector-portion-unit");
+    if (portionSelect) {
+      portionSelect.addEventListener("change", () => {
+        const wtUnit = document.getElementById("selector-weight-unit");
+        const wtInput = document.getElementById("selector-weight-input");
+        const selectedUnit = portionSelect.value;
+        
+        if (selectedUnit === "serving") {
+          if (wtUnit) wtUnit.textContent = "servings";
+          if (wtInput) wtInput.value = 1;
+        } else if (selectedUnit === "recipe") {
+          if (wtUnit) wtUnit.textContent = "x";
+          if (wtInput) wtInput.value = 1;
+        } else {
+          if (wtUnit) wtUnit.textContent = "g";
+          if (wtInput) {
+            wtInput.value = (this.selectedFoodItem && this.selectedFoodItem.servingQuantity) ? this.selectedFoodItem.servingQuantity : 100;
+          }
+        }
+        
+        this.updateScaledDisplay();
+      });
+    }
+
     // Log food button click
     const btnLogFood = document.getElementById("btn-log-selector-food");
     if (btnLogFood) {
@@ -134,7 +159,7 @@ window.FoodSelectorController = {
       });
     }
 
-    // Setup selector trigger buttons on Dashboard and Food tab
+    // Setup selector trigger buttons on Dashboard, Food and Weight tabs
     const btnFoodSelectDash = document.getElementById("btn-food-selector-dashboard");
     if (btnFoodSelectDash) {
       btnFoodSelectDash.addEventListener("click", () => {
@@ -145,6 +170,13 @@ window.FoodSelectorController = {
     const btnFoodSelectFood = document.getElementById("btn-food-selector-food");
     if (btnFoodSelectFood) {
       btnFoodSelectFood.addEventListener("click", () => {
+        this.openSelector("daily_log");
+      });
+    }
+
+    const btnFoodSelectWeight = document.getElementById("btn-food-selector-weight");
+    if (btnFoodSelectWeight) {
+      btnFoodSelectWeight.addEventListener("click", () => {
         this.openSelector("daily_log");
       });
     }
@@ -164,13 +196,114 @@ window.FoodSelectorController = {
         if (this.activeContext === "recipe_ingredient") {
           appRouter.navigate("add_recipe");
         } else {
-          appRouter.navigate("food");
+          const backTab = this.openedFromTab || "food";
+          appRouter.navigate(backTab);
         }
+      });
+    }
+
+    // Quick Add collapsible toggle button
+    const btnQuickAddToggle = document.getElementById("btn-recipes-quick-add");
+    const quickAddForm = document.getElementById("recipe-quick-add-form");
+    if (btnQuickAddToggle && quickAddForm) {
+      btnQuickAddToggle.addEventListener("click", () => {
+        const isHidden = quickAddForm.classList.contains("hidden");
+        if (isHidden) {
+          quickAddForm.classList.remove("hidden");
+          btnQuickAddToggle.style.background = "rgba(255,255,255,0.06)";
+          
+          // Auto-focus the first input (name) of the Quick Add form immediately
+          const qaName = document.getElementById("quick-add-name");
+          if (qaName) {
+            setTimeout(() => {
+              qaName.focus();
+              try { qaName.select(); } catch (err) {}
+            }, 50);
+          }
+        } else {
+          quickAddForm.classList.add("hidden");
+          btnQuickAddToggle.style.background = "rgba(255,255,255,0.03)";
+        }
+      });
+    }
+
+    // Live calorie calculator for Quick Add
+    const qaProtein = document.getElementById("quick-add-protein");
+    const qaCarbs = document.getElementById("quick-add-carbs");
+    const qaFats = document.getElementById("quick-add-fats");
+    const qaCalDisplay = document.getElementById("quick-add-calories-display");
+
+    const updateQuickAddCalories = () => {
+      if (!qaProtein || !qaCarbs || !qaFats || !qaCalDisplay) return;
+      const p = parseFloat(qaProtein.value) || 0;
+      const c = parseFloat(qaCarbs.value) || 0;
+      const f = parseFloat(qaFats.value) || 0;
+      const calories = Math.round((p * 4) + (c * 4) + (f * 9));
+      qaCalDisplay.textContent = `${calories} kcal`;
+    };
+
+    [qaProtein, qaCarbs, qaFats].forEach(input => {
+      if (input) {
+        input.addEventListener("input", updateQuickAddCalories);
+      }
+    });
+
+    // Form submit
+    if (quickAddForm) {
+      quickAddForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const p = parseFloat(qaProtein.value) || 0;
+        const c = parseFloat(qaCarbs.value) || 0;
+        const f = parseFloat(qaFats.value) || 0;
+        const nameVal = document.getElementById("quick-add-name").value.trim() || "Quick Add";
+        const calories = Math.round((p * 4) + (c * 4) + (f * 9));
+
+        const newLogItem = {
+          id: "quick_add_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+          name: nameVal,
+          brand: "Quick Add",
+          weight: 100,
+          calories: calories,
+          protein: p,
+          carbs: c,
+          fats: f,
+          loggedAt: Date.now()
+        };
+
+        const dateKey = AppState.selectedDateISO;
+        if (!AppState.data.meals[dateKey]) {
+          AppState.data.meals[dateKey] = [];
+        }
+
+        AppState.data.meals[dateKey].push(newLogItem);
+        AppState.saveToStorage();
+
+        // Reset and collapse form
+        quickAddForm.reset();
+        if (qaCalDisplay) qaCalDisplay.textContent = "0 kcal";
+        quickAddForm.classList.add("hidden");
+        if (btnQuickAddToggle) {
+          btnQuickAddToggle.style.background = "rgba(255,255,255,0.03)";
+        }
+
+        AppState.showToast("Quick macros added!");
+        
+        // Refresh views to show the newly added meal instantly
+        if (window.FoodController && typeof window.FoodController.render === "function") {
+          window.FoodController.render();
+        }
+        if (window.DashboardController && typeof window.DashboardController.render === "function") {
+          window.DashboardController.render();
+        }
+        
+        // Navigate back to the Food tab
+        appRouter.navigate("food");
       });
     }
   },
 
   openSelector(context) {
+    this.openedFromTab = AppState.activeTab;
     this.activeContext = context;
     this.closePreview();
     
@@ -179,6 +312,19 @@ window.FoodSelectorController = {
     if (searchInput) searchInput.value = "";
     const onlineSearchInput = document.getElementById("online-search-input");
     if (onlineSearchInput) onlineSearchInput.value = "";
+
+    // Reset Quick Add Form
+    const quickAddForm = document.getElementById("recipe-quick-add-form");
+    if (quickAddForm) {
+      quickAddForm.reset();
+      quickAddForm.classList.add("hidden");
+      const qaCalDisplay = document.getElementById("quick-add-calories-display");
+      if (qaCalDisplay) qaCalDisplay.textContent = "0 kcal";
+      const btnQuickAddToggle = document.getElementById("btn-recipes-quick-add");
+      if (btnQuickAddToggle) {
+        btnQuickAddToggle.style.background = "rgba(255,255,255,0.03)";
+      }
+    }
 
     const btnRecipes = document.getElementById("btn-tab-recipes");
     const btnHistory = document.getElementById("btn-tab-history");
@@ -228,16 +374,26 @@ window.FoodSelectorController = {
           calories: Math.round(meal.calories * scale),
           protein: parseFloat((meal.protein * scale).toFixed(1)),
           carbs: parseFloat((meal.carbs * scale).toFixed(1)),
-          fats: parseFloat((meal.fats * scale).toFixed(1))
+          fats: parseFloat((meal.fats * scale).toFixed(1)),
+          fiber: parseFloat(((meal.fiber || 0) * scale).toFixed(1))
         };
+
+        const mealTime = AppState.getMealTimestamp(meal) || new Date(dateISO + "T12:00:00").getTime();
 
         if (!historyMap[key]) {
           historyMap[key] = {
             name: meal.name,
             brand: meal.brand,
             nutrients: normalized,
-            count: 0
+            count: 0,
+            lastLoggedAt: mealTime
           };
+          if (meal.servingSize) historyMap[key].servingSize = meal.servingSize;
+          if (meal.servingQuantity) historyMap[key].servingQuantity = meal.servingQuantity;
+        } else {
+          if (mealTime > historyMap[key].lastLoggedAt) {
+            historyMap[key].lastLoggedAt = mealTime;
+          }
         }
         historyMap[key].count++;
       });
@@ -252,15 +408,16 @@ window.FoodSelectorController = {
           name: item.name,
           brand: item.brand,
           nutrients: { ...item.nutrients },
-          count: 1
+          count: 1,
+          lastLoggedAt: 0 // lowest priority if never logged
         };
-      } else {
-        historyMap[key].count += 2; // boost priority
+        if (item.servingSize) historyMap[key].servingSize = item.servingSize;
+        if (item.servingQuantity) historyMap[key].servingQuantity = item.servingQuantity;
       }
     });
 
-    // Sort by log frequency descending
-    return Object.values(historyMap).sort((a, b) => b.count - a.count);
+    // Sort by most recently logged descending (newest ones first)
+    return Object.values(historyMap).sort((a, b) => b.lastLoggedAt - a.lastLoggedAt);
   },
 
   renderList() {
@@ -354,10 +511,12 @@ window.FoodSelectorController = {
       const item = document.createElement("div");
       item.className = "meal-item clickable-selector-item";
       item.style.cursor = "pointer";
+      const lastLoggedStr = food.lastLoggedAt ? ` • Last logged ${AppState.formatLastLogged(food.lastLoggedAt)}` : "";
+
       item.innerHTML = `
         <div class="meal-info">
           <span class="meal-name" style="font-weight: 600;">${food.name}</span>
-          <span class="meal-sub">${food.brand} • per 100g</span>
+          <span class="meal-sub">${food.brand} • per 100g${lastLoggedStr}</span>
           <div class="meal-macros">
             <span class="m-tag p">P: ${food.nutrients.protein}g</span>
             <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
@@ -410,9 +569,25 @@ window.FoodSelectorController = {
     const weightUnit = document.getElementById("selector-weight-unit");
     const weightInput = document.getElementById("selector-weight-input");
     const logBtn = document.getElementById("btn-log-selector-food");
+    const portionSelect = document.getElementById("selector-portion-unit");
 
     if (titleEl) titleEl.textContent = food.name;
     if (subtitleEl) subtitleEl.textContent = food.brand || (type === "recipe" ? "Recipe" : "Generic");
+
+    if (portionSelect) {
+      portionSelect.innerHTML = "";
+      if (type === "recipe") {
+        portionSelect.innerHTML = `<option value="recipe">Recipe Multiplier (x)</option>`;
+        portionSelect.value = "recipe";
+      } else {
+        let html = `<option value="g">Grams (g)</option>`;
+        if (food.servingSize && food.servingQuantity) {
+          html += `<option value="serving">Serving (${food.servingSize})</option>`;
+        }
+        portionSelect.innerHTML = html;
+        portionSelect.value = "g"; // Always default to grams
+      }
+    }
 
     if (type === "recipe") {
       if (kcalEl) kcalEl.textContent = food.nutrients.calories;
@@ -436,10 +611,10 @@ window.FoodSelectorController = {
       if (fatsEl) fatsEl.textContent = food.nutrients.fats;
       if (baseWeightEl) baseWeightEl.textContent = "Values shown per 100g";
       
-      if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight in Recipe (grams)" : "Weight Eaten (grams)";
+      if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight Eaten" : "Weight Eaten";
       if (weightUnit) weightUnit.textContent = "g";
       if (weightInput) {
-        weightInput.value = "";
+        weightInput.value = food.servingQuantity ? food.servingQuantity : 100;
         weightInput.step = "1";
         weightInput.min = "0.1";
       }
@@ -453,6 +628,14 @@ window.FoodSelectorController = {
       clickedEl.after(previewCard);
       previewCard.classList.remove("hidden");
       
+      // Auto-focus and select the weight/servings input box immediately
+      if (weightInput) {
+        setTimeout(() => {
+          weightInput.focus();
+          try { weightInput.select(); } catch (err) {}
+        }, 50);
+      }
+
       // Instant jump/scroll the clicked element to the top of the screen
       clickedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
     }
@@ -470,14 +653,29 @@ window.FoodSelectorController = {
     if (type === "recipe") {
       factor = inputVal; // servings multiplier
     } else {
-      factor = inputVal / 100; // grams weight scale per 100g
+      const portionSelect = document.getElementById("selector-portion-unit");
+      const unit = portionSelect ? portionSelect.value : "g";
+      if (unit === "serving" && food.servingQuantity) {
+        factor = (inputVal * food.servingQuantity) / 100;
+      } else {
+        factor = inputVal / 100; // grams weight scale per 100g
+      }
     }
 
     const raw = food.nutrients;
-    document.getElementById("selector-scaled-kcal").textContent = Math.round(raw.calories * factor);
-    document.getElementById("selector-scaled-protein").textContent = `${(raw.protein * factor).toFixed(1)}g`;
-    document.getElementById("selector-scaled-carbs").textContent = `${(raw.carbs * factor).toFixed(1)}g`;
-    document.getElementById("selector-scaled-fats").textContent = `${(raw.fats * factor).toFixed(1)}g`;
+    const p = parseFloat((raw.protein * factor).toFixed(1));
+    const c = parseFloat((raw.carbs * factor).toFixed(1));
+    const f = parseFloat((raw.fats * factor).toFixed(1));
+    const fib = parseFloat(((raw.fiber || 0) * factor).toFixed(1));
+    const netC = Math.max(0, c - fib);
+    const kcal = Math.round(p * 4 + netC * 4 + f * 9);
+
+    document.getElementById("selector-scaled-kcal").textContent = kcal;
+    document.getElementById("selector-scaled-protein").textContent = `${p}g`;
+    document.getElementById("selector-scaled-carbs").textContent = `${c}g`;
+    document.getElementById("selector-scaled-fats").textContent = `${f}g`;
+    const fiberEl = document.getElementById("selector-scaled-fiber");
+    if (fiberEl) fiberEl.textContent = `${fib}g`;
   },
 
   logSelectedFood() {
@@ -493,27 +691,46 @@ window.FoodSelectorController = {
     }
 
     let factor = 1;
+    let storedWeight = inputVal;
     if (type === "recipe") {
       factor = inputVal;
+      storedWeight = Math.round(food.totalWeight * factor);
     } else {
-      factor = inputVal / 100;
+      const portionSelect = document.getElementById("selector-portion-unit");
+      const unit = portionSelect ? portionSelect.value : "g";
+      if (unit === "serving" && food.servingQuantity) {
+        factor = (inputVal * food.servingQuantity) / 100;
+        storedWeight = inputVal * food.servingQuantity;
+      } else {
+        factor = inputVal / 100;
+        storedWeight = inputVal;
+      }
     }
 
     const raw = food.nutrients;
+    const p = parseFloat((raw.protein * factor).toFixed(1));
+    const c = parseFloat((raw.carbs * factor).toFixed(1));
+    const f = parseFloat((raw.fats * factor).toFixed(1));
+    const fib = parseFloat(((raw.fiber || 0) * factor).toFixed(1));
+    const netC = Math.max(0, c - fib);
+    const kcal = Math.round(p * 4 + netC * 4 + f * 9);
 
     if (this.activeContext === "recipe_ingredient") {
       // Add as ingredient to the Recipe Builder
       const newIng = {
         name: food.name,
         brand: food.brand || "Generic",
-        weight: inputVal,
+        weight: storedWeight,
         nutrients: {
-          calories: Math.round(raw.calories * factor),
-          protein: parseFloat((raw.protein * factor).toFixed(1)),
-          carbs: parseFloat((raw.carbs * factor).toFixed(1)),
-          fats: parseFloat((raw.fats * factor).toFixed(1))
+          calories: kcal,
+          protein: p,
+          carbs: c,
+          fats: f,
+          fiber: fib
         }
       };
+      if (food.servingSize) newIng.servingSize = food.servingSize;
+      if (food.servingQuantity) newIng.servingQuantity = food.servingQuantity;
 
       RecipeBuilderController.addIngredient(newIng);
       this.closePreview();
@@ -528,12 +745,16 @@ window.FoodSelectorController = {
       id: "food_select_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
       name: food.name,
       brand: food.brand || (type === "recipe" ? "Recipe" : "Generic"),
-      weight: type === "recipe" ? Math.round(food.totalWeight * factor) : inputVal,
-      calories: Math.round(raw.calories * factor),
-      protein: parseFloat((raw.protein * factor).toFixed(1)),
-      carbs: parseFloat((raw.carbs * factor).toFixed(1)),
-      fats: parseFloat((raw.fats * factor).toFixed(1))
+      weight: storedWeight,
+      calories: kcal,
+      protein: p,
+      carbs: c,
+      fats: f,
+      fiber: fib,
+      loggedAt: Date.now()
     };
+    if (food.servingSize) newLogItem.servingSize = food.servingSize;
+    if (food.servingQuantity) newLogItem.servingQuantity = food.servingQuantity;
 
     const dateKey = AppState.selectedDateISO;
     if (!AppState.data.meals[dateKey]) {
