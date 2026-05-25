@@ -3574,3 +3574,32 @@ select:focus {
   border-color: var(--color-calories) !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
+
+/* Firebase AI Configuration Card Focus Glow & AI Fallback Animations */
+.firebase-config-card {
+  transition: all var(--transition-normal);
+}
+.firebase-config-card input:focus {
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+}
+
+/* AI Highlight pulse for the custom food card */
+.custom-food-card {
+  transition: all 0.5s ease-in-out;
+}
+.custom-food-card.ai-highlight {
+  animation: ai-pulse-glow 1.5s ease-in-out infinite alternate;
+  border-color: #a78bfa !important;
+}
+
+@keyframes ai-pulse-glow {
+  0% {
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.2), inset 0 0 4px rgba(167, 139, 250, 0.1);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.6), inset 0 0 10px rgba(167, 139, 250, 0.3);
+    transform: scale(1.015);
+  }
+}

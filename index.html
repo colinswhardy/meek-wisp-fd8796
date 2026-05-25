@@ -1433,6 +1433,65 @@
         </form>
       </div>
 
+      <!-- Firebase AI Fallback Configuration -->
+      <div class="glass-card firebase-config-card" style="margin-top: 16px;">
+        <h3>AI Macro Estimator Configuration</h3>
+        <p class="card-subtitle">Connect a Firebase project to enable Gemini client-side fallback estimations</p>
+        
+        <form id="firebase-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
+          <div class="pref-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1; padding-right: 16px;">
+              <label class="pref-title" for="firebase-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Gemini AI Fallback</label>
+              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Estimate nutrients using Gemini if online searches return zero hits</p>
+            </div>
+            <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">
+              <input type="checkbox" id="firebase-enabled" style="opacity: 0; width: 0; height: 0;">
+              <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.08); transition: .2s; border-radius: 24px; border: 1px solid var(--border-glass);"></span>
+            </label>
+          </div>
+
+          <div id="firebase-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="firebase-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Firebase API Key</label>
+              <input type="password" id="firebase-apikey" placeholder="AIzaSy..." style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-projectid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Project ID</label>
+                <input type="text" id="firebase-projectid" placeholder="my-fitness-project" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-authdomain" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Auth Domain</label>
+                <input type="text" id="firebase-authdomain" placeholder="my-fitness-project.firebaseapp.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-storagebucket" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Storage Bucket</label>
+                <input type="text" id="firebase-storagebucket" placeholder="my-fitness-project.appspot.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-senderid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Messaging Sender ID</label>
+                <input type="text" id="firebase-senderid" placeholder="e.g. 123456789012" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-appid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">App ID</label>
+                <input type="text" id="firebase-appid" placeholder="1:123456:web:abcd" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-recaptchakey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">reCAPTCHA Site Key</label>
+                <input type="text" id="firebase-recaptchakey" placeholder="For App Check security" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
       <!-- Advanced Options / Collapsible Danger Zone -->
       <div class="glass-card danger-zone-card" id="danger-zone-card">
         <div class="card-header-toggle" id="toggle-danger-zone-btn">
