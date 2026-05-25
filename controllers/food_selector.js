@@ -847,11 +847,38 @@ window.FoodSelectorController = {
     if (!container) return;
 
     if (!items || items.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
-        </div>
-      `;
+      const input = document.getElementById("online-search-input");
+      const query = input ? input.value.trim() : "";
+      const fbConfig = AppState.data.settings.firebaseConfig;
+
+      if (fbConfig && fbConfig.enabled) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); animation: fadeIn var(--transition-fast);">
+            <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+            <p style="font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px 0;">No results found for "${query}"</p>
+            <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 16px 0; line-height: 1.4;">Would you like Gemini AI to estimate nutritional macros for this food?</p>
+            <button id="btn-ai-estimate" class="btn btn-block btn-iconic" style="background: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); font-weight: 600; padding: 12px 16px; border-radius: var(--radius-md); transition: all 0.2s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+              <span>✨ Ask AI to Estimate Macros</span>
+            </button>
+          </div>
+        `;
+
+        const btnAI = document.getElementById("btn-ai-estimate");
+        if (btnAI) {
+          btnAI.addEventListener("click", () => {
+            this.triggerAIEstimation(query);
+          });
+        }
+      } else {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
+            <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 8px;">Tip: You can enable Gemini AI macro estimation fallback in Settings!</p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -887,5 +914,81 @@ window.FoodSelectorController = {
 
       container.appendChild(item);
     });
+  },
+
+  async triggerAIEstimation(query) {
+    const loadingEl = document.getElementById("online-search-loading");
+    const resultsEl = document.getElementById("online-search-results");
+    
+    if (!resultsEl) return;
+    
+    if (loadingEl) {
+      loadingEl.classList.remove("hidden");
+      // Alter text dynamically
+      const loadingText = loadingEl.querySelector("p") || loadingEl;
+      if (loadingText) loadingText.textContent = "AI is estimating macros...";
+    }
+    resultsEl.innerHTML = "";
+
+    try {
+      console.log(`[FoodSelector] Triggering dynamic import of AI Service for: "${query}"`);
+      // Dynamic import relative to the active document (index.html at root)
+      const { AIEstimatorService } = await import("./services/ai.js");
+      
+      const estimation = await AIEstimatorService.estimateMacros(query);
+      console.log("[FoodSelector] AI Estimation succeeded:", estimation);
+      
+      // Navigate to Food tab
+      appRouter.navigate("food");
+      
+      // Auto pre-fill custom food card
+      const customCard = document.getElementById("custom-food-card");
+      const customForm = document.getElementById("custom-food-form");
+      
+      if (customCard && customForm) {
+        // Pre-fill inputs
+        document.getElementById("custom-name").value = estimation.food_name;
+        document.getElementById("custom-calories").value = estimation.estimated_calories;
+        document.getElementById("custom-protein").value = estimation.protein_g;
+        document.getElementById("custom-carbs").value = estimation.carbs_g;
+        document.getElementById("custom-fats").value = estimation.fat_g;
+        document.getElementById("custom-weight").value = 100; // standard basis
+        
+        // Expand the collapsible card
+        customForm.classList.remove("hidden");
+        customCard.classList.add("active");
+        
+        // Apply temporary highlight pulse animation
+        customCard.classList.add("ai-highlight");
+        setTimeout(() => {
+          customCard.classList.remove("ai-highlight");
+        }, 3000); // 3 seconds highlight
+        
+        // Scroll smoothly into view and focus
+        customCard.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => {
+          const customNameInput = document.getElementById("custom-name");
+          if (customNameInput) {
+            customNameInput.focus();
+            try { customNameInput.select(); } catch (err) {}
+          }
+        }, 300);
+        
+        // Toast notification
+        AppState.showToast("✨ AI estimated macros populated! Review and save.");
+      }
+    } catch (err) {
+      console.warn("[FoodSelector] AI Estimation failed:", err);
+      AppState.showToast(`AI failed: ${err.message}`);
+      
+      // Re-render empty state to allow retrying
+      this.renderOnlineResults([]);
+    } finally {
+      if (loadingEl) {
+        loadingEl.classList.add("hidden");
+        const loadingText = loadingEl.querySelector("p") || loadingEl;
+        if (loadingText) loadingText.textContent = "Searching databases…";
+      }
+    }
   }
 };
