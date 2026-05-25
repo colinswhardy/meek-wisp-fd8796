@@ -494,10 +494,10 @@ window.FoodController = {
       let eatenFiber = 0;
 
       meals.forEach(m => {
-        eatenProtein += m.protein || 0;
-        eatenCarbs += m.carbs || 0;
-        eatenFats += m.fats || 0;
-        eatenFiber += m.fiber || 0;
+        eatenProtein += Number(m.protein) || 0;
+        eatenCarbs += Number(m.carbs) || 0;
+        eatenFats += Number(m.fats) || 0;
+        eatenFiber += Number(m.fiber) || 0;
       });
 
       const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);

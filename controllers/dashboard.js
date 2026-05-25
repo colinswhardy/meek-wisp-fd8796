@@ -16,10 +16,10 @@ window.DashboardController = {
     let eatenFiber = 0;
 
     meals.forEach((meal) => {
-      eatenProtein += meal.protein || 0;
-      eatenCarbs += meal.carbs || 0;
-      eatenFats += meal.fats || 0;
-      eatenFiber += meal.fiber || 0;
+      eatenProtein += Number(meal.protein) || 0;
+      eatenCarbs += Number(meal.carbs) || 0;
+      eatenFats += Number(meal.fats) || 0;
+      eatenFiber += Number(meal.fiber) || 0;
     });
 
     const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
