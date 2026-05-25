@@ -1,4 +1,4 @@
-/* --------------------------------------------------------------------------
+﻿/* --------------------------------------------------------------------------
    ColinsChartsMacros - Design System & Styles
    Premium Dark Theme & Glassmorphism Design
    -------------------------------------------------------------------------- */
@@ -2624,7 +2624,7 @@ select:focus {
   margin-bottom: 0;
 }
 
-/* Sticky Y-axis canvas — always visible on the left */
+/* Sticky Y-axis canvas â€” always visible on the left */
 .detail-yaxis-canvas {
   width: 52px;
   flex-shrink: 0;
@@ -2757,7 +2757,7 @@ select:focus {
   flex-direction: column !important;
 }
 
-/* Hide back button entirely in fullscreen — JS also handles this */
+/* Hide back button entirely in fullscreen â€” JS also handles this */
 #panel-weight-history-detail.chart-fullscreen-mode .subpage-header {
   display: none !important;
 }
@@ -3062,7 +3062,7 @@ select:focus {
   box-sizing: border-box !important;
 }
 
-.btn-add-food-pill .pill-add-icon {
+.btn-add-food-pill .pill-search-icon {
   color: var(--color-text-primary) !important;
   flex-shrink: 0 !important;
 }
@@ -3164,7 +3164,7 @@ select:focus {
 
 
 /* ============================================================
-   Diet Macro Preset Selectors � Set Budgets & Target Goals
+   Diet Macro Preset Selectors — Set Budgets & Target Goals
    ============================================================ */
 
 .diet-preset-container {
@@ -3391,7 +3391,7 @@ select:focus {
 }
 
 .diet-exp-list li::before {
-  content: "�";
+  content: "•";
   flex-shrink: 0;
   font-size: 0.9rem;
   line-height: 1.2;
@@ -3603,3 +3603,4 @@ select:focus {
     transform: scale(1.015);
   }
 }
+
