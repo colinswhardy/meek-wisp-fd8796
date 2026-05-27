@@ -108,6 +108,10 @@ window.FoodSelectorController = {
         if (e.key === "Enter") {
           e.preventDefault();
           if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
+          if (this.algoliaAbortController) {
+            this.algoliaAbortController.abort();
+            this.algoliaAbortController = null;
+          }
           
           const query = onlineSearchInput.value.trim();
           if (query) {
@@ -122,13 +126,6 @@ window.FoodSelectorController = {
       });
     }
 
-    // Log staged foods button click listener
-    const btnLogStaged = document.getElementById("btn-log-staged");
-    if (btnLogStaged) {
-      btnLogStaged.addEventListener("click", () => {
-        this.logStagedItems();
-      });
-    }
 
     // Close preview button
     const btnClosePreview = document.getElementById("btn-close-selector-preview");
@@ -451,11 +448,11 @@ window.FoodSelectorController = {
         // Scale nutrients to per 100g base for history standard display
         const scale = meal.weight > 0 ? (100 / meal.weight) : 1;
         const normalized = {
-          calories: Math.round(meal.calories * scale),
-          protein: parseFloat((meal.protein * scale).toFixed(1)),
-          carbs: parseFloat((meal.carbs * scale).toFixed(1)),
-          fats: parseFloat((meal.fats * scale).toFixed(1)),
-          fiber: parseFloat(((meal.fiber || 0) * scale).toFixed(1))
+          calories: Math.round((Number(meal.calories) || 0) * scale),
+          protein: parseFloat(((Number(meal.protein) || 0) * scale).toFixed(1)),
+          carbs: parseFloat(((Number(meal.carbs) || 0) * scale).toFixed(1)),
+          fats: parseFloat(((Number(meal.fats) || 0) * scale).toFixed(1)),
+          fiber: parseFloat(((Number(meal.fiber || 0)) * scale).toFixed(1))
         };
 
         const mealTime = AppState.getMealTimestamp(meal) || new Date(dateISO + "T12:00:00").getTime();
@@ -750,7 +747,13 @@ window.FoodSelectorController = {
       }
     }
 
-    const raw = food.nutrients;
+    const raw = food.nutrients || {
+      calories: food.calories !== undefined ? food.calories : 0,
+      protein: food.protein !== undefined ? food.protein : 0,
+      carbs: food.carbs !== undefined ? food.carbs : 0,
+      fats: food.fats !== undefined ? food.fats : 0,
+      fiber: food.fiber !== undefined ? food.fiber : 0
+    };
     const p = parseFloat((raw.protein * factor).toFixed(1));
     const c = parseFloat((raw.carbs * factor).toFixed(1));
     const f = parseFloat((raw.fats * factor).toFixed(1));
@@ -795,7 +798,13 @@ window.FoodSelectorController = {
       }
     }
 
-    const raw = food.nutrients;
+    const raw = food.nutrients || {
+      calories: food.calories !== undefined ? food.calories : 0,
+      protein: food.protein !== undefined ? food.protein : 0,
+      carbs: food.carbs !== undefined ? food.carbs : 0,
+      fats: food.fats !== undefined ? food.fats : 0,
+      fiber: food.fiber !== undefined ? food.fiber : 0
+    };
     const p = parseFloat((raw.protein * factor).toFixed(1));
     const c = parseFloat((raw.carbs * factor).toFixed(1));
     const f = parseFloat((raw.fats * factor).toFixed(1));
@@ -967,17 +976,19 @@ window.FoodSelectorController = {
   // --- Hybrid Search & Multi-Add Staging Drawer Extensions ---
   algoliaAbortController: null,
   algoliaTimeout: null,
-  stagedItems: [],
+
 
   handleSearchInput() {
     const input = document.getElementById("online-search-input");
     const resultsEl = document.getElementById("online-search-results");
+    const loadingEl = document.getElementById("online-search-loading");
     if (!input || !resultsEl) return;
     
     const query = input.value.trim();
     if (!query) {
       this.closePreview();
       resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above to search.</p></div>`;
+      if (loadingEl) loadingEl.classList.add("hidden");
       if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
       if (this.algoliaAbortController) {
         this.algoliaAbortController.abort();
@@ -985,6 +996,9 @@ window.FoodSelectorController = {
       }
       return;
     }
+    
+    // Show loading indicator immediately
+    if (loadingEl) loadingEl.classList.remove("hidden");
     
     // 1. Synchronous Paint (0ms) - mark remote query as pending initially
     const localResults = window.FoodDatabase.searchLocalCache(query);
@@ -999,9 +1013,7 @@ window.FoodSelectorController = {
     
     const algoliaConfig = AppState.data.settings.algoliaConfig;
     if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
-      const loadingEl = document.getElementById("online-search-loading");
       this.algoliaTimeout = setTimeout(async () => {
-        if (loadingEl) loadingEl.classList.remove("hidden");
         this.algoliaAbortController = new AbortController();
         
         try {
@@ -1037,7 +1049,7 @@ window.FoodSelectorController = {
     try {
       console.log(`[Search] Routing legacy fallback pipeline for: "${query}"`);
       const rawResults = await window.FoodDatabase.searchFoods(query);
-      const onlineResults = rawResults.filter(item => item.source !== "Local DB" && item.source !== "Algolia");
+      const onlineResults = rawResults.filter(item => item.source !== "Algolia");
       
       this.renderHybridResults(localResults, onlineResults, false);
     } catch (err) {
@@ -1061,12 +1073,8 @@ window.FoodSelectorController = {
     
     if (localItems.length === 0 && filteredGlobal.length === 0) {
       if (isRemotePending) {
-        // Still actively searching databases, show searching placeholder instead of "No results found"
-        container.innerHTML = `
-          <div class="loading-state-placeholder" style="padding: 40px 0; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.9rem;">
-            Searching databases…
-          </div>
-        `;
+        // Still actively searching databases, empty container so only the single loading indicator is shown
+        container.innerHTML = "";
         return;
       }
 
@@ -1135,7 +1143,9 @@ window.FoodSelectorController = {
         ? `<span class="search-source-badge badge-algolia" style="background: rgba(99,179,237,0.18); color: #63b3ed;">USDA</span>` 
         : (food.source === "OFF" 
           ? `<span class="search-source-badge badge-algolia" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
-          : `<span class="search-source-badge badge-algolia">GLOBAL</span>`));
+          : (food.source === "Local DB"
+            ? `<span class="search-source-badge badge-local" style="background: rgba(240,98,146,0.18); color: #f06292;">WHOLE FOOD</span>`
+            : `<span class="search-source-badge badge-algolia">GLOBAL</span>`)));
 
     const nutrients = food.nutrients || {
       protein: food.protein !== undefined ? food.protein : 0,
@@ -1164,209 +1174,9 @@ window.FoodSelectorController = {
     `;
 
     item.addEventListener("click", () => {
-      this.stageFoodItem(food);
+      this.selectFoodItem(food, "online", item);
     });
 
     return item;
-  },
-
-  stageFoodItem(food) {
-    const key = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
-    
-    const existing = this.stagedItems.find(item => item.key === key);
-    if (existing) {
-      const increment = food.servingQuantity || 100;
-      existing.weight += increment;
-      AppState.showToast(`Updated quantity for ${food.name}!`);
-    } else {
-      this.stagedItems.push({
-        key: key,
-        name: food.name,
-        brand: food.brand || "Generic",
-        baseNutrients: food.nutrients ? { ...food.nutrients } : {
-          protein: food.protein !== undefined ? food.protein : 0,
-          carbs: food.carbs !== undefined ? food.carbs : 0,
-          fats: food.fats !== undefined ? food.fats : 0,
-          calories: food.calories !== undefined ? food.calories : 0,
-          fiber: food.fiber !== undefined ? food.fiber : 0
-        },
-        weight: food.servingQuantity || 100,
-        servingQuantity: food.servingQuantity || 100,
-        servingSize: food.servingSize || null,
-        barcode: food.barcode || null,
-        food_id: food.food_id || null
-      });
-      AppState.showToast(`Staged ${food.name}!`);
-    }
-    
-    this.renderStagingArea();
-    
-    const searchInput = document.getElementById("online-search-input");
-    if (searchInput) {
-      searchInput.focus();
-    }
-  },
-
-  renderStagingArea() {
-    const stagingArea = document.getElementById("search-staging-area");
-    const countEl = document.getElementById("staged-count");
-    const listEl = document.getElementById("staged-items-list");
-    
-    if (!stagingArea || !countEl || !listEl) return;
-    
-    if (this.stagedItems.length === 0) {
-      stagingArea.classList.add("hidden");
-      return;
-    }
-    
-    stagingArea.classList.remove("hidden");
-    countEl.textContent = this.stagedItems.length;
-    listEl.innerHTML = "";
-    
-    this.stagedItems.forEach((item, index) => {
-      const row = document.createElement("div");
-      row.className = "staged-item-row";
-      
-      const raw = item.baseNutrients;
-      const factor = item.weight / 100;
-      const cals = Math.round(Number(raw.calories) * factor);
-      
-      row.innerHTML = `
-        <div class="staged-item-info">
-          <span class="staged-item-name">${item.name}</span>
-          <span class="staged-item-brand">${item.brand} &bull; ${Math.round(raw.protein * factor)}P &bull; ${Math.round(raw.carbs * factor)}C &bull; ${Math.round(raw.fats * factor)}F</span>
-        </div>
-        <div class="staged-item-controls">
-          <input type="number" class="staged-item-weight" value="${item.weight}" min="0.1" step="any" data-index="${index}">
-          <span style="font-size: 0.75rem; color: var(--color-text-secondary);">g</span>
-          <span class="staged-item-cals">${cals} <span style="font-size: 0.65rem; font-weight: normal; color: var(--color-text-secondary);">kcal</span></span>
-          <button class="btn-remove-staged" data-index="${index}" aria-label="Remove item">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      `;
-      
-      const weightInput = row.querySelector(".staged-item-weight");
-      weightInput.addEventListener("input", (e) => {
-        let val = parseFloat(e.target.value);
-        if (isNaN(val) || val <= 0) val = 0;
-        this.stagedItems[index].weight = val;
-        this.updateStagedCalories(index, row);
-      });
-      
-      weightInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          this.logStagedItems();
-        }
-      });
-      
-      const removeBtn = row.querySelector(".btn-remove-staged");
-      removeBtn.addEventListener("click", () => {
-        this.stagedItems.splice(index, 1);
-        this.renderStagingArea();
-        
-        const searchInput = document.getElementById("online-search-input");
-        if (searchInput) searchInput.focus();
-      });
-      
-      listEl.appendChild(row);
-    });
-  },
-
-  updateStagedCalories(index, row) {
-    const item = this.stagedItems[index];
-    const raw = item.baseNutrients;
-    const factor = item.weight / 100;
-    const cals = Math.round(Number(raw.calories) * factor);
-    const protein = Math.round(Number(raw.protein) * factor);
-    const carbs = Math.round(Number(raw.carbs) * factor);
-    const fats = Math.round(Number(raw.fats) * factor);
-    
-    const brandEl = row.querySelector(".staged-item-brand");
-    const calsEl = row.querySelector(".staged-item-cals");
-    
-    if (brandEl) {
-      brandEl.innerHTML = `${item.brand} &bull; ${protein}P &bull; ${carbs}C &bull; ${fats}F`;
-    }
-    if (calsEl) {
-      calsEl.innerHTML = `${cals} <span style="font-size: 0.65rem; font-weight: normal; color: var(--color-text-secondary);">kcal</span>`;
-    }
-  },
-
-  async logStagedItems() {
-    if (this.stagedItems.length === 0) return;
-    
-    const dateKey = AppState.selectedDateISO;
-    if (!AppState.data.meals[dateKey]) {
-      AppState.data.meals[dateKey] = [];
-    }
-    
-    const logPromises = [];
-    
-    this.stagedItems.forEach(item => {
-      const factor = item.weight / 100;
-      const p = parseFloat((item.baseNutrients.protein * factor).toFixed(1));
-      const c = parseFloat((item.baseNutrients.carbs * factor).toFixed(1));
-      const f = parseFloat((item.baseNutrients.fats * factor).toFixed(1));
-      const fib = parseFloat(((item.baseNutrients.fiber || 0) * factor).toFixed(1));
-      const netC = Math.max(0, c - fib);
-      const kcal = Math.round(p * 4 + netC * 4 + f * 9);
-      
-      const newLogItem = {
-        id: "food_select_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-        name: item.name,
-        brand: item.brand,
-        weight: item.weight,
-        calories: kcal,
-        protein: p,
-        carbs: c,
-        fats: f,
-        fiber: fib,
-        loggedAt: Date.now()
-      };
-      
-      if (item.servingSize) newLogItem.servingSize = item.servingSize;
-      if (item.servingQuantity) newLogItem.servingQuantity = item.servingQuantity;
-      if (item.barcode) newLogItem.barcode = item.barcode;
-      if (item.food_id) newLogItem.food_id = item.food_id;
-      
-      AppState.data.meals[dateKey].push(newLogItem);
-      
-      logPromises.push(window.FoodDatabase.logFoodOccurrence(newLogItem));
-    });
-    
-    AppState.saveToStorage();
-    
-    try {
-      await Promise.all(logPromises);
-    } catch (err) {
-      console.warn("[Cache] Failed to log some occurrences:", err);
-    }
-    
-    AppState.showToast(`Logged ${this.stagedItems.length} items to tracker!`);
-    
-    this.stagedItems = [];
-    this.renderStagingArea();
-    
-    if (window.FoodController && typeof window.FoodController.render === "function") {
-      window.FoodController.render();
-    }
-    if (window.DashboardController && typeof window.DashboardController.render === "function") {
-      window.DashboardController.render();
-    }
-    
-    const searchInput = document.getElementById("online-search-input");
-    if (searchInput) {
-      searchInput.value = "";
-      searchInput.focus();
-    }
-    
-    const resultsEl = document.getElementById("online-search-results");
-    if (resultsEl) {
-      resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above to search.</p></div>`;
-    }
-    
-    this.closePreview();
   }
 };

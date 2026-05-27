@@ -11,6 +11,17 @@ window.ScannerViewController = {
     weight: null
   },
 
+  getNutrients(product) {
+    if (!product) return { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
+    return product.nutrients || {
+      calories: product.calories !== undefined ? product.calories : 0,
+      protein: product.protein !== undefined ? product.protein : 0,
+      carbs: product.carbs !== undefined ? product.carbs : 0,
+      fats: product.fats !== undefined ? product.fats : 0,
+      fiber: product.fiber !== undefined ? product.fiber : 0
+    };
+  },
+
   init() {
     // 1. Collapsible custom form toggle (Only on the Food tab)
     const toggleHeader = document.getElementById("toggle-custom-form-btn");
@@ -296,10 +307,11 @@ window.ScannerViewController = {
       document.getElementById(`preview-food-name-${context}`).textContent = product.name;
       document.getElementById(`preview-food-brand-${context}`).textContent = product.brand;
       
-      document.getElementById(`preview-100g-kcal-${context}`).textContent = product.nutrients.calories;
-      document.getElementById(`preview-100g-protein-${context}`).textContent = product.nutrients.protein;
-      document.getElementById(`preview-100g-carbs-${context}`).textContent = product.nutrients.carbs;
-      document.getElementById(`preview-100g-fats-${context}`).textContent = product.nutrients.fats;
+      const rawNutrients = this.getNutrients(product);
+      document.getElementById(`preview-100g-kcal-${context}`).textContent = rawNutrients.calories;
+      document.getElementById(`preview-100g-protein-${context}`).textContent = rawNutrients.protein;
+      document.getElementById(`preview-100g-carbs-${context}`).textContent = rawNutrients.carbs;
+      document.getElementById(`preview-100g-fats-${context}`).textContent = rawNutrients.fats;
 
       // Populate portion select dropdown
       const portionSelect = document.getElementById(`food-portion-unit-${context}`);
@@ -474,7 +486,7 @@ window.ScannerViewController = {
     let weight = parseFloat(document.getElementById(`food-weight-input-${context}`).value);
     if (isNaN(weight) || weight <= 0) weight = 0;
 
-    const raw = product.nutrients;
+    const raw = this.getNutrients(product);
     let factor = weight / 100;
 
     const portionSelect = document.getElementById(`food-portion-unit-${context}`);
@@ -507,7 +519,7 @@ window.ScannerViewController = {
       return;
     }
 
-    const raw = product.nutrients;
+    const raw = this.getNutrients(product);
     let factor = weight / 100;
     let storedWeight = weight;
 
