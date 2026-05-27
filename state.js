@@ -30,13 +30,11 @@ window.AppState = {
         friday: { enabled: false, type: "flat", value: 300 },
         saturday: { enabled: false, type: "flat", value: 300 }
       },
-      typesenseConfig: {
+      algoliaConfig: {
         enabled: false,
-        host: "",
-        port: 443,
-        protocol: "https",
+        appId: "",
         apiKey: "",
-        collection: "foods"
+        indexName: "foods"
       },
       firebaseConfig: {
         enabled: false,
@@ -96,13 +94,11 @@ window.AppState = {
           friday: { enabled: false, type: "flat", value: 300 },
           saturday: { enabled: false, type: "flat", value: 300 }
         },
-        typesenseConfig: {
+        algoliaConfig: {
           enabled: false,
-          host: "",
-          port: 443,
-          protocol: "https",
+          appId: "",
           apiKey: "",
-          collection: "foods"
+          indexName: "foods"
         },
         firebaseConfig: {
           enabled: false,
@@ -212,24 +208,23 @@ window.AppState = {
       delete this.data.settings.highCalorieSurplusType;
       delete this.data.settings.highCalorieSurplusValue;
 
-      // Migrate/initialize Typesense settings safely
-      if (!this.data.settings.typesenseConfig) {
-        this.data.settings.typesenseConfig = {
+      // Clean up legacy Typesense settings
+      delete this.data.settings.typesenseConfig;
+
+      // Migrate/initialize Algolia settings safely
+      if (!this.data.settings.algoliaConfig) {
+        this.data.settings.algoliaConfig = {
           enabled: false,
-          host: "",
-          port: 443,
-          protocol: "https",
+          appId: "",
           apiKey: "",
-          collection: "foods"
+          indexName: "foods"
         };
       } else {
-        this.data.settings.typesenseConfig = {
-          enabled: this.data.settings.typesenseConfig.enabled || false,
-          host: this.data.settings.typesenseConfig.host || "",
-          port: this.data.settings.typesenseConfig.port || 443,
-          protocol: this.data.settings.typesenseConfig.protocol || "https",
-          apiKey: this.data.settings.typesenseConfig.apiKey || "",
-          collection: this.data.settings.typesenseConfig.collection || "foods"
+        this.data.settings.algoliaConfig = {
+          enabled: this.data.settings.algoliaConfig.enabled || false,
+          appId: this.data.settings.algoliaConfig.appId || "",
+          apiKey: this.data.settings.algoliaConfig.apiKey || "",
+          indexName: this.data.settings.algoliaConfig.indexName || "foods"
         };
       }
 

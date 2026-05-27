@@ -1371,50 +1371,36 @@
       </div>
 
       <!-- Search Engine Configuration -->
-      <div class="glass-card typesense-config-card" style="margin-top: 16px;">
+      <div class="glass-card algolia-config-card" style="margin-top: 16px;">
         <h3>Search Engine Configuration</h3>
-        <p class="card-subtitle">Connect a Typesense cluster to enable low-latency fuzzy searches</p>
+        <p class="card-subtitle">Connect an Algolia index to enable low-latency searches</p>
         
-        <form id="typesense-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
+        <form id="algolia-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
           <div class="pref-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
             <div style="flex: 1; padding-right: 16px;">
-              <label class="pref-title" for="typesense-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Typesense Search</label>
-              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Route online lookups to your custom Typesense database</p>
+              <label class="pref-title" for="algolia-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Algolia Search</label>
+              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Route online lookups to your custom Algolia database</p>
             </div>
-            <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">
-              <input type="checkbox" id="typesense-enabled" style="opacity: 0; width: 0; height: 0;">
-              <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.08); transition: .2s; border-radius: 24px; border: 1px solid var(--border-glass);"></span>
+            <label class="switch-toggle">
+              <input type="checkbox" id="algolia-enabled">
+              <span class="slider-round"></span>
             </label>
           </div>
 
-          <div id="typesense-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
-            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="typesense-protocol" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Protocol</label>
-                <select id="typesense-protocol" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-                  <option value="https">https</option>
-                  <option value="http">http</option>
-                </select>
-              </div>
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="typesense-port" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Port</label>
-                <input type="number" id="typesense-port" placeholder="443" min="1" max="65535" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-            </div>
-
+          <div id="algolia-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label for="typesense-host" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Host / Node Domain</label>
-              <input type="text" id="typesense-host" placeholder="e.g. xxxxx.typesense.net" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              <label for="algolia-appid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Application ID</label>
+              <input type="text" id="algolia-appid" placeholder="e.g. XXXXXXXX" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
             </div>
 
             <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="typesense-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Search-Only API Key</label>
-                <input type="password" id="typesense-apikey" placeholder="Enter API Key" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+                <label for="algolia-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Search-Only API Key</label>
+                <input type="password" id="algolia-apikey" placeholder="Enter API Key" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
               </div>
               <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="typesense-collection" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Collection Name</label>
-                <input type="text" id="typesense-collection" placeholder="foods" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+                <label for="algolia-indexname" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Index Name</label>
+                <input type="text" id="algolia-indexname" placeholder="foods" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
               </div>
             </div>
           </div>
@@ -1432,9 +1418,9 @@
               <label class="pref-title" for="firebase-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Gemini AI Fallback</label>
               <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Estimate nutrients using Gemini if online searches return zero hits</p>
             </div>
-            <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">
-              <input type="checkbox" id="firebase-enabled" style="opacity: 0; width: 0; height: 0;">
-              <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.08); transition: .2s; border-radius: 24px; border: 1px solid var(--border-glass);"></span>
+            <label class="switch-toggle">
+              <input type="checkbox" id="firebase-enabled">
+              <span class="slider-round"></span>
             </label>
           </div>
 

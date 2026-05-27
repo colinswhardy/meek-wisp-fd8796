@@ -620,51 +620,60 @@ window.FoodDatabase = {
    * @param {AbortSignal} abortSignal Signal to cancel pending fetches
    * @returns {Promise<Array>} Normalized product hits
    */
-  async queryTypesense(query, abortSignal) {
-    const config = AppState.data.settings.typesenseConfig;
-    if (!config || !config.enabled || !config.host) return [];
+  /**
+   * Queries the configured Algolia index for matching products.
+   * @param {string} query Search keyword
+   * @param {AbortSignal} abortSignal Signal to cancel pending fetches
+   * @returns {Promise<Array>} Normalized product hits
+   */
+  async queryAlgolia(query, abortSignal) {
+    const config = AppState.data.settings.algoliaConfig;
+    if (!config || !config.enabled || !config.appId || !config.apiKey) return [];
 
-    const host = config.host.trim();
-    const port = config.port || 443;
-    const protocol = config.protocol || "https";
-    const apiKey = config.apiKey ? config.apiKey.trim() : "";
-    const collection = config.collection ? config.collection.trim() : "foods";
+    const appId = config.appId.trim();
+    const apiKey = config.apiKey.trim();
+    const indexName = config.indexName ? config.indexName.trim() : "foods";
 
-    const url = `${protocol}://${host}:${port}/collections/${collection}/documents/search?q=${encodeURIComponent(query)}&query_by=name,brand,barcode&prefix=true&num_typos=2&drop_tokens_threshold=1`;
+    const url = `https://${appId}-dsn.algolia.net/1/indexes/${indexName}/query`;
 
     try {
       const response = await fetch(url, {
-        method: "GET",
+        method: "POST",
         signal: abortSignal,
         headers: {
-          "X-TYPESENSE-API-KEY": apiKey,
+          "X-Algolia-Application-Id": appId,
+          "X-Algolia-API-Key": apiKey,
+          "Content-Type": "application/json",
           "Accept": "application/json"
-        }
+        },
+        body: JSON.stringify({
+          query: query,
+          hitsPerPage: 20
+        })
       });
 
       if (!response.ok) {
-        throw new Error(`Typesense request failed with status: ${response.status}`);
+        throw new Error(`Algolia request failed with status: ${response.status}`);
       }
 
       const data = await response.json();
       const hits = data.hits || [];
 
       return hits.map(hit => {
-        const doc = hit.document || {};
-        const rawNutrients = doc.nutrients || {};
-        const protein = parseFloat(Number(doc.protein !== undefined ? doc.protein : (rawNutrients.protein || doc.proteins || 0)).toFixed(1));
-        const carbs = parseFloat(Number(doc.carbs !== undefined ? doc.carbs : (rawNutrients.carbs || doc.carbohydrates || 0)).toFixed(1));
-        const fats = parseFloat(Number(doc.fats !== undefined ? doc.fats : (rawNutrients.fats || doc.fat || 0)).toFixed(1));
-        const fiber = parseFloat(Number(doc.fiber !== undefined ? doc.fiber : (rawNutrients.fiber || doc.fiber || 0)).toFixed(1));
-        const calories = Math.round(Number(doc.calories !== undefined ? doc.calories : (rawNutrients.calories || doc.energy_kcal || doc.energy || 0)));
+        const rawNutrients = hit.nutrients || {};
+        const protein = parseFloat(Number(hit.protein !== undefined ? hit.protein : (rawNutrients.protein || hit.proteins || 0)).toFixed(1));
+        const carbs = parseFloat(Number(hit.carbs !== undefined ? hit.carbs : (rawNutrients.carbs || hit.carbohydrates || 0)).toFixed(1));
+        const fats = parseFloat(Number(hit.fats !== undefined ? hit.fats : (rawNutrients.fats || hit.fat || 0)).toFixed(1));
+        const fiber = parseFloat(Number(hit.fiber !== undefined ? hit.fiber : (rawNutrients.fiber || hit.fiber || 0)).toFixed(1));
+        const calories = Math.round(Number(hit.calories !== undefined ? hit.calories : (rawNutrients.calories || hit.energy_kcal || hit.energy || 0)));
 
         const normalizedFood = {
-          food_id: doc.id || doc.barcode || (doc.name + "||" + (doc.brand || "Generic")).toLowerCase(),
-          name: doc.name || doc.product_name || doc.description || "Unknown Item",
-          brand: doc.brand || doc.brands || doc.brand_owner || "Generic Brand",
-          source: "Typesense",
-          servingSize: doc.serving_size || doc.servingSize || null,
-          servingQuantity: doc.serving_quantity ? parseFloat(doc.serving_quantity) : (doc.servingQuantity ? parseFloat(doc.servingQuantity) : null),
+          food_id: hit.objectID || hit.barcode || (hit.name + "||" + (hit.brand || "Generic")).toLowerCase(),
+          name: hit.name || hit.product_name || hit.description || "Unknown Item",
+          brand: hit.brand || hit.brands || hit.brand_owner || "Generic Brand",
+          source: "Algolia",
+          servingSize: hit.serving_size || hit.servingSize || null,
+          servingQuantity: hit.serving_quantity ? parseFloat(hit.serving_quantity) : (hit.servingQuantity ? parseFloat(hit.servingQuantity) : null),
           nutrients: { calories, protein, carbs, fats, fiber },
           protein: protein,
           carbs: carbs,
@@ -678,16 +687,16 @@ window.FoodDatabase = {
       });
     } catch (err) {
       if (err.name === 'AbortError') {
-        console.log(`[Typesense] Fetch aborted for query: "${query}"`);
+        console.log(`[Algolia] Fetch aborted for query: "${query}"`);
         throw err;
       }
-      console.warn("[Typesense] Query failed:", err);
+      console.warn("[Algolia] Query failed:", err);
       return [];
     }
   },
 
   /**
-   * Keyword search across Typesense, Local Fallback Database, USDA FoodData Central and Open Food Facts.
+   * Keyword search across Algolia, Local Fallback Database, USDA FoodData Central and Open Food Facts.
    * Returns an array of normalized food objects sorted by relevance.
    * @param {string} query  Free-text food name, e.g. "cooked chicken breast"
    * @returns {Promise<Array>} Array of { name, brand, source, nutrients: {calories, protein, carbs, fats, fiber} }
@@ -707,18 +716,18 @@ window.FoodDatabase = {
       }
     };
 
-    // --- Direct Typesense Sync Routing ---
-    const tsConfig = AppState.data.settings.typesenseConfig;
-    if (tsConfig && tsConfig.enabled && tsConfig.host) {
+    // --- Direct Algolia Sync Routing ---
+    const algoliaConfig = AppState.data.settings.algoliaConfig;
+    if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
       try {
-        console.log(`[Database] Routing query to Typesense: "${q}"...`);
-        const tsResults = await this.queryTypesense(q);
-        if (tsResults && tsResults.length > 0) {
-          // If Typesense successfully finds matches, return them as absolute truth
-          return tsResults;
+        console.log(`[Database] Routing query to Algolia: "${q}"...`);
+        const algoliaResults = await this.queryAlgolia(q);
+        if (algoliaResults && algoliaResults.length > 0) {
+          // If Algolia successfully finds matches, return them as absolute truth
+          return algoliaResults;
         }
       } catch (err) {
-        console.warn("[Database] Typesense search failed. Falling back to default APIs:", err);
+        console.warn("[Database] Algolia search failed. Falling back to default APIs:", err);
       }
     }
 

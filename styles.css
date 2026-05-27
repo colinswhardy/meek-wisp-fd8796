@@ -3615,11 +3615,11 @@ select:focus {
 
 
 
-/* Typesense Configuration Card Animations and Focus Glow */
-.typesense-config-card {
+/* Algolia Configuration Card Animations and Focus Glow */
+.algolia-config-card {
   transition: all var(--transition-normal);
 }
-.typesense-config-card input:focus, .typesense-config-card select:focus {
+.algolia-config-card input:focus {
   border-color: var(--color-calories) !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
@@ -3762,7 +3762,7 @@ select:focus {
   background: rgba(167, 139, 250, 0.18);
   color: #a78bfa;
 }
-.badge-typesense {
+.badge-algolia {
   background: rgba(99, 179, 237, 0.18);
   color: #63b3ed;
 }
