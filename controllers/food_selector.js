@@ -722,7 +722,8 @@ window.FoodSelectorController = {
 
     const food = this.selectedFoodItem;
     const type = this.selectedFoodType;
-    let inputVal = parseFloat(document.getElementById("selector-weight-input").value);
+    const weightInput = document.getElementById("selector-weight-input");
+    let inputVal = weightInput ? parseFloat(weightInput.value) : (type === "recipe" ? 1 : (food.servingQuantity || 100));
     if (isNaN(inputVal) || inputVal <= 0) inputVal = 0;
 
     let factor = 1;
@@ -765,7 +766,8 @@ window.FoodSelectorController = {
 
     const food = this.selectedFoodItem;
     const type = this.selectedFoodType;
-    let inputVal = parseFloat(document.getElementById("selector-weight-input").value);
+    const weightInput = document.getElementById("selector-weight-input");
+    let inputVal = weightInput ? parseFloat(weightInput.value) : (type === "recipe" ? 1 : (food.servingQuantity || 100));
 
     if (isNaN(inputVal) || inputVal <= 0) {
       alert("Please enter a valid amount.");
