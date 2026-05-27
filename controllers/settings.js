@@ -290,6 +290,9 @@ window.SettingsController = {
     if (usdaApiKeyInput) {
       usdaApiKeyInput.addEventListener("input", () => {
         AppState.data.settings.usdaApiKey = usdaApiKeyInput.value.trim();
+        if (window.FoodDatabase) {
+          window.FoodDatabase.onlineSearchCache = {}; // Clear online search cache on API key changes
+        }
         AppState.saveToStorage();
       });
     }
