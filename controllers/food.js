@@ -366,6 +366,7 @@ window.FoodController = {
 
   showEditModal(meal) {
     const modal = document.getElementById("edit-food-modal");
+    const form = document.getElementById("edit-food-form");
     const nameInput = document.getElementById("edit-food-name-input");
     const brandInput = document.getElementById("edit-food-brand-input");
     const weightInput = document.getElementById("edit-food-weight-input");
@@ -376,7 +377,7 @@ window.FoodController = {
     const btnCancel = document.getElementById("btn-cancel-edit");
     const btnSave = document.getElementById("btn-save-edit");
 
-    if (!modal || !nameInput || !brandInput || !weightInput || !caloriesInput || 
+    if (!modal || !form || !nameInput || !brandInput || !weightInput || !caloriesInput || 
         !proteinInput || !carbsInput || !fatsInput || !btnCancel || !btnSave) return;
 
     nameInput.value = meal.name || "";
@@ -416,9 +417,19 @@ window.FoodController = {
 
     weightInput.addEventListener("input", onWeightChange);
 
+    const onFormKeyDown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onSave(e);
+      }
+    };
+
+    form.addEventListener("keydown", onFormKeyDown);
+
     const closeModal = () => {
       modal.classList.add("hidden");
       weightInput.removeEventListener("input", onWeightChange);
+      form.removeEventListener("keydown", onFormKeyDown);
       btnCancel.removeEventListener("click", onCancel);
       btnSave.removeEventListener("click", onSave);
     };

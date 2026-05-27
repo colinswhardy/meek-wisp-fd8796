@@ -97,7 +97,7 @@ window.FoodSelectorController = {
     const btnOnlineSearch = document.getElementById("btn-online-search");
     if (btnOnlineSearch) {
       btnOnlineSearch.addEventListener("click", () => {
-        this.handleSearchInput();
+        this.triggerImmediateSearch();
       });
     }
 
@@ -107,17 +107,7 @@ window.FoodSelectorController = {
       onlineSearchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
-          if (this.algoliaAbortController) {
-            this.algoliaAbortController.abort();
-            this.algoliaAbortController = null;
-          }
-          
-          const query = onlineSearchInput.value.trim();
-          if (query) {
-            const localResults = window.FoodDatabase.searchLocalCache(query);
-            this.triggerLegacyFallbackSearch(query, localResults);
-          }
+          this.triggerImmediateSearch();
         }
       });
 
@@ -125,6 +115,7 @@ window.FoodSelectorController = {
         this.handleSearchInput();
       });
     }
+
 
 
     // Close preview button
@@ -978,6 +969,53 @@ window.FoodSelectorController = {
   algoliaTimeout: null,
 
 
+  triggerImmediateSearch() {
+    const input = document.getElementById("online-search-input");
+    const resultsEl = document.getElementById("online-search-results");
+    const loadingEl = document.getElementById("online-search-loading");
+    if (!input || !resultsEl) return;
+    
+    const query = input.value.trim();
+    if (!query) return;
+    
+    // Clear typing debounces and outstanding abort controllers
+    if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
+    if (this.algoliaAbortController) {
+      this.algoliaAbortController.abort();
+      this.algoliaAbortController = null;
+    }
+    
+    if (loadingEl) {
+      loadingEl.classList.remove("hidden");
+      const loadingText = loadingEl.querySelector("p") || loadingEl;
+      if (loadingText) loadingText.textContent = "Searching databases…";
+    }
+    
+    const localResults = window.FoodDatabase.searchLocalCache(query);
+    
+    const algoliaConfig = AppState.data.settings.algoliaConfig;
+    if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
+      this.algoliaAbortController = new AbortController();
+      console.log(`[Search] Immediate query to Algolia for: "${query}"...`);
+      window.FoodDatabase.queryAlgolia(query, this.algoliaAbortController.signal)
+        .then(algoliaResults => {
+          this.renderHybridResults(localResults, algoliaResults, false);
+        })
+        .catch(err => {
+          if (err.name !== 'AbortError') {
+            console.warn("[Search] Algolia search failed:", err);
+            this.triggerLegacyFallbackSearch(query, localResults);
+          }
+        })
+        .finally(() => {
+          if (loadingEl) loadingEl.classList.add("hidden");
+        });
+    } else {
+      console.log(`[Search] Immediate query to fallback APIs for: "${query}"`);
+      this.triggerLegacyFallbackSearch(query, localResults);
+    }
+  },
+
   handleSearchInput() {
     const input = document.getElementById("online-search-input");
     const resultsEl = document.getElementById("online-search-results");
@@ -997,18 +1035,26 @@ window.FoodSelectorController = {
       return;
     }
     
-    // Show loading indicator immediately
-    if (loadingEl) {
-      loadingEl.classList.remove("hidden");
-      const loadingText = loadingEl.querySelector("p") || loadingEl;
-      if (loadingText) loadingText.textContent = "Searching databases…";
-    }
-    
     // Clear previous timeouts and abort outstanding requests
     if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
     if (this.algoliaAbortController) {
       this.algoliaAbortController.abort();
       this.algoliaAbortController = null;
+    }
+    
+    // Clamping: If query length is less than 3 characters, search local cache ONLY and skip external API requests
+    if (query.length < 3) {
+      if (loadingEl) loadingEl.classList.add("hidden");
+      const localResults = window.FoodDatabase.searchLocalCache(query);
+      this.renderHybridResults(localResults, [], false);
+      return;
+    }
+    
+    // Show loading indicator immediately for external database searches
+    if (loadingEl) {
+      loadingEl.classList.remove("hidden");
+      const loadingText = loadingEl.querySelector("p") || loadingEl;
+      if (loadingText) loadingText.textContent = "Searching databases…";
     }
     
     // We DO NOT clear the results container immediately to prevent layout shifts.
@@ -1034,12 +1080,13 @@ window.FoodSelectorController = {
         } finally {
           if (loadingEl) loadingEl.classList.add("hidden");
         }
-      }, 250); // 250ms Debounce
+      }, 250); // 250ms Debounce for instant index searches (Algolia)
     } else {
+      // 400ms tuned debounce specifically for slow legacy fallback search (USDA + OFF) to avoid intermediate queries
       this.algoliaTimeout = setTimeout(async () => {
         const localResults = window.FoodDatabase.searchLocalCache(query);
         this.triggerLegacyFallbackSearch(query, localResults);
-      }, 250);
+      }, 400);
     }
   },
 
