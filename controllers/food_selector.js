@@ -637,6 +637,14 @@ window.FoodSelectorController = {
       clickedEl.classList.add("selector-active");
     }
 
+    const nutrients = food.nutrients || {
+      calories: food.calories !== undefined ? food.calories : 0,
+      protein: food.protein !== undefined ? food.protein : 0,
+      carbs: food.carbs !== undefined ? food.carbs : 0,
+      fats: food.fats !== undefined ? food.fats : 0,
+      fiber: food.fiber !== undefined ? food.fiber : 0
+    };
+
     // Populate preview card
     const titleEl = document.getElementById("selector-preview-title");
     const subtitleEl = document.getElementById("selector-preview-subtitle");
@@ -670,10 +678,10 @@ window.FoodSelectorController = {
     }
 
     if (type === "recipe") {
-      if (kcalEl) kcalEl.textContent = food.nutrients.calories;
-      if (proteinEl) proteinEl.textContent = food.nutrients.protein;
-      if (carbsEl) carbsEl.textContent = food.nutrients.carbs;
-      if (fatsEl) fatsEl.textContent = food.nutrients.fats;
+      if (kcalEl) kcalEl.textContent = nutrients.calories;
+      if (proteinEl) proteinEl.textContent = nutrients.protein;
+      if (carbsEl) carbsEl.textContent = nutrients.carbs;
+      if (fatsEl) fatsEl.textContent = nutrients.fats;
       if (baseWeightEl) baseWeightEl.textContent = `Values shown for complete recipe (${food.totalWeight.toFixed(0)}g)`;
       
       if (weightLabel) weightLabel.textContent = "Servings / Multiplier";
@@ -685,10 +693,10 @@ window.FoodSelectorController = {
       }
       if (logBtn) logBtn.textContent = this.activeContext === "recipe_ingredient" ? "Add to Recipe" : "Log Recipe Eaten";
     } else {
-      if (kcalEl) kcalEl.textContent = food.nutrients.calories;
-      if (proteinEl) proteinEl.textContent = food.nutrients.protein;
-      if (carbsEl) carbsEl.textContent = food.nutrients.carbs;
-      if (fatsEl) fatsEl.textContent = food.nutrients.fats;
+      if (kcalEl) kcalEl.textContent = nutrients.calories;
+      if (proteinEl) proteinEl.textContent = nutrients.protein;
+      if (carbsEl) carbsEl.textContent = nutrients.carbs;
+      if (fatsEl) fatsEl.textContent = nutrients.fats;
       if (baseWeightEl) baseWeightEl.textContent = "Values shown per 100g";
       
       if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight Eaten" : "Weight Eaten";
@@ -1129,6 +1137,14 @@ window.FoodSelectorController = {
           ? `<span class="search-source-badge badge-algolia" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
           : `<span class="search-source-badge badge-algolia">GLOBAL</span>`));
 
+    const nutrients = food.nutrients || {
+      protein: food.protein !== undefined ? food.protein : 0,
+      carbs: food.carbs !== undefined ? food.carbs : 0,
+      fats: food.fats !== undefined ? food.fats : 0,
+      calories: food.calories !== undefined ? food.calories : 0,
+      fiber: food.fiber !== undefined ? food.fiber : 0
+    };
+
     const item = document.createElement("div");
     item.className = "meal-item clickable-selector-item";
     item.style.cursor = "pointer";
@@ -1137,13 +1153,13 @@ window.FoodSelectorController = {
         <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
         <span class="meal-sub">${food.brand || "Generic"} &bull; per 100g</span>
         <div class="meal-macros">
-          <span class="m-tag p">P: ${food.nutrients.protein}g</span>
-          <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
-          <span class="m-tag f">F: ${food.nutrients.fats}g</span>
+          <span class="m-tag p">P: ${nutrients.protein}g</span>
+          <span class="m-tag c">C: ${nutrients.carbs}g</span>
+          <span class="m-tag f">F: ${nutrients.fats}g</span>
         </div>
       </div>
       <div class="meal-kcal-block">
-        <span class="meal-kcal" style="font-size: 1.1rem;">${food.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+        <span class="meal-kcal" style="font-size: 1.1rem;">${nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
       </div>
     `;
 
@@ -1167,7 +1183,13 @@ window.FoodSelectorController = {
         key: key,
         name: food.name,
         brand: food.brand || "Generic",
-        baseNutrients: { ...food.nutrients },
+        baseNutrients: food.nutrients ? { ...food.nutrients } : {
+          protein: food.protein !== undefined ? food.protein : 0,
+          carbs: food.carbs !== undefined ? food.carbs : 0,
+          fats: food.fats !== undefined ? food.fats : 0,
+          calories: food.calories !== undefined ? food.calories : 0,
+          fiber: food.fiber !== undefined ? food.fiber : 0
+        },
         weight: food.servingQuantity || 100,
         servingQuantity: food.servingQuantity || 100,
         servingSize: food.servingSize || null,
