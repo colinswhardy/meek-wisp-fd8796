@@ -4,7 +4,7 @@
  */
 
 // Global App Initialization Lifecycles
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const initController = (name, controller) => {
     try {
       console.log(`[Init] Initializing ${name}...`);
@@ -52,6 +52,14 @@ window.addEventListener("DOMContentLoaded", () => {
     console.error("[Uncaught Error]", event.error);
     showCrashAlert("Uncaught Runtime Error", event.error || event.message);
   });
+
+  // Initialize Local Cache DB
+  try {
+    console.log("[Init] Initializing Local Food Cache IndexedDB...");
+    await window.FoodDatabase.initDB();
+  } catch (err) {
+    console.error("[Init] Failed to initialize Local Food Cache DB:", err);
+  }
 
   initController("AppState", AppState);
   initController("appRouter", appRouter);

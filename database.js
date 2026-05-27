@@ -4,7 +4,296 @@
  */
 
 window.FoodDatabase = {
+  db: null,
+  localCache: [],
+
   /**
+   * Initializes the IndexedDB database for food cache and loads records into memory.
+   */
+  async initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("colins_food_cache_db", 1);
+      
+      request.onerror = (e) => {
+        console.error("[LocalDB] Failed to open IndexedDB database:", e);
+        reject(e);
+      };
+      
+      request.onsuccess = (e) => {
+        this.db = e.target.result;
+        console.log("[LocalDB] IndexedDB opened successfully.");
+        this.loadLocalCache().then(resolve).catch(reject);
+      };
+      
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("cached_foods")) {
+          db.createObjectStore("cached_foods", { keyPath: "food_id" });
+          console.log("[LocalDB] Object store 'cached_foods' created.");
+        }
+      };
+    });
+  },
+
+  /**
+   * Loads all cached foods from IndexedDB into memory for synchronous queries.
+   */
+  async loadLocalCache() {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+      
+      const transaction = this.db.transaction("cached_foods", "readonly");
+      const store = transaction.objectStore("cached_foods");
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        this.localCache = request.result || [];
+        console.log(`[LocalDB] Loaded ${this.localCache.length} foods into in-memory cache.`);
+        
+        // Trigger auto-seeding if it has never been completed
+        if (!localStorage.getItem("colins_food_cache_seeded")) {
+          this.seedFromHistory().then(resolve).catch(reject);
+        } else {
+          resolve();
+        }
+      };
+      
+      request.onerror = (e) => {
+        console.error("[LocalDB] Failed to load cached foods:", e);
+        reject(e);
+      };
+    });
+  },
+
+  /**
+   * Crawls meals history and custom barcodes to populate IndexedDB with existing records.
+   */
+  async seedFromHistory() {
+    console.log("[LocalDB] Seeding local cache from existing user logging history...");
+    const tempCache = {};
+    
+    // 1. Gather all logged meals across dates
+    if (AppState.data && AppState.data.meals) {
+      Object.keys(AppState.data.meals).forEach(dateISO => {
+        const meals = AppState.data.meals[dateISO] || [];
+        meals.forEach(meal => {
+          const name = meal.name || "Unknown";
+          const brand = meal.brand || "Generic";
+          const key = (name + "||" + brand).toLowerCase();
+          
+          const mealTime = AppState.getMealTimestamp(meal) || new Date(dateISO + "T12:00:00").getTime();
+          const weight = Number(meal.weight) || 100;
+          const scale = weight > 0 ? (100 / weight) : 1;
+          
+          if (!tempCache[key]) {
+            tempCache[key] = {
+              food_id: key,
+              name: name,
+              brand: brand,
+              calories: Math.round(Number(meal.calories || 0) * scale),
+              protein: parseFloat((Number(meal.protein || 0) * scale).toFixed(1)),
+              carbs: parseFloat((Number(meal.carbs || 0) * scale).toFixed(1)),
+              fats: parseFloat((Number(meal.fats || 0) * scale).toFixed(1)),
+              fiber: parseFloat((Number(meal.fiber || 0) * scale).toFixed(1)),
+              last_logged_at: mealTime,
+              log_frequency: 1
+            };
+            // Set nested macros object to comply with schema requirements
+            tempCache[key].macros = {
+              protein: tempCache[key].protein,
+              carbs: tempCache[key].carbs,
+              fats: tempCache[key].fats,
+              fiber: tempCache[key].fiber
+            };
+          } else {
+            tempCache[key].log_frequency++;
+            if (mealTime > tempCache[key].last_logged_at) {
+              tempCache[key].last_logged_at = mealTime;
+            }
+          }
+        });
+      });
+    }
+
+    // 2. Gather custom barcodes
+    if (AppState.data && AppState.data.customBarcodes) {
+      Object.keys(AppState.data.customBarcodes).forEach(barcode => {
+        const item = AppState.data.customBarcodes[barcode];
+        const key = barcode;
+        if (!tempCache[key]) {
+          const raw = item.nutrients || {};
+          tempCache[key] = {
+            food_id: key,
+            name: item.name || "Unknown",
+            brand: item.brand || "Generic Brand",
+            calories: Math.round(Number(raw.calories || 0)),
+            protein: parseFloat(Number(raw.protein || 0).toFixed(1)),
+            carbs: parseFloat(Number(raw.carbs || 0).toFixed(1)),
+            fats: parseFloat(Number(raw.fats || 0).toFixed(1)),
+            fiber: parseFloat(Number(raw.fiber || 0).toFixed(1)),
+            last_logged_at: 0,
+            log_frequency: 1,
+            servingQuantity: item.servingQuantity || 100,
+            servingSize: item.servingSize || null
+          };
+          tempCache[key].macros = {
+            protein: tempCache[key].protein,
+            carbs: tempCache[key].carbs,
+            fats: tempCache[key].fats,
+            fiber: tempCache[key].fiber
+          };
+        }
+      });
+    }
+
+    // Write all to IndexedDB
+    const list = Object.values(tempCache);
+    if (list.length > 0) {
+      const transaction = this.db.transaction("cached_foods", "readwrite");
+      const store = transaction.objectStore("cached_foods");
+      
+      for (const food of list) {
+        store.put(food);
+      }
+      
+      await new Promise((resolve) => {
+        transaction.oncomplete = resolve;
+      });
+    }
+    
+    localStorage.setItem("colins_food_cache_seeded", "true");
+    console.log(`[LocalDB] Seeding complete! Cached ${list.length} staple foods.`);
+    
+    // Reload into memory
+    const transaction = this.db.transaction("cached_foods", "readonly");
+    const store = transaction.objectStore("cached_foods");
+    const request = store.getAll();
+    await new Promise((resolve) => {
+      request.onsuccess = () => {
+        this.localCache = request.result || [];
+        resolve();
+      };
+    });
+  },
+
+  /**
+   * Logs or updates a food occurrence in IndexedDB and in-memory cache.
+   */
+  async logFoodOccurrence(food) {
+    if (!food || !food.name) return;
+    
+    const name = food.name.trim();
+    const brand = food.brand || "Generic";
+    const baseKey = (name + "||" + brand).toLowerCase();
+    const foodId = food.barcode || food.food_id || baseKey;
+    
+    // Standardize calories and macros to 100g base for the cache
+    let calories = Number(food.calories || 0);
+    let protein = Number(food.protein || 0);
+    let carbs = Number(food.carbs || 0);
+    let fats = Number(food.fats || 0);
+    let fiber = Number(food.fiber || 0);
+    
+    if (food.weight && food.weight !== 100) {
+      const scale = 100 / food.weight;
+      calories = Math.round(calories * scale);
+      protein = parseFloat((protein * scale).toFixed(1));
+      carbs = parseFloat((carbs * scale).toFixed(1));
+      fats = parseFloat((fats * scale).toFixed(1));
+      fiber = parseFloat((fiber * scale).toFixed(1));
+    }
+    
+    const time = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        console.warn("[LocalDB] Database not loaded. Skipping log cache.");
+        resolve();
+        return;
+      }
+      
+      const transaction = this.db.transaction("cached_foods", "readwrite");
+      const store = transaction.objectStore("cached_foods");
+      const getReq = store.get(foodId);
+      
+      getReq.onsuccess = () => {
+        let record = getReq.result;
+        if (record) {
+          record.log_frequency = (record.log_frequency || 0) + 1;
+          record.last_logged_at = time;
+          record.name = name;
+          record.brand = brand;
+          record.calories = calories;
+          record.protein = protein;
+          record.carbs = carbs;
+          record.fats = fats;
+          record.fiber = fiber;
+          record.macros = { protein, carbs, fats, fiber };
+        } else {
+          record = {
+            food_id: foodId,
+            name: name,
+            brand: brand,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fats: fats,
+            fiber: fiber,
+            macros: { protein, carbs, fats, fiber },
+            last_logged_at: time,
+            log_frequency: 1
+          };
+          if (food.servingQuantity) record.servingQuantity = food.servingQuantity;
+          if (food.servingSize) record.servingSize = food.servingSize;
+        }
+        
+        const putReq = store.put(record);
+        putReq.onsuccess = () => {
+          // Update localCache in memory
+          const idx = this.localCache.findIndex(item => item.food_id === foodId);
+          if (idx !== -1) {
+            this.localCache[idx] = record;
+          } else {
+            this.localCache.push(record);
+          }
+          console.log(`[LocalDB] Occurrence logged for food: "${name}" (${brand}) | Freq: ${record.log_frequency}`);
+          resolve();
+        };
+        putReq.onerror = (e) => reject(e);
+      };
+      
+      getReq.onerror = (e) => reject(e);
+    });
+  },
+
+  /**
+   * Synchronously queries the in-memory local cache.
+   */
+  searchLocalCache(query) {
+    if (!query || !query.trim()) return [];
+    
+    const q = query.trim().toLowerCase();
+    
+    const results = this.localCache.filter(item => {
+      const name = (item.name || "").toLowerCase();
+      const brand = (item.brand || "").toLowerCase();
+      return name.includes(q) || brand.includes(q);
+    });
+    
+    // Sort: log_frequency (descending), then last_logged_at (descending)
+    return results.sort((a, b) => {
+      if (b.log_frequency !== a.log_frequency) {
+        return b.log_frequency - a.log_frequency;
+      }
+      return b.last_logged_at - a.last_logged_at;
+    });
+  },
+
+  /**
+   * Fetches product information by barcode from Open Food Facts API v2.
    * Fetches product information by barcode from Open Food Facts API v2.
    * @param {string} barcode Barcode EAN/UPC digit sequence
    * @returns {Promise<Object>} Formatted product details
@@ -328,9 +617,10 @@ window.FoodDatabase = {
   /**
    * Queries the configured Typesense cluster for matching products.
    * @param {string} query Search keyword
+   * @param {AbortSignal} abortSignal Signal to cancel pending fetches
    * @returns {Promise<Array>} Normalized product hits
    */
-  async queryTypesense(query) {
+  async queryTypesense(query, abortSignal) {
     const config = AppState.data.settings.typesenseConfig;
     if (!config || !config.enabled || !config.host) return [];
 
@@ -340,43 +630,60 @@ window.FoodDatabase = {
     const apiKey = config.apiKey ? config.apiKey.trim() : "";
     const collection = config.collection ? config.collection.trim() : "foods";
 
-    const url = `${protocol}://${host}:${port}/collections/${collection}/documents/search?q=${encodeURIComponent(query)}&query_by=name,brand,keywords&prefix=true&typo_tolerance=2&prioritize_exact_match=true`;
+    const url = `${protocol}://${host}:${port}/collections/${collection}/documents/search?q=${encodeURIComponent(query)}&query_by=name,brand,barcode&prefix=true&num_typos=2&drop_tokens_threshold=1`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "X-TYPESENSE-API-KEY": apiKey,
-        "Accept": "application/json"
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        signal: abortSignal,
+        headers: {
+          "X-TYPESENSE-API-KEY": apiKey,
+          "Accept": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Typesense request failed with status: ${response.status}`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`Typesense request failed with status: ${response.status}`);
+      const data = await response.json();
+      const hits = data.hits || [];
+
+      return hits.map(hit => {
+        const doc = hit.document || {};
+        const rawNutrients = doc.nutrients || {};
+        const protein = parseFloat(Number(doc.protein !== undefined ? doc.protein : (rawNutrients.protein || doc.proteins || 0)).toFixed(1));
+        const carbs = parseFloat(Number(doc.carbs !== undefined ? doc.carbs : (rawNutrients.carbs || doc.carbohydrates || 0)).toFixed(1));
+        const fats = parseFloat(Number(doc.fats !== undefined ? doc.fats : (rawNutrients.fats || doc.fat || 0)).toFixed(1));
+        const fiber = parseFloat(Number(doc.fiber !== undefined ? doc.fiber : (rawNutrients.fiber || doc.fiber || 0)).toFixed(1));
+        const calories = Math.round(Number(doc.calories !== undefined ? doc.calories : (rawNutrients.calories || doc.energy_kcal || doc.energy || 0)));
+
+        const normalizedFood = {
+          food_id: doc.id || doc.barcode || (doc.name + "||" + (doc.brand || "Generic")).toLowerCase(),
+          name: doc.name || doc.product_name || doc.description || "Unknown Item",
+          brand: doc.brand || doc.brands || doc.brand_owner || "Generic Brand",
+          source: "Typesense",
+          servingSize: doc.serving_size || doc.servingSize || null,
+          servingQuantity: doc.serving_quantity ? parseFloat(doc.serving_quantity) : (doc.servingQuantity ? parseFloat(doc.servingQuantity) : null),
+          nutrients: { calories, protein, carbs, fats, fiber },
+          protein: protein,
+          carbs: carbs,
+          fats: fats,
+          fiber: fiber,
+          calories: calories
+        };
+        // Add nested macros to comply with schema requirements
+        normalizedFood.macros = { protein, carbs, fats, fiber };
+        return normalizedFood;
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log(`[Typesense] Fetch aborted for query: "${query}"`);
+        throw err;
+      }
+      console.warn("[Typesense] Query failed:", err);
+      return [];
     }
-
-    const data = await response.json();
-    const hits = data.hits || [];
-
-    return hits.map(hit => {
-      const doc = hit.document || {};
-      const rawNutrients = doc.nutrients || {};
-      const nutrients = {
-        calories: Math.round(Number(doc.calories !== undefined ? doc.calories : (rawNutrients.calories || doc.energy_kcal || doc.energy || 0))),
-        protein: parseFloat(Number(doc.protein !== undefined ? doc.protein : (rawNutrients.protein || doc.proteins || 0)).toFixed(1)),
-        carbs: parseFloat(Number(doc.carbs !== undefined ? doc.carbs : (rawNutrients.carbs || doc.carbohydrates || 0)).toFixed(1)),
-        fats: parseFloat(Number(doc.fats !== undefined ? doc.fats : (rawNutrients.fats || doc.fat || 0)).toFixed(1)),
-        fiber: parseFloat(Number(doc.fiber !== undefined ? doc.fiber : (rawNutrients.fiber || doc.fiber || 0)).toFixed(1))
-      };
-
-      return {
-        name: doc.name || doc.product_name || doc.description || "Unknown Item",
-        brand: doc.brand || doc.brands || doc.brand_owner || "Generic Brand",
-        source: "Typesense",
-        servingSize: doc.serving_size || doc.servingSize || null,
-        servingQuantity: doc.serving_quantity ? parseFloat(doc.serving_quantity) : (doc.servingQuantity ? parseFloat(doc.servingQuantity) : null),
-        nutrients: nutrients
-      };
-    });
   },
 
   /**

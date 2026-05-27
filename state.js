@@ -68,7 +68,196 @@ window.AppState = {
 
   init() {
     this.selectedDateISO = this.getTodayISODate();
+    this.data = this.getDefaultSchema();
     this.loadFromStorage();
+  },
+
+  getDefaultSchema() {
+    return {
+      standardGoals: {
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fats: 65
+      },
+      dailyGoals: {}, // "YYYY-MM-DD": { calories, protein, carbs, fats }
+      meals: {},      // "YYYY-MM-DD": [ { id, name, brand, weight, calories, protein, carbs, fats } ]
+      weights: {},    // "YYYY-MM-DD": weightNumeric
+      settings: {
+        unit: "lbs",   // "lbs" or "kg"
+        activePreset: null, // "normal-protein", "high-protein", etc.
+        highCalorieDaysEnabled: false,
+        highCalorieDays: {
+          sunday: { enabled: false, type: "flat", value: 300 },
+          monday: { enabled: false, type: "flat", value: 300 },
+          tuesday: { enabled: false, type: "flat", value: 300 },
+          wednesday: { enabled: false, type: "flat", value: 300 },
+          thursday: { enabled: false, type: "flat", value: 300 },
+          friday: { enabled: false, type: "flat", value: 300 },
+          saturday: { enabled: false, type: "flat", value: 300 }
+        },
+        typesenseConfig: {
+          enabled: false,
+          host: "",
+          port: 443,
+          protocol: "https",
+          apiKey: "",
+          collection: "foods"
+        },
+        firebaseConfig: {
+          enabled: false,
+          apiKey: "",
+          authDomain: "",
+          projectId: "",
+          storageBucket: "",
+          messagingSenderId: "",
+          appId: "",
+          recaptchaKey: ""
+        }
+      },
+      profile: {
+        sex: "male",
+        age: 30,
+        heightFt: 5,
+        heightIn: 10,
+        activity: "light",
+        targetWeight: 170,
+        weeklyRate: 1.0
+      },
+      recipes: {},      // id: { id, name, ingredients: [], nutrients: {}, totalWeight }
+      customBarcodes: {} // barcode: { barcode, name, brand, nutrients: {} }
+    };
+  },
+
+  deepClone(val) {
+    if (val === null || val === undefined) return val;
+    if (Array.isArray(val)) {
+      return val.map(item => this.deepClone(item));
+    }
+    if (typeof val === "object") {
+      const clone = {};
+      for (const k in val) {
+        if (Object.prototype.hasOwnProperty.call(val, k)) {
+          clone[k] = this.deepClone(val[k]);
+        }
+      }
+      return clone;
+    }
+    return val;
+  },
+
+  reconcileSchema(defaultSchema, sourceData) {
+    const result = this.deepClone(defaultSchema);
+    
+    if (sourceData && typeof sourceData === "object" && !Array.isArray(sourceData)) {
+      for (const key in sourceData) {
+        if (Object.prototype.hasOwnProperty.call(sourceData, key)) {
+          const sourceVal = sourceData[key];
+          if (sourceVal === undefined) continue;
+          
+          if (Object.prototype.hasOwnProperty.call(result, key)) {
+            const defaultVal = result[key];
+            if (defaultVal && typeof defaultVal === "object" && !Array.isArray(defaultVal) &&
+                sourceVal && typeof sourceVal === "object" && !Array.isArray(sourceVal)) {
+              result[key] = this.reconcileSchema(defaultVal, sourceVal);
+            } else {
+              result[key] = this.deepClone(sourceVal);
+            }
+          } else {
+            // Keep unrecognized/extra keys (e.g. from removed or future features) to prevent data loss
+            result[key] = this.deepClone(sourceVal);
+          }
+        }
+      }
+    }
+    
+    return result;
+  },
+
+  runMigrations() {
+    if (this.data.settings) {
+      // Legacy migration for highCalorieDays (from boolean/missing to day-by-day object format)
+      const oldDays = this.data.settings.highCalorieDays || {};
+      const oldType = this.data.settings.highCalorieSurplusType || "flat";
+      const oldValue = this.data.settings.highCalorieSurplusValue !== undefined ? this.data.settings.highCalorieSurplusValue : 300;
+      
+      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const migratedDays = {};
+      
+      weekdays.forEach(day => {
+        if (typeof oldDays[day] === "boolean") {
+          migratedDays[day] = {
+            enabled: oldDays[day],
+            type: oldType,
+            value: oldValue
+          };
+        } else if (oldDays[day] && typeof oldDays[day] === "object") {
+          migratedDays[day] = {
+            enabled: oldDays[day].enabled !== undefined ? oldDays[day].enabled : false,
+            type: oldDays[day].type || "flat",
+            value: oldDays[day].value !== undefined ? oldDays[day].value : 300
+          };
+        } else {
+          migratedDays[day] = {
+            enabled: false,
+            type: "flat",
+            value: 300
+          };
+        }
+      });
+      
+      this.data.settings.highCalorieDays = migratedDays;
+      
+      // Clean up legacy root-level calorie cycling variables
+      delete this.data.settings.highCalorieSurplusType;
+      delete this.data.settings.highCalorieSurplusValue;
+
+      // Migrate/initialize Typesense settings safely
+      if (!this.data.settings.typesenseConfig) {
+        this.data.settings.typesenseConfig = {
+          enabled: false,
+          host: "",
+          port: 443,
+          protocol: "https",
+          apiKey: "",
+          collection: "foods"
+        };
+      } else {
+        this.data.settings.typesenseConfig = {
+          enabled: this.data.settings.typesenseConfig.enabled || false,
+          host: this.data.settings.typesenseConfig.host || "",
+          port: this.data.settings.typesenseConfig.port || 443,
+          protocol: this.data.settings.typesenseConfig.protocol || "https",
+          apiKey: this.data.settings.typesenseConfig.apiKey || "",
+          collection: this.data.settings.typesenseConfig.collection || "foods"
+        };
+      }
+
+      // Migrate/initialize Firebase settings safely
+      if (!this.data.settings.firebaseConfig) {
+        this.data.settings.firebaseConfig = {
+          enabled: false,
+          apiKey: "",
+          authDomain: "",
+          projectId: "",
+          storageBucket: "",
+          messagingSenderId: "",
+          appId: "",
+          recaptchaKey: ""
+        };
+      } else {
+        this.data.settings.firebaseConfig = {
+          enabled: this.data.settings.firebaseConfig.enabled || false,
+          apiKey: this.data.settings.firebaseConfig.apiKey || "",
+          authDomain: this.data.settings.firebaseConfig.authDomain || "",
+          projectId: this.data.settings.firebaseConfig.projectId || "",
+          storageBucket: this.data.settings.firebaseConfig.storageBucket || "",
+          messagingSenderId: this.data.settings.firebaseConfig.messagingSenderId || "",
+          appId: this.data.settings.firebaseConfig.appId || "",
+          recaptchaKey: this.data.settings.firebaseConfig.recaptchaKey || ""
+        };
+      }
+    }
   },
 
   loadFromStorage() {
@@ -76,103 +265,34 @@ window.AppState = {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Deep merge logic to assure schema compatibility
-        if (parsed.standardGoals) this.data.standardGoals = { ...this.data.standardGoals, ...parsed.standardGoals };
-        if (parsed.dailyGoals) this.data.dailyGoals = { ...this.data.dailyGoals, ...parsed.dailyGoals };
-        if (parsed.meals) this.data.meals = { ...this.data.meals, ...parsed.meals };
-        if (parsed.weights) this.data.weights = { ...this.data.weights, ...parsed.weights };
-        if (parsed.recipes) this.data.recipes = { ...this.data.recipes, ...parsed.recipes };
-        if (parsed.customBarcodes) this.data.customBarcodes = { ...this.data.customBarcodes, ...parsed.customBarcodes };
-        if (parsed.settings) {
-          this.data.settings = { ...this.data.settings, ...parsed.settings };
-          
-          // Legacy migration for highCalorieDays (from boolean/missing to day-by-day object format)
-          const oldDays = this.data.settings.highCalorieDays || {};
-          const oldType = this.data.settings.highCalorieSurplusType || "flat";
-          const oldValue = this.data.settings.highCalorieSurplusValue !== undefined ? this.data.settings.highCalorieSurplusValue : 300;
-          
-          const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-          const migratedDays = {};
-          
-          weekdays.forEach(day => {
-            if (typeof oldDays[day] === "boolean") {
-              migratedDays[day] = {
-                enabled: oldDays[day],
-                type: oldType,
-                value: oldValue
-              };
-            } else if (oldDays[day] && typeof oldDays[day] === "object") {
-              migratedDays[day] = {
-                enabled: oldDays[day].enabled !== undefined ? oldDays[day].enabled : false,
-                type: oldDays[day].type || "flat",
-                value: oldDays[day].value !== undefined ? oldDays[day].value : 300
-              };
-            } else {
-              migratedDays[day] = {
-                enabled: false,
-                type: "flat",
-                value: 300
-              };
-            }
-          });
-          
-          this.data.settings.highCalorieDays = migratedDays;
-          
-          // Clean up legacy root-level calorie cycling variables
-          delete this.data.settings.highCalorieSurplusType;
-          delete this.data.settings.highCalorieSurplusValue;
-
-          // Migrate/initialize Typesense settings safely
-          if (!this.data.settings.typesenseConfig) {
-            this.data.settings.typesenseConfig = {
-              enabled: false,
-              host: "",
-              port: 443,
-              protocol: "https",
-              apiKey: "",
-              collection: "foods"
-            };
-          } else {
-            this.data.settings.typesenseConfig = {
-              enabled: this.data.settings.typesenseConfig.enabled || false,
-              host: this.data.settings.typesenseConfig.host || "",
-              port: this.data.settings.typesenseConfig.port || 443,
-              protocol: this.data.settings.typesenseConfig.protocol || "https",
-              apiKey: this.data.settings.typesenseConfig.apiKey || "",
-              collection: this.data.settings.typesenseConfig.collection || "foods"
-            };
-          }
-
-          // Migrate/initialize Firebase settings safely
-          if (!this.data.settings.firebaseConfig) {
-            this.data.settings.firebaseConfig = {
-              enabled: false,
-              apiKey: "",
-              authDomain: "",
-              projectId: "",
-              storageBucket: "",
-              messagingSenderId: "",
-              appId: "",
-              recaptchaKey: ""
-            };
-          } else {
-            this.data.settings.firebaseConfig = {
-              enabled: this.data.settings.firebaseConfig.enabled || false,
-              apiKey: this.data.settings.firebaseConfig.apiKey || "",
-              authDomain: this.data.settings.firebaseConfig.authDomain || "",
-              projectId: this.data.settings.firebaseConfig.projectId || "",
-              storageBucket: this.data.settings.firebaseConfig.storageBucket || "",
-              messagingSenderId: this.data.settings.firebaseConfig.messagingSenderId || "",
-              appId: this.data.settings.firebaseConfig.appId || "",
-              recaptchaKey: this.data.settings.firebaseConfig.recaptchaKey || ""
-            };
-          }
-        }
-        if (parsed.profile) this.data.profile = { ...this.data.profile, ...parsed.profile };
+        
+        // Reconcile schema structure recursively using clean default as base
+        this.data = this.reconcileSchema(this.getDefaultSchema(), parsed);
+        
+        // Run migrations to sanitize any old schema models
+        this.runMigrations();
       } catch (e) {
         console.error("[Storage] Corrupt save file. Initializing standard defaults...", e);
       }
     }
+  },
+
+  restoreFromBackup(parsed) {
+    if (!parsed || typeof parsed !== "object") return false;
+    
+    // Validate backup contains at least one core property of the application database
+    const hasCoreData = parsed.standardGoals || parsed.meals || parsed.weights || parsed.settings || parsed.profile || parsed.recipes;
+    if (!hasCoreData) return false;
+    
+    // Reconcile backup schema recursively using clean default as base
+    this.data = this.reconcileSchema(this.getDefaultSchema(), parsed);
+    
+    // Run migrations immediately on the merged data
+    this.runMigrations();
+    
+    // Persist to local storage
+    this.saveToStorage();
+    return true;
   },
 
   saveToStorage() {

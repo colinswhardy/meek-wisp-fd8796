@@ -145,7 +145,9 @@ graph TD
 * **`getFoodHistory()`**: Walks through historical log databases and sorts them in reverse chronological order (newest logged items first).
 * **`selectFoodItem(food, type, clickedEl)`**: Implements inline toggling (opening the portion selector directly below clicked items and auto-scrolling to the top).
 * **`logSelectedFood()`**: Computes multipliers and submits results back to Daily Meals logs or Recipe Builders based on active contexts.
-* **Collapsible Quick Add Form Formulator (Lines 214-313)**: Supports quick carbs, protein, and fat inputs with live calorie calculations.
+* **`handleSearchInput()`**: Drives the modern, unified hybrid search pipeline (debounced 250ms asynchronous Typesense sync + zero-latency local favorites cache).
+* **`logStagedItems()`**: Manages multi-add staging drawer logging.
+* **Collapsible Quick Add Form Formulator (Lines 232-330)**: Supports quick carbs, protein, and fat inputs with live calorie calculations.
 
 ### 5. [recipe.js](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/controllers/recipe.js)
 * **`addCustomIngredientSubmit()`**: Validates, maps, and registers custom manual ingredients to compilers.
