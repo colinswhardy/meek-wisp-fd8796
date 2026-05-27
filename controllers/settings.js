@@ -1214,19 +1214,16 @@ window.SettingsController = {
       try {
         const parsed = JSON.parse(e.target.result);
         
-        // Critical structure validation checks
-        if (!parsed.standardGoals || !parsed.meals || !parsed.weights || !parsed.settings) {
-          alert("Invalid backup file structure. Ensure this is a valid ColinsChartsMacros database export.");
-          return;
-        }
-        
         if (confirm("This will completely replace all your current settings and history records with this backup file. Proceed?")) {
-          AppState.data = parsed;
-          AppState.saveToStorage();
-          AppState.showToast("App database restored!");
-          
-          // Force hard reload of application to reload memory states cleanly
-          window.location.reload();
+          const success = AppState.restoreFromBackup(parsed);
+          if (success) {
+            AppState.showToast("App database restored!");
+            
+            // Force hard reload of application to reload memory states cleanly
+            window.location.reload();
+          } else {
+            alert("Invalid backup file structure. Ensure this is a valid ColinsChartsMacros database export.");
+          }
         }
       } catch (err) {
         alert("Failed to parse the backup file: " + err.message);

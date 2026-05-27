@@ -562,6 +562,8 @@ window.ScannerViewController = {
     };
     if (product.servingSize) newLogItem.servingSize = product.servingSize;
     if (product.servingQuantity) newLogItem.servingQuantity = product.servingQuantity;
+    if (product.barcode) newLogItem.barcode = product.barcode;
+    if (product.food_id) newLogItem.food_id = product.food_id;
 
     const dateKey = AppState.selectedDateISO;
     if (!AppState.data.meals[dateKey]) {
@@ -569,6 +571,12 @@ window.ScannerViewController = {
     }
     
     AppState.data.meals[dateKey].push(newLogItem);
+
+    // Update local cache DB occurrence asynchronously
+    window.FoodDatabase.logFoodOccurrence(newLogItem).catch(err => {
+      console.warn("[Cache] Failed to log occurrence:", err);
+    });
+
     AppState.saveToStorage();
 
     // Close preview card
@@ -608,6 +616,12 @@ window.ScannerViewController = {
     }
     
     AppState.data.meals[dateKey].push(newLogItem);
+
+    // Update local cache DB occurrence asynchronously
+    window.FoodDatabase.logFoodOccurrence(newLogItem).catch(err => {
+      console.warn("[Cache] Failed to log custom food occurrence:", err);
+    });
+
     AppState.saveToStorage();
 
     // Reset forms

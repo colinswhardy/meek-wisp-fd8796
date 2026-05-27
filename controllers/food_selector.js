@@ -97,27 +97,36 @@ window.FoodSelectorController = {
     const btnOnlineSearch = document.getElementById("btn-online-search");
     if (btnOnlineSearch) {
       btnOnlineSearch.addEventListener("click", () => {
-        this.performOnlineSearch();
+        this.handleSearchInput();
       });
     }
 
-    // Enter key triggers search
+    // Enter key triggers immediate search (clears timeout and forces search)
     const onlineSearchInput = document.getElementById("online-search-input");
     if (onlineSearchInput) {
       onlineSearchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          if (this.onlineSearchTimeout) clearTimeout(this.onlineSearchTimeout);
-          this.performOnlineSearch();
+          if (this.tsTimeout) clearTimeout(this.tsTimeout);
+          
+          const query = onlineSearchInput.value.trim();
+          if (query) {
+            const localResults = window.FoodDatabase.searchLocalCache(query);
+            this.triggerLegacyFallbackSearch(query, localResults);
+          }
         }
       });
 
-      // Live search-as-you-type with 200ms debounce
       onlineSearchInput.addEventListener("input", () => {
-        if (this.onlineSearchTimeout) clearTimeout(this.onlineSearchTimeout);
-        this.onlineSearchTimeout = setTimeout(() => {
-          this.performOnlineSearch();
-        }, 200);
+        this.handleSearchInput();
+      });
+    }
+
+    // Log staged foods button click listener
+    const btnLogStaged = document.getElementById("btn-log-staged");
+    if (btnLogStaged) {
+      btnLogStaged.addEventListener("click", () => {
+        this.logStagedItems();
       });
     }
 
@@ -374,7 +383,59 @@ window.FoodSelectorController = {
   },
 
   render() {
+    this.updateMiniMacros();
     this.renderList();
+  },
+
+  // Dynamic Mini Macro Counter at the top of Add Food page
+  updateMiniMacros() {
+    const dateKey = AppState.selectedDateISO;
+    const meals = AppState.data.meals[dateKey] || [];
+    const goals = AppState.getGoalsForDate(dateKey) || {};
+
+    let eatenProtein = 0;
+    let eatenCarbs = 0;
+    let eatenFats = 0;
+    let eatenFiber = 0;
+
+    meals.forEach((meal) => {
+      eatenProtein += Number(meal.protein) || 0;
+      eatenCarbs += Number(meal.carbs) || 0;
+      eatenFats += Number(meal.fats) || 0;
+      eatenFiber += Number(meal.fiber) || 0;
+    });
+
+    const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
+    const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+
+    const targetProtein = Number(goals.protein) || 150;
+    const targetCarbs = Number(goals.carbs) || 250;
+    const targetFats = Number(goals.fats) || 65;
+    const targetCalories = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
+
+    const remainingKcal = targetCalories - eatenKcal;
+
+    const kcalEl = document.getElementById("mini-val-calories");
+    const kcalLbl = document.getElementById("mini-lbl-calories");
+    if (kcalEl) {
+      kcalEl.textContent = Math.abs(Math.round(remainingKcal)).toLocaleString();
+      if (remainingKcal < 0) {
+        kcalEl.style.color = "var(--color-danger)";
+        if (kcalLbl) kcalLbl.textContent = "kcal over";
+      } else {
+        kcalEl.style.color = "var(--color-calories)";
+        if (kcalLbl) kcalLbl.textContent = "kcal left";
+      }
+    }
+
+    const proEl = document.getElementById("mini-val-protein");
+    if (proEl) proEl.textContent = `${Math.round(eatenProtein)}/${Math.round(targetProtein)}g`;
+
+    const carbEl = document.getElementById("mini-val-carbs");
+    if (carbEl) carbEl.textContent = `${Math.round(eatenNetCarbs)}/${Math.round(targetCarbs)}g`;
+
+    const fatEl = document.getElementById("mini-val-fats");
+    if (fatEl) fatEl.textContent = `${Math.round(eatenFats)}/${Math.round(targetFats)}g`;
   },
 
   // Dynamic Food History Aggregator
@@ -774,6 +835,8 @@ window.FoodSelectorController = {
     };
     if (food.servingSize) newLogItem.servingSize = food.servingSize;
     if (food.servingQuantity) newLogItem.servingQuantity = food.servingQuantity;
+    if (food.barcode) newLogItem.barcode = food.barcode;
+    if (food.food_id) newLogItem.food_id = food.food_id;
 
     const dateKey = AppState.selectedDateISO;
     if (!AppState.data.meals[dateKey]) {
@@ -781,6 +844,12 @@ window.FoodSelectorController = {
     }
 
     AppState.data.meals[dateKey].push(newLogItem);
+    
+    // Update local cache DB occurrence asynchronously
+    window.FoodDatabase.logFoodOccurrence(newLogItem).catch(err => {
+      console.warn("[Cache] Failed to log food occurrence:", err);
+    });
+
     AppState.saveToStorage();
 
     this.closePreview();
@@ -807,114 +876,7 @@ window.FoodSelectorController = {
     });
   },
 
-  // --- Online Food Search ---
 
-  async performOnlineSearch() {
-    const input = document.getElementById("online-search-input");
-    const btnSearch = document.getElementById("btn-online-search");
-    const loadingEl = document.getElementById("online-search-loading");
-    const resultsEl = document.getElementById("online-search-results");
-
-    if (!input || !resultsEl) return;
-    const query = input.value.trim();
-    if (!query) {
-      this.closePreview();
-      resultsEl.innerHTML = `<div class="empty-state"><p>Please enter a food name to search.</p></div>`;
-      return;
-    }
-
-    // Show loading state
-    if (loadingEl) loadingEl.classList.remove("hidden");
-    if (btnSearch) { btnSearch.disabled = true; btnSearch.textContent = "Searching..."; }
-    this.closePreview();
-    resultsEl.innerHTML = "";
-
-    try {
-      const items = await FoodDatabase.searchFoods(query);
-      this.renderOnlineResults(items);
-    } catch (err) {
-      console.warn("[OnlineSearch] Failed:", err);
-      resultsEl.innerHTML = `<div class="empty-state"><p>Search failed. Please check your connection and try again.</p></div>`;
-    } finally {
-      if (loadingEl) loadingEl.classList.add("hidden");
-      if (btnSearch) { btnSearch.disabled = false; btnSearch.textContent = "Search"; }
-    }
-  },
-
-  renderOnlineResults(items) {
-    this.closePreview();
-    const container = document.getElementById("online-search-results");
-    if (!container) return;
-
-    if (!items || items.length === 0) {
-      const input = document.getElementById("online-search-input");
-      const query = input ? input.value.trim() : "";
-      const fbConfig = AppState.data.settings.firebaseConfig;
-
-      if (fbConfig && fbConfig.enabled) {
-        container.innerHTML = `
-          <div class="empty-state" style="padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); animation: fadeIn var(--transition-fast);">
-            <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-            </svg>
-            <p style="font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px 0;">No results found for "${query}"</p>
-            <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 16px 0; line-height: 1.4;">Would you like Gemini AI to estimate nutritional macros for this food?</p>
-            <button id="btn-ai-estimate" class="btn btn-block btn-iconic" style="background: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); font-weight: 600; padding: 12px 16px; border-radius: var(--radius-md); transition: all 0.2s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-              <span>✨ Ask AI to Estimate Macros</span>
-            </button>
-          </div>
-        `;
-
-        const btnAI = document.getElementById("btn-ai-estimate");
-        if (btnAI) {
-          btnAI.addEventListener("click", () => {
-            this.triggerAIEstimation(query);
-          });
-        }
-      } else {
-        container.innerHTML = `
-          <div class="empty-state">
-            <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
-            <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 8px;">Tip: You can enable Gemini AI macro estimation fallback in Settings!</p>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    container.innerHTML = "";
-    items.forEach(food => {
-      const sourceBadge = food.source === "USDA"
-        ? `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(99,179,237,0.18); color: #63b3ed; margin-left: 6px;">USDA</span>`
-        : (food.source === "Local DB"
-          ? `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(167,139,250,0.18); color: #a78bfa; margin-left: 6px;">LOCAL</span>`
-          : `<span style="font-size:0.7rem; padding: 2px 6px; border-radius: 10px; background: rgba(154,230,180,0.15); color: #68d391; margin-left: 6px;">OFF</span>`);
-
-      const item = document.createElement("div");
-      item.className = "meal-item clickable-selector-item";
-      item.style.cursor = "pointer";
-      item.innerHTML = `
-        <div class="meal-info">
-          <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
-          <span class="meal-sub">${food.brand} &bull; per 100g</span>
-          <div class="meal-macros">
-            <span class="m-tag p">P: ${food.nutrients.protein}g</span>
-            <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
-            <span class="m-tag f">F: ${food.nutrients.fats}g</span>
-          </div>
-        </div>
-        <div class="meal-kcal-block">
-          <span class="meal-kcal" style="font-size: 1.1rem;">${food.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
-        </div>
-      `;
-
-      item.addEventListener("click", () => {
-        this.selectFoodItem(food, "history", item);
-      });
-
-      container.appendChild(item);
-    });
-  },
 
   async triggerAIEstimation(query) {
     const loadingEl = document.getElementById("online-search-loading");
@@ -982,7 +944,7 @@ window.FoodSelectorController = {
       AppState.showToast(`AI failed: ${err.message}`);
       
       // Re-render empty state to allow retrying
-      this.renderOnlineResults([]);
+      this.renderHybridResults([], []);
     } finally {
       if (loadingEl) {
         loadingEl.classList.add("hidden");
@@ -990,5 +952,384 @@ window.FoodSelectorController = {
         if (loadingText) loadingText.textContent = "Searching databases…";
       }
     }
+  },
+
+
+
+  // --- Hybrid Search & Multi-Add Staging Drawer Extensions ---
+  tsAbortController: null,
+  tsTimeout: null,
+  stagedItems: [],
+
+  handleSearchInput() {
+    const input = document.getElementById("online-search-input");
+    const resultsEl = document.getElementById("online-search-results");
+    if (!input || !resultsEl) return;
+    
+    const query = input.value.trim();
+    if (!query) {
+      this.closePreview();
+      resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above to search.</p></div>`;
+      if (this.tsTimeout) clearTimeout(this.tsTimeout);
+      if (this.tsAbortController) {
+        this.tsAbortController.abort();
+        this.tsAbortController = null;
+      }
+      return;
+    }
+    
+    // 1. Synchronous Paint (0ms)
+    const localResults = window.FoodDatabase.searchLocalCache(query);
+    this.renderHybridResults(localResults, []);
+    
+    // 2. Asynchronous Typesense pipeline
+    if (this.tsTimeout) clearTimeout(this.tsTimeout);
+    if (this.tsAbortController) {
+      this.tsAbortController.abort();
+      this.tsAbortController = null;
+    }
+    
+    const tsConfig = AppState.data.settings.typesenseConfig;
+    if (tsConfig && tsConfig.enabled && tsConfig.host) {
+      const loadingEl = document.getElementById("online-search-loading");
+      this.tsTimeout = setTimeout(async () => {
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        this.tsAbortController = new AbortController();
+        
+        try {
+          console.log(`[Search] Querying Typesense for: "${query}"...`);
+          const tsResults = await window.FoodDatabase.queryTypesense(query, this.tsAbortController.signal);
+          
+          this.renderHybridResults(localResults, tsResults);
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            console.log(`[Search] Typesense request aborted for query: "${query}"`);
+          } else {
+            console.warn("[Search] Typesense search failed:", err);
+            this.triggerLegacyFallbackSearch(query, localResults);
+          }
+        } finally {
+          if (loadingEl) loadingEl.classList.add("hidden");
+        }
+      }, 250); // 250ms Debounce
+    } else {
+      this.tsTimeout = setTimeout(async () => {
+        this.triggerLegacyFallbackSearch(query, localResults);
+      }, 250);
+    }
+  },
+
+  async triggerLegacyFallbackSearch(query, localResults) {
+    const loadingEl = document.getElementById("online-search-loading");
+    if (loadingEl) loadingEl.classList.remove("hidden");
+    
+    try {
+      console.log(`[Search] Routing legacy fallback pipeline for: "${query}"`);
+      const rawResults = await window.FoodDatabase.searchFoods(query);
+      const onlineResults = rawResults.filter(item => item.source !== "Local DB" && item.source !== "Typesense");
+      
+      this.renderHybridResults(localResults, onlineResults);
+    } catch (err) {
+      console.warn("[Search] Legacy fallback failed:", err);
+    } finally {
+      if (loadingEl) loadingEl.classList.add("hidden");
+    }
+  },
+
+  renderHybridResults(localItems, globalItems) {
+    const container = document.getElementById("online-search-results");
+    if (!container) return;
+    
+    const localKeys = new Set(localItems.map(item => item.food_id));
+    const filteredGlobal = globalItems.filter(item => {
+      const globalKey = item.food_id || (item.name + "||" + (item.brand || "Generic")).toLowerCase();
+      return !localKeys.has(globalKey);
+    });
+    
+    if (localItems.length === 0 && filteredGlobal.length === 0) {
+      const input = document.getElementById("online-search-input");
+      const query = input ? input.value.trim() : "";
+      
+      const fbConfig = AppState.data.settings.firebaseConfig;
+      if (fbConfig && fbConfig.enabled && query) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); animation: fadeIn var(--transition-fast);">
+            <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+            <p style="font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px 0;">No results found for "${query}"</p>
+            <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 16px 0; line-height: 1.4;">Would you like Gemini AI to estimate nutritional macros for this food?</p>
+            <button id="btn-ai-estimate" class="btn btn-block btn-iconic" style="background: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); font-weight: 600; padding: 12px 16px; border-radius: var(--radius-md); transition: all 0.2s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+              <span>✨ Ask AI to Estimate Macros</span>
+            </button>
+          </div>
+        `;
+        const btnAI = document.getElementById("btn-ai-estimate");
+        if (btnAI) {
+          btnAI.addEventListener("click", () => this.triggerAIEstimation(query));
+        }
+      } else {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
+          </div>
+        `;
+      }
+      return;
+    }
+    
+    container.innerHTML = "";
+    
+    if (localItems.length > 0) {
+      const localHeader = document.createElement("div");
+      localHeader.className = "search-category-header";
+      localHeader.innerHTML = `<span>✨ Staple & Favorite Foods</span>`;
+      container.appendChild(localHeader);
+      
+      localItems.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, true);
+        container.appendChild(itemEl);
+      });
+    }
+    
+    if (filteredGlobal.length > 0) {
+      const globalHeader = document.createElement("div");
+      globalHeader.className = "search-category-header";
+      globalHeader.innerHTML = `<span>🌐 Global Database Results</span>`;
+      container.appendChild(globalHeader);
+      
+      filteredGlobal.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, false);
+        container.appendChild(itemEl);
+      });
+    }
+  },
+
+  createSearchResultRow(food, isLocal) {
+    const sourceBadge = isLocal 
+      ? `<span class="search-source-badge badge-local">STAPLE</span>` 
+      : (food.source === "USDA" 
+        ? `<span class="search-source-badge badge-typesense" style="background: rgba(99,179,237,0.18); color: #63b3ed;">USDA</span>` 
+        : (food.source === "OFF" 
+          ? `<span class="search-source-badge badge-typesense" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
+          : `<span class="search-source-badge badge-typesense">GLOBAL</span>`));
+
+    const item = document.createElement("div");
+    item.className = "meal-item clickable-selector-item";
+    item.style.cursor = "pointer";
+    item.innerHTML = `
+      <div class="meal-info">
+        <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
+        <span class="meal-sub">${food.brand || "Generic"} &bull; per 100g</span>
+        <div class="meal-macros">
+          <span class="m-tag p">P: ${food.nutrients.protein}g</span>
+          <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
+          <span class="m-tag f">F: ${food.nutrients.fats}g</span>
+        </div>
+      </div>
+      <div class="meal-kcal-block">
+        <span class="meal-kcal" style="font-size: 1.1rem;">${food.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
+      </div>
+    `;
+
+    item.addEventListener("click", () => {
+      this.stageFoodItem(food);
+    });
+
+    return item;
+  },
+
+  stageFoodItem(food) {
+    const key = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
+    
+    const existing = this.stagedItems.find(item => item.key === key);
+    if (existing) {
+      const increment = food.servingQuantity || 100;
+      existing.weight += increment;
+      AppState.showToast(`Updated quantity for ${food.name}!`);
+    } else {
+      this.stagedItems.push({
+        key: key,
+        name: food.name,
+        brand: food.brand || "Generic",
+        baseNutrients: { ...food.nutrients },
+        weight: food.servingQuantity || 100,
+        servingQuantity: food.servingQuantity || 100,
+        servingSize: food.servingSize || null,
+        barcode: food.barcode || null,
+        food_id: food.food_id || null
+      });
+      AppState.showToast(`Staged ${food.name}!`);
+    }
+    
+    this.renderStagingArea();
+    
+    const searchInput = document.getElementById("online-search-input");
+    if (searchInput) {
+      searchInput.focus();
+    }
+  },
+
+  renderStagingArea() {
+    const stagingArea = document.getElementById("search-staging-area");
+    const countEl = document.getElementById("staged-count");
+    const listEl = document.getElementById("staged-items-list");
+    
+    if (!stagingArea || !countEl || !listEl) return;
+    
+    if (this.stagedItems.length === 0) {
+      stagingArea.classList.add("hidden");
+      return;
+    }
+    
+    stagingArea.classList.remove("hidden");
+    countEl.textContent = this.stagedItems.length;
+    listEl.innerHTML = "";
+    
+    this.stagedItems.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "staged-item-row";
+      
+      const raw = item.baseNutrients;
+      const factor = item.weight / 100;
+      const cals = Math.round(Number(raw.calories) * factor);
+      
+      row.innerHTML = `
+        <div class="staged-item-info">
+          <span class="staged-item-name">${item.name}</span>
+          <span class="staged-item-brand">${item.brand} &bull; ${Math.round(raw.protein * factor)}P &bull; ${Math.round(raw.carbs * factor)}C &bull; ${Math.round(raw.fats * factor)}F</span>
+        </div>
+        <div class="staged-item-controls">
+          <input type="number" class="staged-item-weight" value="${item.weight}" min="0.1" step="any" data-index="${index}">
+          <span style="font-size: 0.75rem; color: var(--color-text-secondary);">g</span>
+          <span class="staged-item-cals">${cals} <span style="font-size: 0.65rem; font-weight: normal; color: var(--color-text-secondary);">kcal</span></span>
+          <button class="btn-remove-staged" data-index="${index}" aria-label="Remove item">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      `;
+      
+      const weightInput = row.querySelector(".staged-item-weight");
+      weightInput.addEventListener("input", (e) => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val <= 0) val = 0;
+        this.stagedItems[index].weight = val;
+        this.updateStagedCalories(index, row);
+      });
+      
+      weightInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.logStagedItems();
+        }
+      });
+      
+      const removeBtn = row.querySelector(".btn-remove-staged");
+      removeBtn.addEventListener("click", () => {
+        this.stagedItems.splice(index, 1);
+        this.renderStagingArea();
+        
+        const searchInput = document.getElementById("online-search-input");
+        if (searchInput) searchInput.focus();
+      });
+      
+      listEl.appendChild(row);
+    });
+  },
+
+  updateStagedCalories(index, row) {
+    const item = this.stagedItems[index];
+    const raw = item.baseNutrients;
+    const factor = item.weight / 100;
+    const cals = Math.round(Number(raw.calories) * factor);
+    const protein = Math.round(Number(raw.protein) * factor);
+    const carbs = Math.round(Number(raw.carbs) * factor);
+    const fats = Math.round(Number(raw.fats) * factor);
+    
+    const brandEl = row.querySelector(".staged-item-brand");
+    const calsEl = row.querySelector(".staged-item-cals");
+    
+    if (brandEl) {
+      brandEl.innerHTML = `${item.brand} &bull; ${protein}P &bull; ${carbs}C &bull; ${fats}F`;
+    }
+    if (calsEl) {
+      calsEl.innerHTML = `${cals} <span style="font-size: 0.65rem; font-weight: normal; color: var(--color-text-secondary);">kcal</span>`;
+    }
+  },
+
+  async logStagedItems() {
+    if (this.stagedItems.length === 0) return;
+    
+    const dateKey = AppState.selectedDateISO;
+    if (!AppState.data.meals[dateKey]) {
+      AppState.data.meals[dateKey] = [];
+    }
+    
+    const logPromises = [];
+    
+    this.stagedItems.forEach(item => {
+      const factor = item.weight / 100;
+      const p = parseFloat((item.baseNutrients.protein * factor).toFixed(1));
+      const c = parseFloat((item.baseNutrients.carbs * factor).toFixed(1));
+      const f = parseFloat((item.baseNutrients.fats * factor).toFixed(1));
+      const fib = parseFloat(((item.baseNutrients.fiber || 0) * factor).toFixed(1));
+      const netC = Math.max(0, c - fib);
+      const kcal = Math.round(p * 4 + netC * 4 + f * 9);
+      
+      const newLogItem = {
+        id: "food_select_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        name: item.name,
+        brand: item.brand,
+        weight: item.weight,
+        calories: kcal,
+        protein: p,
+        carbs: c,
+        fats: f,
+        fiber: fib,
+        loggedAt: Date.now()
+      };
+      
+      if (item.servingSize) newLogItem.servingSize = item.servingSize;
+      if (item.servingQuantity) newLogItem.servingQuantity = item.servingQuantity;
+      if (item.barcode) newLogItem.barcode = item.barcode;
+      if (item.food_id) newLogItem.food_id = item.food_id;
+      
+      AppState.data.meals[dateKey].push(newLogItem);
+      
+      logPromises.push(window.FoodDatabase.logFoodOccurrence(newLogItem));
+    });
+    
+    AppState.saveToStorage();
+    
+    try {
+      await Promise.all(logPromises);
+    } catch (err) {
+      console.warn("[Cache] Failed to log some occurrences:", err);
+    }
+    
+    AppState.showToast(`Logged ${this.stagedItems.length} items to tracker!`);
+    
+    this.stagedItems = [];
+    this.renderStagingArea();
+    
+    if (window.FoodController && typeof window.FoodController.render === "function") {
+      window.FoodController.render();
+    }
+    if (window.DashboardController && typeof window.DashboardController.render === "function") {
+      window.DashboardController.render();
+    }
+    
+    const searchInput = document.getElementById("online-search-input");
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.focus();
+    }
+    
+    const resultsEl = document.getElementById("online-search-results");
+    if (resultsEl) {
+      resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above to search.</p></div>`;
+    }
+    
+    this.closePreview();
   }
 };
