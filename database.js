@@ -8,6 +8,23 @@ window.FoodDatabase = {
   localCache: [],
 
   /**
+   * Normalizes a local cached food object to ensure it has a nutrients structure.
+   */
+  normalizeLocalFood(item) {
+    if (!item) return item;
+    if (!item.nutrients) {
+      item.nutrients = {
+        calories: item.calories !== undefined ? item.calories : 0,
+        protein: item.protein !== undefined ? item.protein : 0,
+        carbs: item.carbs !== undefined ? item.carbs : 0,
+        fats: item.fats !== undefined ? item.fats : 0,
+        fiber: item.fiber !== undefined ? item.fiber : 0
+      };
+    }
+    return item;
+  },
+
+  /**
    * Initializes the IndexedDB database for food cache and loads records into memory.
    */
   async initDB() {
@@ -50,7 +67,8 @@ window.FoodDatabase = {
       const request = store.getAll();
       
       request.onsuccess = () => {
-        this.localCache = request.result || [];
+        const list = request.result || [];
+        this.localCache = list.map(item => this.normalizeLocalFood(item));
         console.log(`[LocalDB] Loaded ${this.localCache.length} foods into in-memory cache.`);
         
         // Trigger auto-seeding if it has never been completed
@@ -173,7 +191,8 @@ window.FoodDatabase = {
     const request = store.getAll();
     await new Promise((resolve) => {
       request.onsuccess = () => {
-        this.localCache = request.result || [];
+        const list = request.result || [];
+        this.localCache = list.map(item => this.normalizeLocalFood(item));
         resolve();
       };
     });
@@ -252,14 +271,15 @@ window.FoodDatabase = {
         
         const putReq = store.put(record);
         putReq.onsuccess = () => {
+          const normalized = this.normalizeLocalFood(record);
           // Update localCache in memory
           const idx = this.localCache.findIndex(item => item.food_id === foodId);
           if (idx !== -1) {
-            this.localCache[idx] = record;
+            this.localCache[idx] = normalized;
           } else {
-            this.localCache.push(record);
+            this.localCache.push(normalized);
           }
-          console.log(`[LocalDB] Occurrence logged for food: "${name}" (${brand}) | Freq: ${record.log_frequency}`);
+          console.log(`[LocalDB] Occurrence logged for food: "${name}" (${brand}) | Freq: ${normalized.log_frequency}`);
           resolve();
         };
         putReq.onerror = (e) => reject(e);
@@ -282,6 +302,9 @@ window.FoodDatabase = {
       const brand = (item.brand || "").toLowerCase();
       return name.includes(q) || brand.includes(q);
     });
+
+    // Ensure all returned results are normalized with nutrients
+    results.forEach(item => this.normalizeLocalFood(item));
     
     // Sort: log_frequency (descending), then last_logged_at (descending)
     return results.sort((a, b) => {
