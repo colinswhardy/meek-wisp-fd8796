@@ -217,37 +217,33 @@ window.SettingsController = {
     const jsonFileInput = document.getElementById("json-file-input");
     if (jsonFileInput) jsonFileInput.addEventListener("change", (e) => this.importJSON(e));
 
-    // 11. Typesense Search Engine Config bindings
-    const tsEnabled = document.getElementById("typesense-enabled");
-    const tsFields = document.getElementById("typesense-fields");
-    const tsHost = document.getElementById("typesense-host");
-    const tsProtocol = document.getElementById("typesense-protocol");
-    const tsPort = document.getElementById("typesense-port");
-    const tsApiKey = document.getElementById("typesense-apikey");
-    const tsCollection = document.getElementById("typesense-collection");
+    // 11. Algolia Search Engine Config bindings
+    const algoliaEnabled = document.getElementById("algolia-enabled");
+    const algoliaFields = document.getElementById("algolia-fields");
+    const algoliaAppId = document.getElementById("algolia-appid");
+    const algoliaApiKey = document.getElementById("algolia-apikey");
+    const algoliaIndexName = document.getElementById("algolia-indexname");
 
-    const saveTypesenseConfig = () => {
-      const config = AppState.data.settings.typesenseConfig;
+    const saveAlgoliaConfig = () => {
+      const config = AppState.data.settings.algoliaConfig;
       if (!config) return;
-      config.enabled = tsEnabled ? tsEnabled.checked : false;
-      config.host = tsHost ? tsHost.value.trim() : "";
-      config.protocol = tsProtocol ? tsProtocol.value : "https";
-      config.port = tsPort ? parseInt(tsPort.value) || 443 : 443;
-      config.apiKey = tsApiKey ? tsApiKey.value.trim() : "";
-      config.collection = tsCollection ? tsCollection.value.trim() : "foods";
+      config.enabled = algoliaEnabled ? algoliaEnabled.checked : false;
+      config.appId = algoliaAppId ? algoliaAppId.value.trim() : "";
+      config.apiKey = algoliaApiKey ? algoliaApiKey.value.trim() : "";
+      config.indexName = algoliaIndexName ? algoliaIndexName.value.trim() : "foods";
 
       AppState.saveToStorage();
 
-      if (tsFields) {
-        if (config.enabled) tsFields.classList.remove("hidden");
-        else tsFields.classList.add("hidden");
+      if (algoliaFields) {
+        if (config.enabled) algoliaFields.classList.remove("hidden");
+        else algoliaFields.classList.add("hidden");
       }
     };
 
-    [tsEnabled, tsHost, tsProtocol, tsPort, tsApiKey, tsCollection].forEach(el => {
+    [algoliaEnabled, algoliaAppId, algoliaApiKey, algoliaIndexName].forEach(el => {
       if (el) {
-        el.addEventListener("input", saveTypesenseConfig);
-        el.addEventListener("change", saveTypesenseConfig);
+        el.addEventListener("input", saveAlgoliaConfig);
+        el.addEventListener("change", saveAlgoliaConfig);
       }
     });
 
@@ -501,27 +497,23 @@ window.SettingsController = {
       }
     }
 
-    // --- Typesense Config Populating ---
-    const tsConfig = AppState.data.settings.typesenseConfig;
-    if (tsConfig) {
-      const tsEnabled = document.getElementById("typesense-enabled");
-      const tsFields = document.getElementById("typesense-fields");
-      const tsHost = document.getElementById("typesense-host");
-      const tsProtocol = document.getElementById("typesense-protocol");
-      const tsPort = document.getElementById("typesense-port");
-      const tsApiKey = document.getElementById("typesense-apikey");
-      const tsCollection = document.getElementById("typesense-collection");
+    // --- Algolia Config Populating ---
+    const algoliaConfig = AppState.data.settings.algoliaConfig;
+    if (algoliaConfig) {
+      const algoliaEnabled = document.getElementById("algolia-enabled");
+      const algoliaFields = document.getElementById("algolia-fields");
+      const algoliaAppId = document.getElementById("algolia-appid");
+      const algoliaApiKey = document.getElementById("algolia-apikey");
+      const algoliaIndexName = document.getElementById("algolia-indexname");
 
-      if (tsEnabled) tsEnabled.checked = tsConfig.enabled || false;
-      if (tsHost) tsHost.value = tsConfig.host || "";
-      if (tsProtocol) tsProtocol.value = tsConfig.protocol || "https";
-      if (tsPort) tsPort.value = tsConfig.port || 443;
-      if (tsApiKey) tsApiKey.value = tsConfig.apiKey || "";
-      if (tsCollection) tsCollection.value = tsConfig.collection || "foods";
+      if (algoliaEnabled) algoliaEnabled.checked = algoliaConfig.enabled || false;
+      if (algoliaAppId) algoliaAppId.value = algoliaConfig.appId || "";
+      if (algoliaApiKey) algoliaApiKey.value = algoliaConfig.apiKey || "";
+      if (algoliaIndexName) algoliaIndexName.value = algoliaConfig.indexName || "foods";
 
-      if (tsFields) {
-        if (tsConfig.enabled) tsFields.classList.remove("hidden");
-        else tsFields.classList.add("hidden");
+      if (algoliaFields) {
+        if (algoliaConfig.enabled) algoliaFields.classList.remove("hidden");
+        else algoliaFields.classList.add("hidden");
       }
     }
 

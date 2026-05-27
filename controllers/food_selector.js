@@ -107,7 +107,7 @@ window.FoodSelectorController = {
       onlineSearchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          if (this.tsTimeout) clearTimeout(this.tsTimeout);
+          if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
           
           const query = onlineSearchInput.value.trim();
           if (query) {
@@ -957,8 +957,8 @@ window.FoodSelectorController = {
 
 
   // --- Hybrid Search & Multi-Add Staging Drawer Extensions ---
-  tsAbortController: null,
-  tsTimeout: null,
+  algoliaAbortController: null,
+  algoliaTimeout: null,
   stagedItems: [],
 
   handleSearchInput() {
@@ -970,42 +970,42 @@ window.FoodSelectorController = {
     if (!query) {
       this.closePreview();
       resultsEl.innerHTML = `<div class="empty-state"><p>Type a food name above to search.</p></div>`;
-      if (this.tsTimeout) clearTimeout(this.tsTimeout);
-      if (this.tsAbortController) {
-        this.tsAbortController.abort();
-        this.tsAbortController = null;
+      if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
+      if (this.algoliaAbortController) {
+        this.algoliaAbortController.abort();
+        this.algoliaAbortController = null;
       }
       return;
     }
     
-    // 1. Synchronous Paint (0ms)
+    // 1. Synchronous Paint (0ms) - mark remote query as pending initially
     const localResults = window.FoodDatabase.searchLocalCache(query);
-    this.renderHybridResults(localResults, []);
+    this.renderHybridResults(localResults, [], true);
     
-    // 2. Asynchronous Typesense pipeline
-    if (this.tsTimeout) clearTimeout(this.tsTimeout);
-    if (this.tsAbortController) {
-      this.tsAbortController.abort();
-      this.tsAbortController = null;
+    // 2. Asynchronous Algolia pipeline
+    if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
+    if (this.algoliaAbortController) {
+      this.algoliaAbortController.abort();
+      this.algoliaAbortController = null;
     }
     
-    const tsConfig = AppState.data.settings.typesenseConfig;
-    if (tsConfig && tsConfig.enabled && tsConfig.host) {
+    const algoliaConfig = AppState.data.settings.algoliaConfig;
+    if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
       const loadingEl = document.getElementById("online-search-loading");
-      this.tsTimeout = setTimeout(async () => {
+      this.algoliaTimeout = setTimeout(async () => {
         if (loadingEl) loadingEl.classList.remove("hidden");
-        this.tsAbortController = new AbortController();
+        this.algoliaAbortController = new AbortController();
         
         try {
-          console.log(`[Search] Querying Typesense for: "${query}"...`);
-          const tsResults = await window.FoodDatabase.queryTypesense(query, this.tsAbortController.signal);
+          console.log(`[Search] Querying Algolia for: "${query}"...`);
+          const algoliaResults = await window.FoodDatabase.queryAlgolia(query, this.algoliaAbortController.signal);
           
-          this.renderHybridResults(localResults, tsResults);
+          this.renderHybridResults(localResults, algoliaResults, false);
         } catch (err) {
           if (err.name === 'AbortError') {
-            console.log(`[Search] Typesense request aborted for query: "${query}"`);
+            console.log(`[Search] Algolia request aborted for query: "${query}"`);
           } else {
-            console.warn("[Search] Typesense search failed:", err);
+            console.warn("[Search] Algolia search failed:", err);
             this.triggerLegacyFallbackSearch(query, localResults);
           }
         } finally {
@@ -1013,7 +1013,7 @@ window.FoodSelectorController = {
         }
       }, 250); // 250ms Debounce
     } else {
-      this.tsTimeout = setTimeout(async () => {
+      this.algoliaTimeout = setTimeout(async () => {
         this.triggerLegacyFallbackSearch(query, localResults);
       }, 250);
     }
@@ -1023,20 +1023,25 @@ window.FoodSelectorController = {
     const loadingEl = document.getElementById("online-search-loading");
     if (loadingEl) loadingEl.classList.remove("hidden");
     
+    // Render local results and mark remote as pending
+    this.renderHybridResults(localResults, [], true);
+    
     try {
       console.log(`[Search] Routing legacy fallback pipeline for: "${query}"`);
       const rawResults = await window.FoodDatabase.searchFoods(query);
-      const onlineResults = rawResults.filter(item => item.source !== "Local DB" && item.source !== "Typesense");
+      const onlineResults = rawResults.filter(item => item.source !== "Local DB" && item.source !== "Algolia");
       
-      this.renderHybridResults(localResults, onlineResults);
+      this.renderHybridResults(localResults, onlineResults, false);
     } catch (err) {
       console.warn("[Search] Legacy fallback failed:", err);
+      // Stop pending state
+      this.renderHybridResults(localResults, [], false);
     } finally {
       if (loadingEl) loadingEl.classList.add("hidden");
     }
   },
 
-  renderHybridResults(localItems, globalItems) {
+  renderHybridResults(localItems, globalItems, isRemotePending) {
     const container = document.getElementById("online-search-results");
     if (!container) return;
     
@@ -1047,6 +1052,16 @@ window.FoodSelectorController = {
     });
     
     if (localItems.length === 0 && filteredGlobal.length === 0) {
+      if (isRemotePending) {
+        // Still actively searching databases, show searching placeholder instead of "No results found"
+        container.innerHTML = `
+          <div class="loading-state-placeholder" style="padding: 40px 0; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.9rem;">
+            Searching databases…
+          </div>
+        `;
+        return;
+      }
+
       const input = document.getElementById("online-search-input");
       const query = input ? input.value.trim() : "";
       
@@ -1109,10 +1124,10 @@ window.FoodSelectorController = {
     const sourceBadge = isLocal 
       ? `<span class="search-source-badge badge-local">STAPLE</span>` 
       : (food.source === "USDA" 
-        ? `<span class="search-source-badge badge-typesense" style="background: rgba(99,179,237,0.18); color: #63b3ed;">USDA</span>` 
+        ? `<span class="search-source-badge badge-algolia" style="background: rgba(99,179,237,0.18); color: #63b3ed;">USDA</span>` 
         : (food.source === "OFF" 
-          ? `<span class="search-source-badge badge-typesense" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
-          : `<span class="search-source-badge badge-typesense">GLOBAL</span>`));
+          ? `<span class="search-source-badge badge-algolia" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
+          : `<span class="search-source-badge badge-algolia">GLOBAL</span>`));
 
     const item = document.createElement("div");
     item.className = "meal-item clickable-selector-item";
