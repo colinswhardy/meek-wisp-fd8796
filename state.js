@@ -36,6 +36,7 @@ window.AppState = {
         apiKey: "",
         indexName: "foods"
       },
+      usdaApiKey: "",
       firebaseConfig: {
         enabled: false,
         apiKey: "",
@@ -100,6 +101,7 @@ window.AppState = {
           apiKey: "",
           indexName: "foods"
         },
+        usdaApiKey: "",
         firebaseConfig: {
           enabled: false,
           apiKey: "",
@@ -251,6 +253,11 @@ window.AppState = {
           appId: this.data.settings.firebaseConfig.appId || "",
           recaptchaKey: this.data.settings.firebaseConfig.recaptchaKey || ""
         };
+      }
+      
+      // Migrate/initialize USDA API Key safely
+      if (this.data.settings.usdaApiKey === undefined) {
+        this.data.settings.usdaApiKey = "";
       }
     }
   },

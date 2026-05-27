@@ -7,6 +7,11 @@ window.FoodDatabase = {
   db: null,
   localCache: [],
 
+  getUsdaApiKey() {
+    const configKey = AppState.data.settings.usdaApiKey;
+    return (configKey && configKey.trim()) ? configKey.trim() : "DEMO_KEY";
+  },
+
   /**
    * Normalizes a local cached food object to ensure it has a nutrients structure.
    */
@@ -364,7 +369,7 @@ window.FoodDatabase = {
     // 2. Try USDA FoodData Central
     try {
       console.log(`[Database] Querying USDA FoodData Central for barcode: ${cleanBarcode}...`);
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${cleanBarcode}&api_key=DEMO_KEY`;
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${cleanBarcode}&api_key=${this.getUsdaApiKey()}`;
       const response = await fetch(usdaUrl);
       if (response.ok) {
         const data = await response.json();
@@ -772,7 +777,7 @@ window.FoodDatabase = {
 
     // 2. USDA FoodData Central — excellent for whole/generic foods
     try {
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=DEMO_KEY&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
       const resp = await fetch(usdaUrl);
       if (resp.ok) {
         const data = await resp.json();
