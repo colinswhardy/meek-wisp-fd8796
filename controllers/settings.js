@@ -284,6 +284,15 @@ window.SettingsController = {
         el.addEventListener("change", saveFirebaseConfig);
       }
     });
+
+    // USDA API Key Config binding
+    const usdaApiKeyInput = document.getElementById("usda-api-key-input");
+    if (usdaApiKeyInput) {
+      usdaApiKeyInput.addEventListener("input", () => {
+        AppState.data.settings.usdaApiKey = usdaApiKeyInput.value.trim();
+        AppState.saveToStorage();
+      });
+    }
   },
 
   // -----------------------------------------------------------------------
@@ -543,6 +552,12 @@ window.SettingsController = {
         if (fbConfig.enabled) fbFields.classList.remove("hidden");
         else fbFields.classList.add("hidden");
       }
+    }
+
+    // --- USDA API Key Populating ---
+    const usdaApiKeyInput = document.getElementById("usda-api-key-input");
+    if (usdaApiKeyInput) {
+      usdaApiKeyInput.value = AppState.data.settings.usdaApiKey || "";
     }
 
     // --- Profile & Planner Populating ---

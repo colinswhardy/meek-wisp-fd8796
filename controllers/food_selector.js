@@ -998,23 +998,26 @@ window.FoodSelectorController = {
     }
     
     // Show loading indicator immediately
-    if (loadingEl) loadingEl.classList.remove("hidden");
+    if (loadingEl) {
+      loadingEl.classList.remove("hidden");
+      const loadingText = loadingEl.querySelector("p") || loadingEl;
+      if (loadingText) loadingText.textContent = "Searching databases…";
+    }
     
-    // 1. Synchronous Paint (0ms) - mark remote query as pending initially
-    const localResults = window.FoodDatabase.searchLocalCache(query);
-    this.renderHybridResults(localResults, [], true);
-    
-    // 2. Asynchronous Algolia pipeline
+    // Clear previous timeouts and abort outstanding requests
     if (this.algoliaTimeout) clearTimeout(this.algoliaTimeout);
     if (this.algoliaAbortController) {
       this.algoliaAbortController.abort();
       this.algoliaAbortController = null;
     }
     
+    // We DO NOT clear the results container immediately to prevent layout shifts.
+    
     const algoliaConfig = AppState.data.settings.algoliaConfig;
     if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
       this.algoliaTimeout = setTimeout(async () => {
         this.algoliaAbortController = new AbortController();
+        const localResults = window.FoodDatabase.searchLocalCache(query);
         
         try {
           console.log(`[Search] Querying Algolia for: "${query}"...`);
@@ -1034,6 +1037,7 @@ window.FoodSelectorController = {
       }, 250); // 250ms Debounce
     } else {
       this.algoliaTimeout = setTimeout(async () => {
+        const localResults = window.FoodDatabase.searchLocalCache(query);
         this.triggerLegacyFallbackSearch(query, localResults);
       }, 250);
     }
@@ -1043,9 +1047,6 @@ window.FoodSelectorController = {
     const loadingEl = document.getElementById("online-search-loading");
     if (loadingEl) loadingEl.classList.remove("hidden");
     
-    // Render local results and mark remote as pending
-    this.renderHybridResults(localResults, [], true);
-    
     try {
       console.log(`[Search] Routing legacy fallback pipeline for: "${query}"`);
       const rawResults = await window.FoodDatabase.searchFoods(query);
@@ -1054,7 +1055,6 @@ window.FoodSelectorController = {
       this.renderHybridResults(localResults, onlineResults, false);
     } catch (err) {
       console.warn("[Search] Legacy fallback failed:", err);
-      // Stop pending state
       this.renderHybridResults(localResults, [], false);
     } finally {
       if (loadingEl) loadingEl.classList.add("hidden");
