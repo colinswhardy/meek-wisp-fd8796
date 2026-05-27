@@ -222,7 +222,7 @@ window.FoodDatabase = {
     let fats = Number(food.fats || 0);
     let fiber = Number(food.fiber || 0);
     
-    if (food.weight && food.weight !== 100) {
+    if (food.weight && food.weight > 0 && food.weight !== 100) {
       const scale = 100 / food.weight;
       calories = Math.round(calories * scale);
       protein = parseFloat((protein * scale).toFixed(1));
@@ -388,7 +388,7 @@ window.FoodDatabase = {
                 nutrients.protein = parseFloat(Number(n.value).toFixed(1));
               } else if (nameLower.includes("carbohydrate")) {
                 nutrients.carbs = parseFloat(Number(n.value).toFixed(1));
-              } else if (nameLower.includes("lipid") || nameLower === "fat") {
+              } else if (nameLower.includes("lipid") || nameLower === "fat" || nameLower === "total fat" || nameLower === "total lipid (fat)") {
                 nutrients.fats = parseFloat(Number(n.value).toFixed(1));
               } else if (nameLower.includes("fiber")) {
                 nutrients.fiber = parseFloat(Number(n.value).toFixed(1));
@@ -447,6 +447,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["chicken", "breast", "cooked", "poultry", "meat"],
+      servingSize: "1 breast (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 165, protein: 31.0, carbs: 0.0, fats: 3.6, fiber: 0.0 }
     },
     {
@@ -454,6 +456,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["chicken", "breast", "raw", "poultry", "meat"],
+      servingSize: "1 breast (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 120, protein: 22.5, carbs: 0.0, fats: 2.6, fiber: 0.0 }
     },
     {
@@ -461,6 +465,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["egg", "whole", "boiled", "cooked"],
+      servingSize: "1 egg (50g)",
+      servingQuantity: 50,
       nutrients: { calories: 155, protein: 12.6, carbs: 1.1, fats: 10.6, fiber: 0.0 }
     },
     {
@@ -468,6 +474,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["egg", "white", "whites", "cooked"],
+      servingSize: "1 egg white (33g)",
+      servingQuantity: 33,
       nutrients: { calories: 52, protein: 10.9, carbs: 0.7, fats: 0.2, fiber: 0.0 }
     },
     {
@@ -475,6 +483,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["oat", "oats", "oatmeal", "porridge", "raw"],
+      servingSize: "1/2 cup (40g)",
+      servingQuantity: 40,
       nutrients: { calories: 389, protein: 16.9, carbs: 66.3, fats: 6.9, fiber: 10.6 }
     },
     {
@@ -482,6 +492,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["rice", "white", "cooked"],
+      servingSize: "1 cup (158g)",
+      servingQuantity: 158,
       nutrients: { calories: 130, protein: 2.7, carbs: 28.2, fats: 0.3, fiber: 0.4 }
     },
     {
@@ -489,6 +501,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["rice", "brown", "cooked"],
+      servingSize: "1 cup (195g)",
+      servingQuantity: 195,
       nutrients: { calories: 111, protein: 2.6, carbs: 23.0, fats: 0.9, fiber: 1.8 }
     },
     {
@@ -496,6 +510,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["salmon", "fish", "cooked", "seafood"],
+      servingSize: "1 fillet (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 206, protein: 22.1, carbs: 0.0, fats: 12.3, fiber: 0.0 }
     },
     {
@@ -503,6 +519,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["yogurt", "greek", "plain", "nonfat", "yoghurt"],
+      servingSize: "1 container (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 59, protein: 10.3, carbs: 3.6, fats: 0.4, fiber: 0.0 }
     },
     {
@@ -510,6 +528,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["beef", "ground", "lean", "cooked", "meat"],
+      servingSize: "3 oz (85g)",
+      servingQuantity: 85,
       nutrients: { calories: 172, protein: 25.8, carbs: 0.0, fats: 7.6, fiber: 0.0 }
     },
     {
@@ -517,6 +537,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["banana", "bananas", "fruit"],
+      servingSize: "1 medium banana (118g)",
+      servingQuantity: 118,
       nutrients: { calories: 89, protein: 1.1, carbs: 22.8, fats: 0.3, fiber: 2.6 }
     },
     {
@@ -524,6 +546,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["apple", "apples", "fruit"],
+      servingSize: "1 medium apple (182g)",
+      servingQuantity: 182,
       nutrients: { calories: 52, protein: 0.3, carbs: 13.8, fats: 0.2, fiber: 2.4 }
     },
     {
@@ -531,6 +555,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["potato", "sweet", "baked", "cooked", "potatoes"],
+      servingSize: "1 medium potato (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 90, protein: 2.0, carbs: 20.7, fats: 0.2, fiber: 3.0 }
     },
     {
@@ -538,6 +564,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["broccoli", "cooked", "vegetable", "green"],
+      servingSize: "1 cup (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 35, protein: 2.4, carbs: 7.2, fats: 0.4, fiber: 3.3 }
     },
     {
@@ -545,6 +573,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["avocado", "avocados"],
+      servingSize: "1 avocado (150g)",
+      servingQuantity: 150,
       nutrients: { calories: 160, protein: 2.0, carbs: 8.5, fats: 14.7, fiber: 6.7 }
     },
     {
@@ -552,6 +582,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["almond", "almonds", "nuts", "nut"],
+      servingSize: "1 oz (28g)",
+      servingQuantity: 28,
       nutrients: { calories: 579, protein: 21.2, carbs: 21.6, fats: 49.9, fiber: 12.5 }
     },
     {
@@ -559,6 +591,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["peanut", "butter", "peanuts"],
+      servingSize: "2 tbsp (32g)",
+      servingQuantity: 32,
       nutrients: { calories: 588, protein: 25.1, carbs: 20.0, fats: 50.4, fiber: 6.0 }
     },
     {
@@ -566,6 +600,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["milk", "whole", "dairy"],
+      servingSize: "1 cup (244g)",
+      servingQuantity: 244,
       nutrients: { calories: 61, protein: 3.2, carbs: 4.8, fats: 3.3, fiber: 0.0 }
     },
     {
@@ -573,6 +609,8 @@ window.FoodDatabase = {
       brand: "Generic Whole Food",
       source: "Local DB",
       keywords: ["protein", "powder", "whey", "supplement"],
+      servingSize: "1 scoop (30g)",
+      servingQuantity: 30,
       nutrients: { calories: 400, protein: 80.0, carbs: 6.0, fats: 6.0, fiber: 0.0 }
     }
   ],
@@ -745,7 +783,7 @@ window.FoodDatabase = {
     const seenKeys = new Set();
 
     const addResult = (item) => {
-      const key = `${item.name.toLowerCase()}||${item.brand.toLowerCase()}`;
+      const key = `${item.name.toLowerCase()}||${(item.brand || "Generic").toLowerCase()}`;
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
         results.push(item);
@@ -778,6 +816,8 @@ window.FoodDatabase = {
           name: food.name,
           brand: food.brand,
           source: food.source,
+          servingSize: food.servingSize || null,
+          servingQuantity: food.servingQuantity || null,
           nutrients: { ...food.nutrients },
           fuzzyScore: score
         });
@@ -787,7 +827,7 @@ window.FoodDatabase = {
     // 2. Setup USDA FoodData Central Fetch Promise (Runs Concurrently)
     const usdaPromise = (async () => {
       try {
-        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
+        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20`;
         const resp = await fetch(usdaUrl);
         if (resp.ok) {
           const data = await resp.json();
@@ -805,7 +845,7 @@ window.FoodDatabase = {
                     nutrients.protein = parseFloat(Number(val).toFixed(1));
                   } else if (nameLower.includes("carbohydrate")) {
                     nutrients.carbs = parseFloat(Number(val).toFixed(1));
-                  } else if (nameLower.includes("lipid") || nameLower === "total lipid (fat)") {
+                  } else if (nameLower.includes("lipid") || nameLower === "fat" || nameLower === "total fat" || nameLower === "total lipid (fat)") {
                     nutrients.fats = parseFloat(Number(val).toFixed(1));
                   } else if (nameLower.includes("fiber")) {
                     nutrients.fiber = parseFloat(Number(val).toFixed(1));
