@@ -6,6 +6,7 @@
 window.FoodDatabase = {
   db: null,
   localCache: [],
+  onlineSearchCache: {},
 
   getUsdaApiKey() {
     const configKey = AppState.data.settings.usdaApiKey;
@@ -732,6 +733,13 @@ window.FoodDatabase = {
   async searchFoods(query) {
     if (!query || !query.trim()) return [];
     const q = query.trim().toLowerCase();
+
+    // 0. Check in-memory search cache for instant hit
+    if (this.onlineSearchCache[q]) {
+      console.log(`[Database] Cache hit for search query: "${q}"`);
+      return this.onlineSearchCache[q];
+    }
+
     const qWords = q.replace(/[^a-z0-9 ]/g, "").split(" ").filter(w => w.length > 0);
     const results = [];
     const seenKeys = new Set();
@@ -751,7 +759,8 @@ window.FoodDatabase = {
         console.log(`[Database] Routing query to Algolia: "${q}"...`);
         const algoliaResults = await this.queryAlgolia(q);
         if (algoliaResults && algoliaResults.length > 0) {
-          // If Algolia successfully finds matches, return them as absolute truth
+          // Cache and return Algolia results as absolute truth
+          this.onlineSearchCache[q] = algoliaResults;
           return algoliaResults;
         }
       } catch (err) {
@@ -775,89 +784,104 @@ window.FoodDatabase = {
       }
     });
 
-    // 2. USDA FoodData Central — excellent for whole/generic foods
-    try {
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
-      const resp = await fetch(usdaUrl);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.foods && data.foods.length > 0) {
-          data.foods.forEach(food => {
-            const nutrients = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
-            if (food.foodNutrients) {
-              food.foodNutrients.forEach(n => {
-                const nameLower = (n.nutrientName || "").toLowerCase();
-                const val = n.value || 0;
-                if (nameLower.includes("energy") && (n.unitName === "KCAL" || nameLower.includes("kcal"))) {
-                  nutrients.calories = Math.round(val);
-                } else if (nameLower === "protein") {
-                  nutrients.protein = parseFloat(Number(val).toFixed(1));
-                } else if (nameLower.includes("carbohydrate")) {
-                  nutrients.carbs = parseFloat(Number(val).toFixed(1));
-                } else if (nameLower.includes("lipid") || nameLower === "total lipid (fat)") {
-                  nutrients.fats = parseFloat(Number(val).toFixed(1));
-                } else if (nameLower.includes("fiber")) {
-                  nutrients.fiber = parseFloat(Number(val).toFixed(1));
-                }
-              });
-            }
-            if (nutrients.calories > 0 || nutrients.protein > 0) {
-              const servingSize = food.householdServingFullText || (food.servingSize ? `${food.servingSize} ${food.servingSizeUnit || 'g'}` : null);
-              const servingQuantity = food.servingSize ? parseFloat(food.servingSize) : null;
-              addResult({
-                name: food.description || "Unknown Item",
-                brand: food.brandOwner || food.brandName || "USDA",
-                source: "USDA",
-                servingSize: servingSize,
-                servingQuantity: servingQuantity,
-                nutrients
-              });
-            }
-          });
+    // 2. Setup USDA FoodData Central Fetch Promise (Runs Concurrently)
+    const usdaPromise = (async () => {
+      try {
+        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)`;
+        const resp = await fetch(usdaUrl);
+        if (resp.ok) {
+          const data = await resp.json();
+          const usdaFoods = [];
+          if (data.foods && data.foods.length > 0) {
+            data.foods.forEach(food => {
+              const nutrients = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
+              if (food.foodNutrients) {
+                food.foodNutrients.forEach(n => {
+                  const nameLower = (n.nutrientName || "").toLowerCase();
+                  const val = n.value || 0;
+                  if (nameLower.includes("energy") && (n.unitName === "KCAL" || nameLower.includes("kcal"))) {
+                    nutrients.calories = Math.round(val);
+                  } else if (nameLower === "protein") {
+                    nutrients.protein = parseFloat(Number(val).toFixed(1));
+                  } else if (nameLower.includes("carbohydrate")) {
+                    nutrients.carbs = parseFloat(Number(val).toFixed(1));
+                  } else if (nameLower.includes("lipid") || nameLower === "total lipid (fat)") {
+                    nutrients.fats = parseFloat(Number(val).toFixed(1));
+                  } else if (nameLower.includes("fiber")) {
+                    nutrients.fiber = parseFloat(Number(val).toFixed(1));
+                  }
+                });
+              }
+              if (nutrients.calories > 0 || nutrients.protein > 0) {
+                const servingSize = food.householdServingFullText || (food.servingSize ? `${food.servingSize} ${food.servingSizeUnit || 'g'}` : null);
+                const servingQuantity = food.servingSize ? parseFloat(food.servingSize) : null;
+                usdaFoods.push({
+                  name: food.description || "Unknown Item",
+                  brand: food.brandOwner || food.brandName || "USDA",
+                  source: "USDA",
+                  servingSize: servingSize,
+                  servingQuantity: servingQuantity,
+                  nutrients
+                });
+              }
+            });
+          }
+          return usdaFoods;
         }
+      } catch (e) {
+        console.warn("[Search] USDA search failed:", e);
       }
-    } catch (e) {
-      console.warn("[Search] USDA search failed:", e);
-    }
+      return [];
+    })();
 
-    // 3. Open Food Facts — great for packaged branded foods
-    try {
-      const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity`;
-      const resp = await fetch(offUrl, {
-        headers: { 'User-Agent': 'ColinsChartsMacros - Web - Version 1.0 - https://aurafit.app' }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.products && data.products.length > 0) {
-          data.products.forEach(prod => {
-            const name = prod.product_name;
-            if (!name || name.trim() === "") return;
-            const n = prod.nutriments || {};
-            const calories = Math.round(Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0));
-            const protein = parseFloat(Number(n['proteins_100g'] || n['proteins'] || 0).toFixed(1));
-            const carbs = parseFloat(Number(n['carbohydrates_100g'] || n['carbohydrates'] || 0).toFixed(1));
-            const fats = parseFloat(Number(n['fat_100g'] || n['fat'] || 0).toFixed(1));
-            const fiber = parseFloat(Number(n['fiber_100g'] || n['fiber'] || 0).toFixed(1));
-            const servingSize = prod.serving_size || null;
-            const servingQuantity = prod.serving_quantity ? parseFloat(prod.serving_quantity) : null;
-            if (calories > 0 || protein > 0) {
-              addResult({
-                name: name.trim(),
-                brand: prod.brands ? prod.brands.split(',')[0].trim() : "Open Food Facts",
-                source: "OFF",
-                servingSize: servingSize,
-                servingQuantity: servingQuantity,
-                nutrients: { calories, protein, carbs, fats, fiber }
-              });
-            }
-          });
+    // 3. Setup Open Food Facts Fetch Promise (Runs Concurrently)
+    const offPromise = (async () => {
+      try {
+        const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity`;
+        const resp = await fetch(offUrl, {
+          headers: { 'User-Agent': 'ColinsChartsMacros - Web - Version 1.0 - https://aurafit.app' }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const offFoods = [];
+          if (data.products && data.products.length > 0) {
+            data.products.forEach(prod => {
+              const name = prod.product_name;
+              if (!name || name.trim() === "") return;
+              const n = prod.nutriments || {};
+              const calories = Math.round(Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0));
+              const protein = parseFloat(Number(n['proteins_100g'] || n['proteins'] || 0).toFixed(1));
+              const carbs = parseFloat(Number(n['carbohydrates_100g'] || n['carbohydrates'] || 0).toFixed(1));
+              const fats = parseFloat(Number(n['fat_100g'] || n['fat'] || 0).toFixed(1));
+              const fiber = parseFloat(Number(n['fiber_100g'] || n['fiber'] || 0).toFixed(1));
+              const servingSize = prod.serving_size || null;
+              const servingQuantity = prod.serving_quantity ? parseFloat(prod.serving_quantity) : null;
+              if (calories > 0 || protein > 0) {
+                offFoods.push({
+                  name: name.trim(),
+                  brand: prod.brands ? prod.brands.split(',')[0].trim() : "Open Food Facts",
+                  source: "OFF",
+                  servingSize: servingSize,
+                  servingQuantity: servingQuantity,
+                  nutrients: { calories, protein, carbs, fats, fiber }
+                });
+              }
+            });
+          }
+          return offFoods;
         }
+      } catch (e) {
+        console.warn("[Search] Open Food Facts search failed:", e);
       }
-    } catch (e) {
-      console.warn("[Search] Open Food Facts search failed:", e);
-    }
+      return [];
+    })();
 
-    // 4. Implement Smart Relevance Scoring & Sorting
+    // 4. Resolve USDA and OFF Concurrent Requests in Parallel
+    const [usdaResults, offResults] = await Promise.all([usdaPromise, offPromise]);
+    usdaResults.forEach(addResult);
+    offResults.forEach(addResult);
+
+    // 5. Implement Smart Relevance Scoring & Sorting
     const scoreResult = (item) => {
       const name = (item.name || "").toLowerCase();
       const brand = (item.brand || "").toLowerCase();
@@ -903,6 +927,14 @@ window.FoodDatabase = {
 
     results.sort((a, b) => scoreResult(b) - scoreResult(a));
 
+    // Cache sorted results (keep cache size capped at 50 items)
+    this.onlineSearchCache[q] = results;
+    const cacheKeys = Object.keys(this.onlineSearchCache);
+    if (cacheKeys.length > 50) {
+      delete this.onlineSearchCache[cacheKeys[0]];
+    }
+
     return results;
   }
+
 };

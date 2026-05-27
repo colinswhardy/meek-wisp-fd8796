@@ -2923,6 +2923,11 @@ select:focus {
   display: none !important;
 }
 
+#edit-food-modal {
+  align-items: flex-start;
+  padding-top: max(30px, env(safe-area-inset-top, 20px));
+}
+
 .custom-modal-content {
   width: 100%;
   max-width: 420px;
