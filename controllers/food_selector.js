@@ -922,7 +922,16 @@ window.FoodSelectorController = {
 
     try {
       console.log(`[FoodSelector] Triggering dynamic import of AI Service for: "${query}"`);
-      const { AIEstimatorService } = await import("./services/ai.js");
+      let AIEstimatorService;
+      try {
+        console.log("[FoodSelector] Attempting standard folder-relative import: ../services/ai.js");
+        const module = await import("../services/ai.js");
+        AIEstimatorService = module.AIEstimatorService;
+      } catch (e) {
+        console.warn("[FoodSelector] Folder-relative import failed, trying root-relative: ./services/ai.js", e);
+        const module = await import("./services/ai.js");
+        AIEstimatorService = module.AIEstimatorService;
+      }
       
       const estimation = await AIEstimatorService.estimateMacros(query);
       console.log("[FoodSelector] AI Estimation succeeded:", estimation);
