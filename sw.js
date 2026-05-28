@@ -1,4 +1,4 @@
-const CACHE_NAME = "colins-charts-macros-v14";
+const CACHE_NAME = "colins-charts-macros-v16";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
