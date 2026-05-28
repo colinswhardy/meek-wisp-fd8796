@@ -159,6 +159,12 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Disable scrolling on dashboard per user request */
+.app-viewport.dashboard-active,
+.app-viewport:has(#panel-dashboard.active) {
+  overflow-y: hidden !important;
+}
+
 /* Active panel navigation logic */
 .app-panel {
   display: none;
@@ -672,6 +678,69 @@ input:focus {
   color: #ffffff;
   box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-gemini-search {
+  background: linear-gradient(135deg, #7c3aed, #db2777); /* purple to pink */
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.35);
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn-gemini-search:hover {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899); /* slightly brighter */
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45), 0 0 15px rgba(236, 72, 153, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-gemini-search:active {
+  transform: scale(0.95);
+}
+
+.btn-gemini-search svg {
+  width: 24px;
+  height: 24px;
+  transition: transform var(--transition-fast) ease;
+}
+
+.btn-gemini-search:hover svg {
+  transform: rotate(15deg) scale(1.1);
+}
+
+/* Gemini Estimated Food Search Result Items */
+.badge-gemini {
+  background: rgba(167, 139, 250, 0.18) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(167, 139, 250, 0.3) !important;
+}
+
+.clickable-selector-item.gemini-estimate-card {
+  border-color: rgba(167, 139, 250, 0.2) !important;
+  background: rgba(167, 139, 250, 0.03) !important;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.05) !important;
+}
+
+.clickable-selector-item.gemini-estimate-card:hover {
+  border-color: rgba(167, 139, 250, 0.4) !important;
+  background: rgba(167, 139, 250, 0.06) !important;
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.clickable-selector-item.gemini-estimate-card.selector-active {
+  border-color: #c084fc !important;
+  background: rgba(167, 139, 250, 0.08) !important;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.2) !important;
 }
 
 .btn-secondary {

@@ -122,6 +122,13 @@ window.appRouter = {
 
     // Save scroll position of the outgoing panel (handles both window-level and viewport-level scrolling)
     const viewport = document.querySelector(".app-viewport");
+    if (viewport) {
+      if (tabName === "dashboard") {
+        viewport.classList.add("dashboard-active");
+      } else {
+        viewport.classList.remove("dashboard-active");
+      }
+    }
     const scrollTop = window.scrollY || document.documentElement.scrollTop || (viewport ? viewport.scrollTop : 0);
     if (previousTab) {
       this.scrollPositions[previousTab] = scrollTop;

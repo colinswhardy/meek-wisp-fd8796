@@ -37,6 +37,7 @@ window.AppState = {
         indexName: "foods"
       },
       usdaApiKey: "",
+      geminiApiKey: "",
       firebaseConfig: {
         enabled: false,
         apiKey: "",
@@ -102,6 +103,7 @@ window.AppState = {
           indexName: "foods"
         },
         usdaApiKey: "",
+        geminiApiKey: "",
         firebaseConfig: {
           enabled: false,
           apiKey: "",
@@ -259,6 +261,11 @@ window.AppState = {
       if (this.data.settings.usdaApiKey === undefined) {
         this.data.settings.usdaApiKey = "";
       }
+      
+      // Migrate/initialize Gemini API Key safely
+      if (this.data.settings.geminiApiKey === undefined) {
+        this.data.settings.geminiApiKey = "";
+      }
     }
   },
 
@@ -333,13 +340,34 @@ window.AppState = {
         }
         
         const adjustedCalories = Math.max(Math.round(baseGoals.calories + surplus), 500);
-        const scalingFactor = baseGoals.calories > 0 ? (adjustedCalories / baseGoals.calories) : 1;
+        
+        // Keep protein constant
+        const protein = baseGoals.protein;
+        
+        // Calculate remaining calories for carbs and fats in base goals
+        const baseRemainingKcal = baseGoals.calories - (protein * 4);
+        const adjustedRemainingKcal = adjustedCalories - (protein * 4);
+        
+        let carbs, fats;
+        if (baseRemainingKcal > 0 && adjustedRemainingKcal > 0) {
+          const remainingScalingFactor = adjustedRemainingKcal / baseRemainingKcal;
+          carbs = Math.max(Math.round(baseGoals.carbs * remainingScalingFactor), 10);
+          fats = Math.max(Math.round(baseGoals.fats * remainingScalingFactor), 5);
+        } else {
+          // Fallback to proportional scaling if calories are extremely low or invalid
+          const scalingFactor = baseGoals.calories > 0 ? (adjustedCalories / baseGoals.calories) : 1;
+          carbs = Math.max(Math.round(baseGoals.carbs * scalingFactor), 10);
+          fats = Math.max(Math.round(baseGoals.fats * scalingFactor), 5);
+        }
+        
+        // Reconcile calories to match the actual macros exactly
+        const reconciledCalories = Math.round(protein * 4 + carbs * 4 + fats * 9);
         
         return {
-          calories: adjustedCalories,
-          protein: Math.max(Math.round(baseGoals.protein * scalingFactor), 10),
-          carbs: Math.max(Math.round(baseGoals.carbs * scalingFactor), 10),
-          fats: Math.max(Math.round(baseGoals.fats * scalingFactor), 5),
+          calories: reconciledCalories,
+          protein: protein,
+          carbs: carbs,
+          fats: fats,
           isHighCalorieDay: true,
           surplusApplied: Math.round(surplus),
           surplusType: dayConfig.type,
