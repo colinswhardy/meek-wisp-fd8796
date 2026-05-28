@@ -1,4 +1,4 @@
-const CACHE_NAME = "colins-charts-macros-v13";
+const CACHE_NAME = "colins-charts-macros-v14";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   "./database.js",
   "./scanner.js",
   "./charts.js",
+  "./services/ai.js",
   "./controllers/calendar.js",
   "./controllers/dashboard.js",
   "./controllers/food.js",
