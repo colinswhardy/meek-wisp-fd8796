@@ -1,6 +1,6 @@
 /**
  * ColinsChartsMacros - AI Fallback Estimator Service
- * Handles client-side Firebase initialization, App Check, and strict JSON Vertex AI estimations.
+ * Handles client-side direct Google Gemini API requests or client-side Firebase Vertex AI estimations.
  */
 
 let firebaseApp = null;
@@ -116,28 +116,41 @@ export const AIEstimatorService = {
 
   /**
    * Queries Gemini to estimate macronutrients for a given search query.
+   * Leverages direct developer key if configured, otherwise falls back to Firebase Vertex AI.
    * @param {string} foodQuery Food name search string
    * @returns {Promise<Object>} Formatted nutrition data
    */
   async estimateMacros(foodQuery) {
-    await this.ensureInitialized();
-
     if (!foodQuery || !foodQuery.trim()) {
       throw new Error("Query is empty.");
     }
 
+    const settings = window.AppState.data.settings;
+    const directKey = settings.geminiApiKey;
+
+    if (directKey && directKey.trim()) {
+      console.log(`[AIEstimator] Routing query directly to Gemini REST API for: "${foodQuery}"`);
+      return this.estimateMacrosDirect(foodQuery.trim(), directKey.trim());
+    }
+
+    const fbConfig = settings.firebaseConfig;
+    if (!fbConfig || !fbConfig.enabled) {
+      throw new Error("AI Estimation is not configured. Please enter a Gemini API Key or enable the Firebase AI Fallback in Settings.");
+    }
+
+    await this.ensureInitialized();
+
     const prompt = `Act as an expert clinical dietitian and nutritional database compiler. Estimate the macronutrient content per 100g serving for the food query: "${foodQuery.trim()}". Provide estimates based on standard USDA nutrient averages.`;
     
-    console.log(`[AIEstimator] Estimating macros for: "${foodQuery}"...`);
+    console.log(`[AIEstimator] Estimating macros via Firebase Vertex AI for: "${foodQuery}"...`);
     
     try {
       const result = await generativeModel.generateContent(prompt);
       const text = result.response.text();
       
-      console.log("[AIEstimator] Received raw response from Gemini:", text);
+      console.log("[AIEstimator] Received raw response from Firebase Gemini:", text);
       const data = JSON.parse(text);
 
-      // Sanitize fields to ensure correct numeric and structure integrity
       return {
         food_name: data.food_name || foodQuery,
         estimated_calories: Math.round(Number(data.estimated_calories || 0)),
@@ -146,7 +159,93 @@ export const AIEstimatorService = {
         fat_g: Math.round(Number(data.fat_g || 0))
       };
     } catch (err) {
-      console.error("[AIEstimator] Failed to generate macro estimation:", err);
+      console.error("[AIEstimator] Firebase Vertex AI estimation failed:", err);
+      throw new Error(`AI estimation failed: ${err.message}`);
+    }
+  },
+
+  /**
+   * Directly queries the Gemini REST API using the user's direct developer API key.
+   * @param {string} foodQuery Food search query
+   * @param {string} apiKey Direct Gemini Developer API key
+   * @returns {Promise<Object>} Formatted nutrition data
+   */
+  async estimateMacrosDirect(foodQuery, apiKey) {
+    // We target the stable gemini-1.5-flash model
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const prompt = `Act as an expert clinical dietitian and nutritional database compiler. Estimate the macronutrient content per 100g serving for the food query: "${foodQuery}". Provide estimates based on standard USDA nutrient averages.`;
+
+    const requestBody = {
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            food_name: {
+              type: "STRING",
+              description: "Standardized descriptive name of the food item, capitalized."
+            },
+            estimated_calories: {
+              type: "INTEGER",
+              description: "Total estimated energy in kcal per 100g serving."
+            },
+            protein_g: {
+              type: "INTEGER",
+              description: "Estimated protein in grams per 100g serving, rounded to the nearest integer."
+            },
+            carbs_g: {
+              type: "INTEGER",
+              description: "Estimated total carbohydrates in grams per 100g serving, rounded to the nearest integer."
+            },
+            fat_g: {
+              type: "INTEGER",
+              description: "Estimated total fat in grams per 100g serving, rounded to the nearest integer."
+            }
+          },
+          required: ["food_name", "estimated_calories", "protein_g", "carbs_g", "fat_g"]
+        }
+      }
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let parsedError;
+        try { parsedError = JSON.parse(errorText); } catch (_) {}
+        const msg = parsedError?.error?.message || errorText || `HTTP ${response.status}`;
+        throw new Error(`Gemini API returned error: ${msg}`);
+      }
+
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        throw new Error("Empty response received from Gemini API.");
+      }
+
+      console.log("[AIEstimator] Received raw response from direct Gemini API:", text);
+      const data = JSON.parse(text);
+
+      return {
+        food_name: data.food_name || foodQuery,
+        estimated_calories: Math.round(Number(data.estimated_calories || 0)),
+        protein_g: Math.round(Number(data.protein_g || 0)),
+        carbs_g: Math.round(Number(data.carbs_g || 0)),
+        fat_g: Math.round(Number(data.fat_g || 0))
+      };
+    } catch (err) {
+      console.error("[AIEstimator] Direct Gemini API estimation failed:", err);
       throw new Error(`AI estimation failed: ${err.message}`);
     }
   }
