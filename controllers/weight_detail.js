@@ -352,7 +352,56 @@ window.WeightDetailController = {
     }
 
     const targetWeight = parseFloat(profile.targetWeight) || 0;
-    const weeklyRate = parseFloat(profile.weeklyRate) || 0;
+    let weeklyRate = parseFloat(profile.weeklyRate) || 0;
+
+    if (loggedDates.length >= 7) {
+      const lastDateStr = loggedDates[loggedDates.length - 1];
+      const lastDate = new Date(lastDateStr + "T12:00:00");
+      const sevenDaysAgo = new Date(lastDate);
+      sevenDaysAgo.setDate(lastDate.getDate() - 6); // Covers exactly 7 calendar days inclusive of lastDate
+
+      // Filter all logged points within this 7-day window
+      const pointsInWindow = [];
+      loggedDates.forEach(dStr => {
+        const d = new Date(dStr + "T12:00:00");
+        if (d >= sevenDaysAgo && d <= lastDate) {
+          pointsInWindow.push({
+            x: (d.getTime() - sevenDaysAgo.getTime()) / (1000 * 60 * 60 * 24), // Days elapsed
+            y: allWeightLogs[dStr]
+          });
+        }
+      });
+
+      // Require exactly 7 logs in the last 7 days
+      if (pointsInWindow.length >= 7) {
+        pointsInWindow.sort((a, b) => a.x - b.x);
+        
+        // Compute linear regression slope
+        const n = pointsInWindow.length;
+        let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+        for (let i = 0; i < n; i++) {
+          sumX += pointsInWindow[i].x;
+          sumY += pointsInWindow[i].y;
+          sumXY += pointsInWindow[i].x * pointsInWindow[i].y;
+          sumXX += pointsInWindow[i].x * pointsInWindow[i].x;
+        }
+        const denominator = n * sumXX - sumX * sumX;
+        
+        if (denominator !== 0) {
+          const slopePerDay = (n * sumXY - sumX * sumY) / denominator;
+          const slopePerWeek = slopePerDay * 7;
+          
+          // Determine if trend direction is progressing towards target weight
+          const isLosingGoal = current > targetWeight;
+          const isProgressing = isLosingGoal ? (slopePerWeek < 0) : (slopePerWeek > 0);
+          
+          if (isProgressing) {
+            weeklyRate = Math.abs(slopePerWeek);
+          }
+        }
+      }
+    }
+
     const weightDiff = Math.abs(current - targetWeight);
     const weeksToGoal = weeklyRate > 0 ? (weightDiff / weeklyRate) : 0;
 

@@ -101,6 +101,20 @@ window.FoodSelectorController = {
       });
     }
 
+    // Gemini search button click
+    const btnGeminiSearch = document.getElementById("btn-gemini-search");
+    if (btnGeminiSearch) {
+      btnGeminiSearch.addEventListener("click", () => {
+        const input = document.getElementById("online-search-input");
+        const query = input ? input.value.trim() : "";
+        if (!query) {
+          AppState.showToast("Please enter a food query to estimate.");
+          return;
+        }
+        this.triggerAIEstimation(query);
+      });
+    }
+
     // Enter key triggers immediate search (clears timeout and forces search)
     const onlineSearchInput = document.getElementById("online-search-input");
     if (onlineSearchInput) {
@@ -901,65 +915,70 @@ window.FoodSelectorController = {
     
     if (loadingEl) {
       loadingEl.classList.remove("hidden");
-      // Alter text dynamically
       const loadingText = loadingEl.querySelector("p") || loadingEl;
-      if (loadingText) loadingText.textContent = "AI is estimating macros...";
+      if (loadingText) loadingText.textContent = "✨ Gemini is analyzing & estimating macros...";
     }
     resultsEl.innerHTML = "";
 
     try {
       console.log(`[FoodSelector] Triggering dynamic import of AI Service for: "${query}"`);
-      // Dynamic import relative to the active document (index.html at root)
       const { AIEstimatorService } = await import("./services/ai.js");
       
       const estimation = await AIEstimatorService.estimateMacros(query);
       console.log("[FoodSelector] AI Estimation succeeded:", estimation);
       
-      // Navigate to Food tab
-      appRouter.navigate("food");
+      // Build estimated food item object
+      const geminiFood = {
+        food_id: "gemini_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        name: estimation.food_name,
+        brand: "Gemini AI Estimate",
+        nutrients: {
+          calories: estimation.estimated_calories,
+          protein: estimation.protein_g,
+          carbs: estimation.carbs_g,
+          fats: estimation.fat_g,
+          fiber: 0
+        },
+        source: "Gemini",
+        servingSize: "100g",
+        servingQuantity: 100
+      };
+
+      // Render it inline!
+      resultsEl.innerHTML = "";
       
-      // Auto pre-fill custom food card
-      const customCard = document.getElementById("custom-food-card");
-      const customForm = document.getElementById("custom-food-form");
-      
-      if (customCard && customForm) {
-        // Pre-fill inputs
-        document.getElementById("custom-name").value = estimation.food_name;
-        document.getElementById("custom-calories").value = estimation.estimated_calories;
-        document.getElementById("custom-protein").value = estimation.protein_g;
-        document.getElementById("custom-carbs").value = estimation.carbs_g;
-        document.getElementById("custom-fats").value = estimation.fat_g;
-        document.getElementById("custom-weight").value = 100; // standard basis
-        
-        // Expand the collapsible card
-        customForm.classList.remove("hidden");
-        customCard.classList.add("active");
-        
-        // Apply temporary highlight pulse animation
-        customCard.classList.add("ai-highlight");
-        setTimeout(() => {
-          customCard.classList.remove("ai-highlight");
-        }, 3000); // 3 seconds highlight
-        
-        // Scroll smoothly into view and focus
-        customCard.scrollIntoView({ behavior: "smooth" });
-        setTimeout(() => {
-          const customNameInput = document.getElementById("custom-name");
-          if (customNameInput) {
-            customNameInput.focus();
-            try { customNameInput.select(); } catch (err) {}
-          }
-        }, 300);
-        
-        // Toast notification
-        AppState.showToast("✨ AI estimated macros populated! Review and save.");
-      }
+      const categoryHeader = document.createElement("div");
+      categoryHeader.className = "search-category-header";
+      categoryHeader.innerHTML = `<span>✨ Gemini AI Estimate</span>`;
+      resultsEl.appendChild(categoryHeader);
+
+      // Create search result row
+      const itemEl = this.createSearchResultRow(geminiFood, false);
+      itemEl.classList.add("gemini-estimate-card"); // Add special glass glow CSS
+      resultsEl.appendChild(itemEl);
+
+      // Instantly open portion preview inline directly below the newly rendered item!
+      this.selectFoodItem(geminiFood, "online", itemEl);
+
+      AppState.showToast("✨ AI estimation complete! Ready to log.");
     } catch (err) {
       console.warn("[FoodSelector] AI Estimation failed:", err);
       AppState.showToast(`AI failed: ${err.message}`);
       
-      // Re-render empty state to allow retrying
-      this.renderHybridResults([], []);
+      // Reset search results list on error to allow retrying
+      resultsEl.innerHTML = `
+        <div class="empty-state" style="padding: 24px; text-align: center;">
+          <p style="color: var(--color-danger); font-weight: 600; margin-bottom: 8px;">AI Estimation Failed</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; margin-bottom: 16px;">${err.message}</p>
+          <button id="btn-ai-retry" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            <span>🔄 Retry Gemini Search</span>
+          </button>
+        </div>
+      `;
+      const btnRetry = document.getElementById("btn-ai-retry");
+      if (btnRetry) {
+        btnRetry.addEventListener("click", () => this.triggerAIEstimation(query));
+      }
     } finally {
       if (loadingEl) {
         loadingEl.classList.add("hidden");
@@ -1200,7 +1219,9 @@ window.FoodSelectorController = {
           ? `<span class="search-source-badge badge-algolia" style="background: rgba(154,230,180,0.15); color: #68d391;">OFF</span>` 
           : (food.source === "Local DB"
             ? `<span class="search-source-badge badge-local" style="background: rgba(240,98,146,0.18); color: #f06292;">WHOLE FOOD</span>`
-            : `<span class="search-source-badge badge-algolia">GLOBAL</span>`)));
+            : (food.source === "Gemini"
+              ? `<span class="search-source-badge badge-gemini">✨ GEMINI AI</span>`
+              : `<span class="search-source-badge badge-algolia">GLOBAL</span>`))));
 
     const nutrients = food.nutrients || {
       protein: food.protein !== undefined ? food.protein : 0,

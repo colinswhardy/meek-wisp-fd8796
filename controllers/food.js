@@ -417,6 +417,15 @@ window.FoodController = {
 
     weightInput.addEventListener("input", onWeightChange);
 
+    const onWeightKeyDown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onSave(e);
+      }
+    };
+
+    weightInput.addEventListener("keydown", onWeightKeyDown);
+
     const onFormKeyDown = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -429,6 +438,7 @@ window.FoodController = {
     const closeModal = () => {
       modal.classList.add("hidden");
       weightInput.removeEventListener("input", onWeightChange);
+      weightInput.removeEventListener("keydown", onWeightKeyDown);
       form.removeEventListener("keydown", onFormKeyDown);
       btnCancel.removeEventListener("click", onCancel);
       btnSave.removeEventListener("click", onSave);

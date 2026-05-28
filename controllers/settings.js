@@ -296,6 +296,15 @@ window.SettingsController = {
         AppState.saveToStorage();
       });
     }
+
+    // Gemini API Key Config binding
+    const geminiApiKeyInput = document.getElementById("gemini-api-key-input");
+    if (geminiApiKeyInput) {
+      geminiApiKeyInput.addEventListener("input", () => {
+        AppState.data.settings.geminiApiKey = geminiApiKeyInput.value.trim();
+        AppState.saveToStorage();
+      });
+    }
   },
 
   // -----------------------------------------------------------------------
@@ -561,6 +570,12 @@ window.SettingsController = {
     const usdaApiKeyInput = document.getElementById("usda-api-key-input");
     if (usdaApiKeyInput) {
       usdaApiKeyInput.value = AppState.data.settings.usdaApiKey || "";
+    }
+
+    // --- Gemini API Key Populating ---
+    const geminiApiKeyInput = document.getElementById("gemini-api-key-input");
+    if (geminiApiKeyInput) {
+      geminiApiKeyInput.value = AppState.data.settings.geminiApiKey || "";
     }
 
     // --- Profile & Planner Populating ---
