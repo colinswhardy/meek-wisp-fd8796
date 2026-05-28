@@ -1,0 +1,2410 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#02040a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>ColinsChartsMacros - Weight & Macro Tracker</title>
+  
+  <!-- PWA Load Guard & Self-Healing Console -->
+  <script>
+    window.APP_START_TIME = Date.now();
+    window.AppInitialized = false;
+    
+    // Set a self-healing load timer: 3.5 seconds. If the app fails to load, display the recovery overlay
+    window.appLoadTimer = setTimeout(function() {
+      if (!window.AppInitialized) {
+        console.warn("[PWA Guard] App load timer exceeded. Invoking recovery console.");
+        showRecoveryConsole();
+      }
+    }, 3500);
+
+    function showRecoveryConsole() {
+      if (document.getElementById("pwa-recovery-overlay")) return;
+      
+      const overlay = document.createElement("div");
+      overlay.id = "pwa-recovery-overlay";
+      overlay.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(2, 4, 10, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; padding: 24px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; text-align: center;";
+      
+      overlay.innerHTML = `
+        <div style="max-width: 420px; width: 100%; padding: 30px; border-radius: 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.6); box-sizing: border-box;">
+          <div style="font-size: 56px; margin-bottom: 20px; animation: recovery-spin 3s linear infinite;">🔄</div>
+          <h2 style="font-size: 1.4rem; font-weight: 700; margin: 0 0 12px 0; background: linear-gradient(135deg, #ff6b6b, #ff8e8e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">App Loading Issue</h2>
+          <p style="font-size: 0.9rem; color: rgba(255,255,255,0.75); line-height: 1.6; margin: 0 0 24px 0;">
+            The browser has cached an older version of this application. Press below to clear the cache and load the fresh version. Your weight logs and custom food settings are safe.
+          </p>
+          <button id="btn-pwa-recovery" style="background: linear-gradient(135deg, #0d6efd, #0b58ca); color: white; border: none; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; cursor: pointer; box-shadow: 0 5px 15px rgba(13,110,253,0.3); transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
+            Clear Cache & Force Update
+          </button>
+          <div style="margin-top: 18px; font-size: 0.75rem; color: rgba(255,255,255,0.4);">
+            Secure Context: \${window.isSecureContext ? "Yes" : "No"} | Version: v11
+          </div>
+        </div>
+        <style>
+          @keyframes recovery-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          #btn-pwa-recovery:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+          }
+        </style>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      document.getElementById("btn-pwa-recovery").onclick = async () => {
+        const btn = document.getElementById("btn-pwa-recovery");
+        btn.disabled = true;
+        btn.textContent = "Updating app... Please wait.";
+        btn.style.background = "rgba(255,255,255,0.15)";
+        btn.style.boxShadow = "none";
+        
+        try {
+          if ("serviceWorker" in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
+              await reg.unregister();
+            }
+          }
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            for (let name of cacheNames) {
+              await caches.delete(name);
+            }
+          }
+          window.sessionStorage.clear();
+          console.log("[PWA Guard] PWA assets cleared successfully.");
+        } catch (err) {
+          console.error("[PWA Guard] Failed to wipe cache storage:", err);
+        } finally {
+          window.location.reload(true);
+        }
+      };
+    }
+  </script>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Apple Mobile Web App tags for iOS PWA installation -->
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="styles.css?v=12">
+  
+  <!-- Libraries (CDNs) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="header-spacer"></div>
+      <div class="calendar-selector">
+        <button id="btn-prev-day" aria-label="Previous day">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span id="current-day-label">Today</span>
+        <button id="btn-next-day" aria-label="Next day">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <button id="btn-header-settings" class="btn-settings-icon" aria-label="Open Settings" onclick="appRouter.navigate('settings')">
+        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="app-viewport">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="panel-dashboard" class="app-panel active">
+      <!-- Bar-based Calorie + Macro Card -->
+      <div class="glass-card calorie-bar-card">
+        <!-- Total Calories (prominent) -->
+        <div class="calorie-bar-header">
+          <div class="calorie-bar-totals">
+            <div class="calorie-bar-eaten-group">
+              <span class="calorie-bar-eaten-val" id="val-calories-eaten">0</span>
+              <span class="calorie-bar-eaten-lbl">of <span id="val-calories-target">2,000</span> kcal</span>
+            </div>
+            <div class="calorie-bar-right-stats">
+              <div class="calorie-stat-pill">
+                <span class="calorie-stat-num color-calories" id="val-calories-remaining">2,000</span>
+                <span class="calorie-stat-lbl" id="lbl-calories-remaining">Remaining</span>
+              </div>
+              <div class="calorie-stat-pill">
+                <span class="calorie-stat-num" id="val-burn-status">0%</span>
+                <span class="calorie-stat-lbl">Done</span>
+              </div>
+            </div>
+          </div>
+          <div class="macro-progress-track calorie-track-full">
+            <div id="bar-calories" class="macro-progress-fill bg-calories" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="calorie-bar-divider"></div>
+
+        <!-- Protein Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-protein"></span>Protein</span>
+            <span class="macro-fraction"><strong id="val-protein-eaten">0</strong> / <span id="val-protein-target">150</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-protein" class="macro-progress-fill bg-protein" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Carbs Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-carbs"></span>Carbs (Net)</span>
+            <span class="macro-fraction"><strong id="val-carbs-eaten">0</strong> / <span id="val-carbs-target">250</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-carbs" class="macro-progress-fill bg-carbs" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Fats Row -->
+        <div class="macro-bar-row">
+          <div class="macro-meta">
+            <span class="macro-name"><span class="dot dot-fats"></span>Fat</span>
+            <span class="macro-fraction"><strong id="val-fats-eaten">0</strong> / <span id="val-fats-target">65</span>g</span>
+          </div>
+          <div class="macro-progress-track">
+            <div id="bar-fats" class="macro-progress-fill bg-fats" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Barcode Scanner Section -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-dashboard">
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-dashboard" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-dashboard" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
+          </button>
+          <button id="btn-stop-scan-dashboard" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-dashboard" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Add Food</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-dashboard">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-dashboard" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-dashboard" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-dashboard">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-dashboard">Product Name</h3>
+            <p id="preview-food-brand-dashboard">Brand</p>
+          </div>
+          <button id="btn-close-preview-dashboard" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-dashboard">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-dashboard">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-dashboard">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-dashboard">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-dashboard" id="food-weight-label-dashboard">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-dashboard" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-dashboard" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-dashboard">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-dashboard">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-dashboard">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-dashboard">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-dashboard">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-dashboard">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-dashboard" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-dashboard">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-dashboard"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-dashboard" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-dashboard" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-dashboard">Product Name</label>
+            <input type="text" id="not-found-name-dashboard" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-dashboard">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-dashboard" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-dashboard">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-dashboard" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-dashboard">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-dashboard" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-dashboard" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-dashboard">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-dashboard" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-dashboard">Protein (g)</label>
+              <input type="number" id="not-found-protein-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-dashboard">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-dashboard">Fats (g)</label>
+              <input type="number" id="not-found-fats-dashboard" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+
+      <!-- Weight Analytics Card (Dashboard version) -->
+      <div class="glass-card detail-stats-card" id="dashboard-weight-analytics">
+        <h3>Weight Analytics</h3>
+        <p class="card-subtitle">Detailed insights calculated over your entire logging history.</p>
+        
+        <div class="detail-stats-grid">
+          <div class="d-stat-box">
+            <label>Current Weight</label>
+            <span id="dash-val-current">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Total Change</label>
+            <span id="dash-val-change">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Estimated Timeframe</label>
+            <span id="dash-val-timeframe">--</span>
+          </div>
+          <div class="d-stat-box">
+            <label>Estimated Goal Date</label>
+            <span id="dash-val-goaldate">--</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: FOOD LOG -->
+    <section id="panel-food" class="app-panel">
+      <!-- Active Barcode Scanner Section (Food Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-food">
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-food" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-food" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
+          </button>
+          <button id="btn-stop-scan-food" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-food" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Add Food</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-food">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-food" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-food" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-food">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-food">Product Name</h3>
+            <p id="preview-food-brand-food">Brand</p>
+          </div>
+          <button id="btn-close-preview-food" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-food">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-food">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-food">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-food">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-food" id="food-weight-label-food">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-food" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-food" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-food">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-food">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-food">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-food">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-food" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-food">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-food"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-food" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-food" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-food">Product Name</label>
+            <input type="text" id="not-found-name-food" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-food">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-food" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-food">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-food" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-food">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-food" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-food" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-food">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-food" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-food">Protein (g)</label>
+              <input type="number" id="not-found-protein-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-food">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-food">Fats (g)</label>
+              <input type="number" id="not-found-fats-food" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+
+      <!-- Today's Logs Section -->
+      <div class="logs-section">
+        <div class="section-header">
+          <h3>Eaten Today</h3>
+          <span class="meals-count" id="meals-count-badge">0 items</span>
+        </div>
+        <div class="meals-list" id="meals-list-container">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <p>No food logged for this day yet.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Food Add Form -->
+      <div class="glass-card custom-food-card" id="custom-food-card">
+        <div class="card-header-toggle" id="toggle-custom-form-btn">
+          <h3>Log Custom Food / Quick Macro</h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <form id="custom-food-form" class="custom-form-body hidden">
+          <div class="form-group">
+            <label for="custom-name">Food / Meal Name</label>
+            <input type="text" id="custom-name" placeholder="e.g. Chicken breast or Custom Shake" required>
+          </div>
+          <div class="form-group">
+            <label for="custom-weight">Weight Eaten (grams)</label>
+            <input type="number" id="custom-weight" min="0.1" step="any" value="100" required pattern="[0-9]*" inputmode="numeric">
+          </div>
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="custom-calories">Calories (kcal)</label>
+              <input type="number" id="custom-calories" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="custom-protein">Protein (g)</label>
+              <input type="number" id="custom-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="custom-carbs">Carbs (g)</label>
+              <input type="number" id="custom-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="custom-fats">Fats (g)</label>
+              <input type="number" id="custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Custom Log</button>
+        </form>
+      </div>
+
+      <!-- 7-Day Calorie History -->
+      <div class="glass-card history-calorie-card" id="history-calorie-card">
+        <h3>7-Day Calorie History</h3>
+        <p class="card-subtitle">Intake logs and budgets over the last 7 days</p>
+        
+        <div class="calorie-history-list" id="calorie-history-container">
+          <div class="loading-state">Loading calorie history...</div>
+        </div>
+      </div>
+
+      <!-- Add Recipe bottom button -->
+      <div class="recipe-btn-container" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: center; width: 100%;">
+        <button id="btn-open-add-recipe" class="btn btn-primary btn-lg btn-block btn-iconic" onclick="appRouter.navigate('add_recipe')">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Add Recipe</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 3: WEIGHT TRACKER -->
+    <section id="panel-weight" class="app-panel">
+      <!-- History Chart Card -->
+      <div class="glass-card chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Weight History</h3>
+            <p class="card-subtitle">Past 7 days trend with best-fit trendline</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot dot-actual"></span>Actual
+            <span class="legend-dot dot-trend"></span>Trend
+          </div>
+        </div>
+
+        <div class="chart-canvas-wrapper">
+          <canvas id="weightHistoryChart"></canvas>
+        </div>
+
+        <div class="chart-stats-grid">
+          <div class="c-stat-box">
+            <label>Avg Daily Change (7d)</label>
+            <span id="val-weight-avg-daily-change" class="neutral">--</span>
+          </div>
+          <div class="c-stat-box">
+            <label>Weekly Net Change</label>
+            <span id="val-weight-change" class="neutral">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Weight Logger -->
+      <div class="glass-card weight-logger-card">
+        <h3>Log Weight</h3>
+        <p class="card-subtitle">Log your weight for the currently selected day</p>
+        
+        <form id="weight-log-form">
+          <div class="form-row-weight">
+            <div class="weight-input-wrapper">
+              <input type="number" id="weight-input" step="0.1" min="20" max="500" placeholder=" " required inputmode="decimal">
+              <span class="weight-unit-label" id="lbl-weight-unit">lbs</span>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-log-weight">Log Weight</button>
+          </div>
+        </form>
+
+        <div class="today-weight-status" id="today-weight-status-container">
+          <span class="status-icon">✓</span>
+          <span id="today-weight-text">Logged weight for today: <strong>--</strong></span>
+        </div>
+      </div>
+
+      <!-- Active Barcode Scanner Section (Weight Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-weight">
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-weight" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-weight" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
+          </button>
+          <button id="btn-stop-scan-weight" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-weight" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Add Food</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-weight">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-weight" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-weight" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-weight">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-weight">Product Name</h3>
+            <p id="preview-food-brand-weight">Brand</p>
+          </div>
+          <button id="btn-close-preview-weight" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-weight">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-weight">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-weight">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-weight">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-weight" id="food-weight-label-weight">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-weight" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-weight" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-weight">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-weight">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-weight">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-weight">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-weight" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-weight">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-weight"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-weight" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-weight" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-weight">Product Name</label>
+            <input type="text" id="not-found-name-weight" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-weight">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-weight" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-weight">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-weight" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-weight">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-weight" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-weight" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-weight">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-weight" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-weight">Protein (g)</label>
+              <input type="number" id="not-found-protein-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-weight">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-weight">Fats (g)</label>
+              <input type="number" id="not-found-fats-weight" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: STRATEGY (PLANNER & BUDGETS + RE-FEED SCHEDULER) -->
+    <section id="panel-strategy" class="app-panel">
+      <!-- Calculators & Target Goals Clickable Menu -->
+      <div class="glass-card tools-config-card">
+        <h3>Calculators & Target Goals</h3>
+        <p class="card-subtitle">Configure your dynamic goals and macro budgets</p>
+        
+        <div class="clickable-tools-list">
+          <div class="clickable-tool-row" onclick="appRouter.navigate('weight_planner')">
+            <div class="tool-info">
+              <span class="tool-icon">⚖️</span>
+              <div>
+                <span class="tool-title">Weight Goal, Calorie Target and Timelines</span>
+                <p class="tool-desc">Calculate TDEE, BMR, and safe deficit targets</p>
+              </div>
+            </div>
+            <span class="tool-arrow">❯</span>
+          </div>
+          
+          <div class="divider" style="margin: 4px 0;"></div>
+          
+          <div class="clickable-tool-row" onclick="appRouter.navigate('weight_budgets')">
+            <div class="tool-info">
+              <span class="tool-icon">🎯</span>
+              <div>
+                <span class="tool-title">Diet Type &amp; Macro Breakdown</span>
+                <p class="tool-desc">Select diet style and manually adjust your macros</p>
+              </div>
+            </div>
+            <span class="tool-arrow">❯</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calorie Cycling & Re-Feed Scheduler -->
+      <div class="glass-card calorie-cycling-card">
+        <h3>Calorie Cycling & Re-Feed</h3>
+        <p class="card-subtitle">Schedule high-calorie days to support training and recovery.</p>
+        
+        <div class="pref-row" style="margin-bottom: 20px;">
+          <div>
+            <label class="pref-title">Enable Calorie Cycling</label>
+          </div>
+          <label class="switch-toggle">
+            <input type="checkbox" id="cycling-enabled">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+
+        <div class="cycling-settings-body hidden" id="cycling-settings-body">
+          <label class="pref-title" style="display: block; margin-bottom: 12px;">High Calorie / Re-Feed Schedule</label>
+          <div class="cycling-days-list">
+            <!-- Sunday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-sunday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Sunday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-sunday">
+                <select class="cycling-day-type" id="cycling-type-sunday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-sunday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Monday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-monday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Monday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-monday">
+                <select class="cycling-day-type" id="cycling-type-monday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-monday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Tuesday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-tuesday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Tuesday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-tuesday">
+                <select class="cycling-day-type" id="cycling-type-tuesday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-tuesday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Wednesday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-wednesday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Wednesday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-wednesday">
+                <select class="cycling-day-type" id="cycling-type-wednesday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-wednesday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Thursday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-thursday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Thursday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-thursday">
+                <select class="cycling-day-type" id="cycling-type-thursday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-thursday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Friday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-friday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Friday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-friday">
+                <select class="cycling-day-type" id="cycling-type-friday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-friday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+            
+            <!-- Saturday Row -->
+            <div class="cycling-day-row">
+              <div class="cycling-day-meta">
+                <label class="switch-toggle">
+                  <input type="checkbox" id="cycling-day-saturday">
+                  <span class="slider-round"></span>
+                </label>
+                <span class="day-name">Saturday</span>
+              </div>
+              <div class="cycling-day-inputs hidden" id="cycling-inputs-saturday">
+                <select class="cycling-day-type" id="cycling-type-saturday">
+                  <option value="flat">+ kcal</option>
+                  <option value="percent">+ %</option>
+                </select>
+                <input type="number" class="cycling-day-val" id="cycling-val-saturday" placeholder="300" min="0" max="2000" pattern="[0-9]*" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: WEIGHT GOAL, CALORIE TARGET AND TIMELINES -->
+    <section id="panel-weight-planner" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('strategy')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Strategy</span>
+        </button>
+      </div>
+
+      <!-- Weight Goal, Calorie Target and Timelines -->
+      <div class="glass-card planner-card">
+        <h3>Weight Goal, Calorie Target and Timelines</h3>
+
+        <form id="planner-form" oninput="return false;">
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="profile-sex">Biological Sex</label>
+              <select id="profile-sex">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="profile-age">Age (years)</label>
+              <input type="number" id="profile-age" min="10" max="120" value="30" pattern="[0-9]*" inputmode="numeric">
+            </div>
+          </div>
+
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label>Height (Ft / In)</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="number" id="profile-height-ft" placeholder="Ft" min="2" max="8" value="5" pattern="[0-9]*" inputmode="numeric" style="flex: 1;">
+                <input type="number" id="profile-height-in" placeholder="In" min="0" max="11" value="10" pattern="[0-9]*" inputmode="numeric" style="flex: 1;">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profile-activity">Daily Activity Level</label>
+              <select id="profile-activity">
+                <option value="sedentary">Sedentary (desk job)</option>
+                <option value="light" selected>Lightly Active (light exercise)</option>
+                <option value="moderate">Moderately Active (active/sports)</option>
+                <option value="active">Very Active (heavy labor/athletics)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-starting-weight">Starting Weight for This Goal (<span class="planner-unit">lbs</span>)</label>
+            <input type="number" id="profile-starting-weight" min="40" max="500" step="0.1" placeholder="e.g. 185.0" inputmode="decimal">
+          </div>
+
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="profile-target-weight">Goal Target Weight (<span class="planner-unit">lbs</span>)</label>
+              <input type="number" id="profile-target-weight" min="40" max="500" value="170" step="0.1" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="profile-weekly-rate">Weekly Rate (<span class="planner-unit">lbs</span>/wk)</label>
+              <select id="profile-weekly-rate">
+                <option value="0.5">0.5 lbs / week (Slow & steady)</option>
+                <option value="1.0" selected>1.0 lbs / week (Recommended)</option>
+                <option value="1.5">1.5 lbs / week (Moderate)</option>
+                <option value="2.0">2.0 lbs / week (Aggressive)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <div class="planner-results-block" id="planner-results-card">
+          <div class="planner-main-metric">
+            <label>Calculated Calorie Target</label>
+            <span id="planner-cal-result">--</span>
+            <strong>kcal / day</strong>
+          </div>
+          <div class="planner-metric-grid">
+            <div class="planner-metric-box">
+              <label>Daily Energy Burn (TDEE)</label>
+              <span id="planner-tdee-result">--</span>
+            </div>
+            <div class="planner-metric-box">
+              <label>Estimated Timeframe</label>
+              <span id="planner-weeks-result">--</span>
+            </div>
+            <div class="planner-metric-box">
+              <label>Estimated Goal Date</label>
+              <span id="planner-date-result">--</span>
+            </div>
+          </div>
+          
+          <!-- Warning Messages Container -->
+          <div class="planner-warning hidden" id="planner-warning-box">
+            <span class="warning-icon">⚠️</span>
+            <span id="planner-warning-text">Aggressive rate selected. Safe loss rate is 0.5 to 1.5 lbs per week.</span>
+          </div>
+
+          <button id="btn-apply-planner" class="btn btn-primary btn-block" style="margin-top: 16px;">
+            Apply Target Calories
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: SET TARGET BUDGETS -->
+    <section id="panel-weight-budgets" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('strategy')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Strategy</span>
+        </button>
+      </div>
+
+      <!-- Edit Daily Budget Goals -->
+      <div class="glass-card targets-config-card">
+        <h3>Diet Type &amp; Macro Breakdown</h3>
+        <p class="card-subtitle">Select a diet preset to auto-calculate macros, or enter values manually below.</p>
+
+        <form id="targets-form">
+          <!-- Calorie Budget (always based on base calories, never re-feed adjusted) -->
+          <div class="form-group">
+            <label for="target-calories">Calorie Budget (kcal)</label>
+            <input type="number" id="target-calories" value="2000" min="500" max="10000" readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; pointer-events: none;">
+            <p class="budget-note">⚡ Always reflects your base daily calorie goal — re-feed &amp; cycling days are applied separately.</p>
+          </div>
+
+          <!-- Macro Input Fields (always editable — preset fills these in, custom typing deselects preset) -->
+          <div class="form-grid-3x" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="target-protein">Protein (g)</label>
+              <input type="number" id="target-protein" value="150" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-carbs">Carbs (g)</label>
+              <input type="number" id="target-carbs" value="250" min="0" max="1000" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="target-fats">Fats (g)</label>
+              <input type="number" id="target-fats" value="65" min="0" max="500" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+          </div>
+
+          <!-- Macro Warning Container -->
+          <div class="planner-warning hidden" id="macro-warning-box" style="margin-top: 4px; margin-bottom: 16px;">
+            <span class="warning-icon">⚠️</span>
+            <span id="macro-warning-text">Your macros do not match your totaled daily calories.</span>
+          </div>
+
+          <!-- Diet Preset Selectors -->
+          <div class="diet-preset-container">
+            <!-- Protein Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">💪 Protein Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-normal-protein" data-preset="normal-protein">
+                  Normal
+                  <span class="preset-btn-sub">0.8g / lb</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-protein" data-preset="high-protein">
+                  High
+                  <span class="preset-btn-sub">1.0g / lb</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-ultra-high-protein" data-preset="ultra-high-protein">
+                  Ultra High
+                  <span class="preset-btn-sub">1.4g / lb</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Carb Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">🌾 Carbohydrate Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-low-carb" data-preset="low-carb">
+                  Low Carb
+                  <span class="preset-btn-sub">~15% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-regular-carb" data-preset="regular-carb">
+                  Regular
+                  <span class="preset-btn-sub">~50% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-carb" data-preset="high-carb">
+                  High Carb
+                  <span class="preset-btn-sub">~65% of cal</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fat Tier -->
+            <div class="diet-preset-section">
+              <div class="diet-preset-section-title">🥑 Fat Intake</div>
+              <div class="preset-options-row">
+                <button type="button" class="preset-btn" id="preset-low-fat" data-preset="low-fat">
+                  Low Fat
+                  <span class="preset-btn-sub">~20% of cal</span>
+                </button>
+                <button type="button" class="preset-btn" id="preset-high-fat" data-preset="high-fat">
+                  High Fat
+                  <span class="preset-btn-sub">~50% of cal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Explanation Box (revealed when a preset is selected) -->
+          <div class="diet-explanation-box hidden" id="diet-explanation-box">
+            <!-- Populated dynamically by settings.js -->
+          </div>
+
+          <button type="submit" class="btn btn-success btn-block">Save Target Budgets</button>
+        </form>
+      </div>
+
+      <!-- Static Macro Science Card -->
+      <div class="glass-card">
+        <h3>How Macros Are Calculated</h3>
+        <p class="card-subtitle">The science behind calorie density and preset ratios.</p>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-protein">4<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Protein &mdash; 4 kcal per gram</div>
+            <div class="macro-science-detail">
+              Protein is the body's primary building material for muscle, enzymes, and hormones. The ISSN &amp; ACSM recommend <strong>1.6&ndash;2.2g/kg/day</strong> for active individuals. Our presets use body weight in lbs as the target gram intake &mdash; a practical rule-of-thumb aligned with this range. <strong>Normal (0.8g/lb &asymp; 1.76g/kg)</strong> suits active lifestyles. <strong>High (1.0g/lb &asymp; 2.2g/kg)</strong> is the athletic gold standard. <strong>Ultra-High (1.4g/lb &asymp; 3.1g/kg)</strong> is validated for muscle preservation during aggressive caloric deficits by clinical trials.
+            </div>
+          </div>
+        </div>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-carbs">4<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Carbohydrates &mdash; 4 kcal per gram</div>
+            <div class="macro-science-detail">
+              Carbohydrates are the body's preferred fuel source, especially for the brain and high-intensity exercise. <strong>High Carb (~65%)</strong> is ideal for endurance athletes to maximise glycogen stores. <strong>Regular Carb (~50%)</strong> is consistent with standard dietary guidelines (USDA, WHO). <strong>Low Carb (~15%)</strong> shifts the body toward fat oxidation &mdash; beneficial for metabolic flexibility, insulin sensitivity, and sustained energy without blood sugar spikes.
+            </div>
+          </div>
+        </div>
+
+        <div class="macro-science-row">
+          <div class="macro-science-badge badge-fats">9<br>kcal</div>
+          <div class="macro-science-info">
+            <div class="macro-science-name">Fats &mdash; 9 kcal per gram</div>
+            <div class="macro-science-detail">
+              Dietary fat is calorie-dense (9 kcal/g &mdash; more than double protein or carbs) and essential for fat-soluble vitamin absorption (A, D, E, K), hormone synthesis, and cellular membrane integrity. <strong>High Fat (~50%)</strong> is used in ketogenic and low-carb approaches where fat becomes the primary fuel. <strong>Low Fat (~20%)</strong> aligns with cardiovascular risk reduction protocols or high-carb endurance phases.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: SETTINGS -->
+    <section id="panel-settings" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('dashboard')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Dashboard</span>
+        </button>
+      </div>
+      <!-- App Preferences (Units & Mock Data) -->
+      <div class="glass-card preferences-card">
+        <h3>App Options</h3>
+        
+        <!-- Unit preferences -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Weight Units</label>
+            <p class="pref-desc">Toggle between imperial (lbs) and metric (kg)</p>
+          </div>
+          <div class="unit-toggle-control">
+            <button id="btn-unit-lbs" class="unit-btn active">lbs</button>
+            <button id="btn-unit-kg" class="unit-btn">kg</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <!-- Import Renpho CSV Data -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Import Renpho Weights</label>
+            <p class="pref-desc">Sync weight history instantly via exported Renpho CSV</p>
+          </div>
+          <label class="btn btn-secondary btn-sm btn-file-wrapper" id="btn-import-csv-wrapper">
+            <span>Import CSV</span>
+            <input type="file" id="csv-file-input" accept=".csv">
+          </label>
+        </div>
+
+        <div class="divider"></div>
+        <!-- Gemini API Key for AI-powered food search -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Gemini API Key</label>
+            <p class="pref-desc">Enable AI-powered food lookup (get a free key from aistudio.google.com)</p>
+          </div>
+          <div style="flex-shrink: 0; width: 120px;">
+            <input type="password" id="gemini-api-key-input" placeholder="Paste key" style="width: 100%; padding: 8px 10px; font-size: 0.8rem; border-radius: 8px;">
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <!-- USDA API Key for search -->
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">USDA API Key</label>
+            <p class="pref-desc">Get a free key from api.data.gov to increase online search rate limits</p>
+          </div>
+          <div style="flex-shrink: 0; width: 120px;">
+            <input type="password" id="usda-api-key-input" placeholder="Paste key" style="width: 100%; padding: 8px 10px; font-size: 0.8rem; border-radius: 8px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup & Restore Data Card -->
+      <div class="glass-card backup-restore-card">
+        <h3>Backup & Export Data</h3>
+        <p class="card-subtitle">Protect your tracker records from clearing. All data is saved strictly on your local device.</p>
+        
+        <div class="pref-row" style="margin-bottom: 12px;">
+          <div>
+            <label class="pref-title">Export Google Sheets (CSV)</label>
+            <p class="pref-desc">Download a spreadsheet compatible table of all daily logs</p>
+          </div>
+          <button id="btn-export-csv" class="btn btn-secondary btn-sm">Export CSV</button>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+
+        <div class="pref-row" style="margin-bottom: 12px;">
+          <div>
+            <label class="pref-title">Backup App Database (JSON)</label>
+            <p class="pref-desc">Save a complete raw backup file of your entire database</p>
+          </div>
+          <button id="btn-export-json" class="btn btn-secondary btn-sm">Backup JSON</button>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+
+        <div class="pref-row">
+          <div>
+            <label class="pref-title">Restore Database</label>
+            <p class="pref-desc">Upload a previously saved .json backup file to restore records</p>
+          </div>
+          <label class="btn btn-secondary btn-sm btn-file-wrapper">
+            <span>Restore Backup</span>
+            <input type="file" id="json-file-input" accept=".json">
+          </label>
+      </div>
+
+      <!-- Search Engine Configuration -->
+      <div class="glass-card algolia-config-card" style="margin-top: 16px;">
+        <h3>Search Engine Configuration</h3>
+        <p class="card-subtitle">Connect an Algolia index to enable low-latency searches</p>
+        
+        <form id="algolia-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
+          <div class="pref-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1; padding-right: 16px;">
+              <label class="pref-title" for="algolia-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Algolia Search</label>
+              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Route online lookups to your custom Algolia database</p>
+            </div>
+            <label class="switch-toggle">
+              <input type="checkbox" id="algolia-enabled">
+              <span class="slider-round"></span>
+            </label>
+          </div>
+
+          <div id="algolia-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="algolia-appid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Application ID</label>
+              <input type="text" id="algolia-appid" placeholder="e.g. XXXXXXXX" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="algolia-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Search-Only API Key</label>
+                <input type="password" id="algolia-apikey" placeholder="Enter API Key" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="algolia-indexname" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Index Name</label>
+                <input type="text" id="algolia-indexname" placeholder="foods" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Firebase AI Fallback Configuration -->
+      <div class="glass-card firebase-config-card" style="margin-top: 16px;">
+        <h3>AI Macro Estimator Configuration</h3>
+        <p class="card-subtitle">Connect a Firebase project to enable Gemini client-side fallback estimations</p>
+        
+        <form id="firebase-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
+          <div class="pref-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1; padding-right: 16px;">
+              <label class="pref-title" for="firebase-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Gemini AI Fallback</label>
+              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Estimate nutrients using Gemini if online searches return zero hits</p>
+            </div>
+            <label class="switch-toggle">
+              <input type="checkbox" id="firebase-enabled">
+              <span class="slider-round"></span>
+            </label>
+          </div>
+
+          <div id="firebase-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="firebase-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Firebase API Key</label>
+              <input type="password" id="firebase-apikey" placeholder="AIzaSy..." style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-projectid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Project ID</label>
+                <input type="text" id="firebase-projectid" placeholder="my-fitness-project" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-authdomain" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Auth Domain</label>
+                <input type="text" id="firebase-authdomain" placeholder="my-fitness-project.firebaseapp.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-storagebucket" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Storage Bucket</label>
+                <input type="text" id="firebase-storagebucket" placeholder="my-fitness-project.appspot.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-senderid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Messaging Sender ID</label>
+                <input type="text" id="firebase-senderid" placeholder="e.g. 123456789012" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-appid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">App ID</label>
+                <input type="text" id="firebase-appid" placeholder="1:123456:web:abcd" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="firebase-recaptchakey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">reCAPTCHA Site Key</label>
+                <input type="text" id="firebase-recaptchakey" placeholder="For App Check security" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Advanced Options / Collapsible Danger Zone -->
+      <div class="glass-card danger-zone-card" id="danger-zone-card">
+        <div class="card-header-toggle" id="toggle-danger-zone-btn">
+          <h3 class="color-danger" style="margin-bottom: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+            <span>⚠️</span> Advanced & Danger Zone
+          </h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <div id="danger-zone-body" class="custom-form-body hidden">
+          <!-- Load Mock Data -->
+          <div class="pref-row">
+            <div>
+              <label class="pref-title">Load 7-Day Demo Logs</label>
+              <p class="pref-desc">Populate sample weights and meals to preview charts instantly</p>
+            </div>
+            <button id="btn-load-mock" class="btn btn-secondary">Load Demo</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Clear stored data -->
+          <div class="pref-row">
+            <div>
+              <label class="pref-title color-danger">Clear Stored Data</label>
+              <p class="pref-desc">Erase all weights, calories, and goals from local storage</p>
+            </div>
+            <button id="btn-clear-data" class="btn btn-danger btn-sm">Clear All</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: FOOD SELECTOR (RECIPES & HISTORY) -->
+    <section id="panel-food-selector" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" id="btn-back-food-selector">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span id="food-selector-back-label">Back</span>
+        </button>
+      </div>
+
+      <!-- VERY SMALL MICRO MACRO COUNTER -->
+      <div class="glass-card selector-mini-macros-card">
+        <div class="selector-mini-macros-row">
+          <div class="mini-macro-item">
+            <span class="mini-macro-val" id="mini-val-calories">0</span>
+            <span class="mini-macro-lbl" id="mini-lbl-calories">kcal left</span>
+          </div>
+          <div class="mini-macro-divider"></div>
+          <div class="mini-macro-item">
+            <span class="mini-macro-dot" style="background-color: var(--color-protein); box-shadow: 0 0 4px var(--color-protein);"></span>
+            <span class="mini-macro-val" id="mini-val-protein">0/0g</span>
+            <span class="mini-macro-lbl">pro</span>
+          </div>
+          <div class="mini-macro-divider"></div>
+          <div class="mini-macro-item">
+            <span class="mini-macro-dot" style="background-color: var(--color-carbs); box-shadow: 0 0 4px var(--color-carbs);"></span>
+            <span class="mini-macro-val" id="mini-val-carbs">0/0g</span>
+            <span class="mini-macro-lbl">carb</span>
+          </div>
+          <div class="mini-macro-divider"></div>
+          <div class="mini-macro-item">
+            <span class="mini-macro-dot" style="background-color: var(--color-fats); box-shadow: 0 0 4px var(--color-fats);"></span>
+            <span class="mini-macro-val" id="mini-val-fats">0/0g</span>
+            <span class="mini-macro-lbl">fat</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card selector-tabs-card">
+        <!-- Tabs header -->
+        <div class="selector-tabs-header" id="selector-tabs-header">
+          <button class="tab-btn active" id="btn-tab-search">Search Online</button>
+          <button class="tab-btn" id="btn-tab-recipes">My Recipes</button>
+          <button class="tab-btn" id="btn-tab-history">Food History</button>
+        </div>
+
+        <!-- Search Online Tab Content -->
+        <div class="selector-tab-content" id="tab-content-search">
+          <div class="search-box-container input-inline" style="gap: 8px;">
+            <input type="text" id="online-search-input" placeholder="e.g. Cooked chicken breast, oats..." style="flex: 1;">
+            <button id="btn-online-search" class="btn btn-primary" style="white-space: nowrap;">Search</button>
+          </div>
+          
+
+          <div class="loading-state hidden" id="online-search-loading" style="padding: 20px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
+            Searching databases…
+          </div>
+          <div class="history-foods-list" id="online-search-results">
+            <!-- Dynamically rendered search results -->
+          </div>
+        </div>
+
+        <!-- Recipes Tab Content -->
+        <div class="selector-tab-content hidden" id="tab-content-recipes">
+          <!-- Quick Add Button & Collapsible Form -->
+          <div class="quick-add-wrapper" style="margin-bottom: 16px;">
+            <button id="btn-recipes-quick-add" class="btn btn-secondary btn-block btn-iconic" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 12px 16px; font-weight: 600;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="color: #60a5fa;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Quick Add</span>
+            </button>
+
+            <!-- Collapsible Form -->
+            <form id="recipe-quick-add-form" class="custom-form-body hidden" style="margin-top: 12px; padding: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--radius-md); gap: 12px; animation: fadeIn var(--transition-fast);">
+              <div class="form-group">
+                <label for="quick-add-name">Food Name (Optional)</label>
+                <input type="text" id="quick-add-name" placeholder="e.g. Quick Snack" style="padding: 10px 14px; font-size: 0.9rem;">
+              </div>
+              <div class="form-grid-2x2">
+                <div class="form-group">
+                  <label for="quick-add-calories">Calculated Calories (kcal)</label>
+                  <input type="number" id="quick-add-calories" placeholder="0" readonly style="background: rgba(255,255,255,0.02); border-color: rgba(37, 99, 235, 0.2); color: var(--color-calories); font-weight: bold; pointer-events: none; padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+                <div class="form-group">
+                  <label for="quick-add-protein">Protein (g)</label>
+                  <input type="number" id="quick-add-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+                <div class="form-group">
+                  <label for="quick-add-carbs">Carbs (g)</label>
+                  <input type="number" id="quick-add-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+                <div class="form-group">
+                  <label for="quick-add-fats">Fats (g)</label>
+                  <input type="number" id="quick-add-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal" style="padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="quick-add-weight">Weight (grams)</label>
+                <input type="number" id="quick-add-weight" min="0.1" step="any" value="100" required pattern="[0-9]*" inputmode="numeric" style="padding: 10px 14px; font-size: 0.9rem;">
+              </div>
+              
+              <button type="submit" class="btn btn-success btn-block" style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); font-size: 0.9rem; padding: 10px 20px;">
+                Log Quick Add
+              </button>
+            </form>
+          </div>
+
+          <div class="recipes-list" id="selector-recipes-list">
+            <!-- Dynamically rendered recipes -->
+          </div>
+        </div>
+
+        <!-- History Tab Content -->
+        <div class="selector-tab-content hidden" id="tab-content-history">
+          <!-- Text Search box to filter history -->
+          <div class="search-box-container">
+            <input type="text" id="history-search-input" placeholder="Search past foods...">
+          </div>
+          
+          <div class="history-foods-list" id="selector-history-list">
+            <!-- Dynamically rendered historical foods -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Scaling & Log Card (Dynamically displayed when a recipe or historical food is selected) -->
+      <div class="glass-card food-preview-card hidden" id="selector-preview-card">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="selector-preview-title">Product Name</h3>
+            <p id="selector-preview-subtitle">Brand</p>
+          </div>
+          <button id="btn-close-selector-preview" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="selector-preview-kcal">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="selector-preview-protein">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="selector-preview-carbs">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="selector-preview-fats">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g" id="selector-preview-base-weight">Values shown per 100g</div>
+        </div>
+
+        <!-- Input for weight or multiplier -->
+        <div class="serving-scaling-form">
+          <div class="form-group" id="selector-weight-group">
+            <label for="selector-weight-input" id="selector-weight-label">Amount Eaten</label>
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <select id="selector-portion-unit" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="selector-weight-input" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="selector-weight-unit">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="selector-scaled-kcal">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="selector-scaled-protein">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="selector-scaled-carbs">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="selector-scaled-fats">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="selector-scaled-fiber">0g</strong>
+            </div>
+          </div>
+
+          <button id="btn-log-selector-food" class="btn btn-success btn-lg btn-block">Log Eaten</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBPAGE: CREATE RECIPE -->
+    <section id="panel-add-recipe" class="app-panel">
+      <div class="subpage-header">
+        <button class="btn-back" onclick="appRouter.navigate('food')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Food</span>
+        </button>
+      </div>
+
+      <!-- Recipe metadata -->
+      <div class="glass-card recipe-meta-card">
+        <h3>Create New Recipe</h3>
+        <p class="card-subtitle">Combine multiple foods into a single re-usable recipe</p>
+        
+        <div class="form-group" style="margin-top: 15px;">
+          <label for="recipe-name-field">Recipe Name</label>
+          <input type="text" id="recipe-name-field" placeholder="e.g. Daily Protein Shake or Morning Oatmeal" required>
+        </div>
+      </div>
+
+      <!-- Active Barcode Scanner Section inside Recipe Builder -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-recipe">
+        <div class="scanner-header">
+          <h3>Scan Ingredient</h3>
+          <p>Scan a product's barcode to add as an ingredient</p>
+        </div>
+
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-recipe" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-recipe" class="btn btn-primary btn-iconic btn-lg btn-scan-dashboard" style="flex: 1.5;">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Scan Barcode</span>
+          </button>
+          <button id="btn-stop-scan-recipe" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-recipe-history-lookup" class="btn btn-secondary btn-iconic btn-add-food-small" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add Ingredient</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-recipe">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-recipe" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-recipe" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned/Entered Food Detail Card for Recipe -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-recipe">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-recipe">Product Name</h3>
+            <p id="preview-food-brand-recipe">Brand</p>
+          </div>
+          <button id="btn-close-preview-recipe" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-recipe">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-recipe">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-recipe">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-recipe">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-recipe" id="food-weight-label-recipe">Weight in Recipe</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-recipe" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-recipe" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-recipe">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-recipe">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-recipe">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-recipe">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-recipe" class="btn btn-success btn-lg btn-block">Add to Recipe Ingredients</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card inside Recipe Builder -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-recipe">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-recipe"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-recipe" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-recipe" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-recipe">Product Name</label>
+            <input type="text" id="not-found-name-recipe" placeholder="e.g. Protein Powder" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-recipe">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-recipe" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-recipe">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-recipe" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-recipe">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-recipe" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-recipe" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-recipe">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-recipe" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-recipe">Protein (g)</label>
+              <input type="number" id="not-found-protein-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-recipe">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-recipe">Fats (g)</label>
+              <input type="number" id="not-found-fats-recipe" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
+
+      <!-- Custom Food Add Form inside Recipe Builder (Manual Ingredient Log) -->
+      <div class="glass-card custom-food-card" id="recipe-custom-food-card">
+        <div class="card-header-toggle" id="toggle-recipe-custom-form-btn">
+          <h3>Log Manual Custom Ingredient</h3>
+          <span class="toggle-icon">+</span>
+        </div>
+        
+        <form id="recipe-custom-food-form" class="custom-form-body hidden">
+          <div class="form-group">
+            <label for="recipe-custom-name">Ingredient Name</label>
+            <input type="text" id="recipe-custom-name" placeholder="e.g. scoop of protein powder" required>
+          </div>
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="recipe-custom-calories">Calories (kcal)</label>
+              <input type="number" id="recipe-custom-calories" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-protein">Protein (g)</label>
+              <input type="number" id="recipe-custom-protein" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-carbs">Carbs (g)</label>
+              <input type="number" id="recipe-custom-carbs" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="recipe-custom-fats">Fats (g)</label>
+              <input type="number" id="recipe-custom-fats" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="recipe-custom-weight">Weight (grams)</label>
+            <input type="number" id="recipe-custom-weight" min="1" placeholder="30" value="30" required pattern="[0-9]*" inputmode="numeric">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Custom Ingredient</button>
+        </form>
+      </div>
+
+      <!-- Current Ingredients list -->
+      <div class="glass-card recipe-ingredients-card">
+        <h3>Current Ingredients</h3>
+        
+        <div class="meals-list" id="recipe-ingredients-list-container">
+          <div class="empty-state">
+            <p>No ingredients added yet.</p>
+          </div>
+        </div>
+
+        <div class="recipe-total-summary-card" id="recipe-totals-box" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <h4>Recipe Aggregate Totals</h4>
+          <div class="scaling-summary" style="margin-top: 10px;">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="recipe-total-kcal">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="recipe-total-protein">0.0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="recipe-total-carbs">0.0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="recipe-total-fats">0.0g</strong>
+            </div>
+          </div>
+          <div class="recipe-weight-summary" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+            Total Weight: <strong id="recipe-total-weight">0g</strong>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-save-recipe" class="btn btn-success btn-lg btn-block" style="margin-top: 20px; margin-bottom: 40px;">
+        Save Recipe
+      </button>
+    </section>
+
+    <!-- SUBPAGE: WEIGHT HISTORY DETAIL (FULLSCREEN & ZOOMABLE) -->
+    <section id="panel-weight-history-detail" class="app-panel">
+      <div class="subpage-header" style="padding: 15px; margin: 0; background: rgba(18, 20, 28, 0.95); z-index: 10; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <button class="btn-back" onclick="appRouter.navigate('weight')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back to Weight</span>
+        </button>
+      </div>
+
+      <!-- Fullscreen Chart Container -->
+      <div class="fullscreen-chart-container" style="flex: 1; display: flex; flex-direction: column; position: relative; padding: 10px; min-height: 0;">
+        <div class="chart-header" style="margin-bottom: 10px;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem;">Weight Trend Timeline</h3>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot dot-actual"></span>Actual
+            <span class="legend-dot dot-trend"></span>Trend
+          </div>
+        </div>
+
+        <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
+          <canvas id="weightDetailChart"></canvas>
+        </div>
+
+        <!-- Zoom Control Toolbar -->
+        <div class="zoom-toolbar" style="margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-shrink: 0; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+          <button class="zoom-btn" id="btn-pan-left" aria-label="Pan Left" title="Pan Left (Older)">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="zoom-btn" id="btn-zoom-out" aria-label="Zoom Out" title="Zoom Out (More Time)">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span class="zoom-level-badge" id="zoom-level-badge" style="min-width: 70px; text-align: center; font-weight: bold; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 6px 12px; border-radius: 20px;">14 Days</span>
+          <button class="zoom-btn" id="btn-zoom-in" aria-label="Zoom In" title="Zoom In (Less Time)">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="zoom-btn" id="btn-pan-right" aria-label="Pan Right" title="Pan Right (Newer)">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button class="zoom-btn btn-fit" id="btn-today" title="Go to Today" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa;">
+            Today
+          </button>
+        </div>
+      </div>
+
+      <!-- Detail Statistics Card (Docked at Bottom) -->
+      <div class="glass-card detail-stats-card" style="margin: 0 10px 10px 10px; flex-shrink: 0; background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); padding: 12px;">
+        <h3 style="margin-top: 0; font-size: 1rem; margin-bottom: 8px;">Weight Analytics</h3>
+        
+        <div class="detail-stats-grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="d-stat-box" style="padding: 8px; background: rgba(0,0,0,0.2);">
+            <label style="font-size: 0.75rem;">Current Weight</label>
+            <span id="detail-val-current" style="font-size: 1rem;">--</span>
+          </div>
+          <div class="d-stat-box" style="padding: 8px; background: rgba(0,0,0,0.2);">
+            <label style="font-size: 0.75rem;">Total Change</label>
+            <span id="detail-val-change" style="font-size: 1rem;">--</span>
+          </div>
+          <div class="d-stat-box" style="padding: 8px; background: rgba(0,0,0,0.2);">
+            <label style="font-size: 0.75rem;">Estimated Timeframe</label>
+            <span id="detail-val-timeframe" style="font-size: 1rem;">--</span>
+          </div>
+          <div class="d-stat-box" style="padding: 8px; background: rgba(0,0,0,0.2);">
+            <label style="font-size: 0.75rem;">Estimated Goal Date</label>
+            <span id="detail-val-goaldate" style="font-size: 1rem;">--</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Tab Bar -->
+  <nav class="app-navbar">
+    <button class="nav-item active" data-tab="dashboard" aria-label="Dashboard">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-tab="food" aria-label="Food Log">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Food</span>
+    </button>
+    <button class="nav-item" data-tab="weight" aria-label="Weight Tracker">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Weight</span>
+    </button>
+    <button class="nav-item" data-tab="strategy" aria-label="Strategy & Planning">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Strategy</span>
+    </button>
+  </nav>
+
+  <!-- Service Worker Registration script -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          const reg = await navigator.serviceWorker.register("./sw.js");
+          console.log("[PWA] Service Worker registered:", reg.scope);
+          
+          // Check for updates
+          reg.addEventListener("updatefound", () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.addEventListener("statechange", () => {
+                if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  console.log("[PWA] New version detected, updating...");
+                }
+              });
+            }
+          });
+        } catch (err) {
+          console.error("[PWA] Registration failed:", err);
+        }
+      });
+
+      // Reload the page when the new active service worker takes control
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!refreshing) {
+          console.log("[PWA] New controller active. Reloading PWA...");
+          window.location.reload();
+          refreshing = true;
+        }
+      });
+    }
+  </script>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-notification" class="premium-toast hidden">
+    <span class="toast-check">✓</span>
+    <span id="toast-message">Success! Settings saved.</span>
+  </div>
+
+  <!-- Custom Popup Modals (Delete Confirmation, Move Day, Edit Entry) -->
+  <div id="confirm-delete-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 class="color-danger" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Confirm Deletion
+        </h3>
+      </div>
+      <div class="custom-modal-body">
+        <p style="margin: 12px 0; font-size: 0.95rem; line-height: 1.5; color: var(--color-text-secondary);">
+          Are you sure you want to delete <strong id="delete-food-name" style="color: var(--color-text-primary);"></strong> from your log?
+        </p>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-delete" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="btn-confirm-delete" class="btn btn-danger" style="flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="move-food-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 id="copy-move-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Copy / Move Food
+        </h3>
+      </div>
+      <div class="custom-modal-body">
+        <!-- Segmented Mode Control -->
+        <div class="modal-segmented-control">
+          <button id="btn-mode-copy" class="segment-btn active" type="button">Copy Food</button>
+          <button id="btn-mode-move" class="segment-btn" type="button">Move Food</button>
+        </div>
+
+        <p style="margin: 4px 0 12px 0; font-size: 0.9rem; color: var(--color-text-secondary);">
+          <span id="copy-move-prompt-action">Copy</span> <strong id="move-food-name" style="color: var(--color-text-primary);"></strong> to:
+        </p>
+
+        <!-- Quick Dates Grid -->
+        <div class="quick-date-buttons">
+          <button id="btn-quick-today" class="btn-quick-date" type="button">
+            <strong>Today</strong>
+            <span style="font-size: 0.7rem; opacity: 0.6;" id="quick-today-date-label">--</span>
+          </button>
+          <button id="btn-quick-tomorrow" class="btn-quick-date" type="button">
+            <strong>Tomorrow</strong>
+            <span style="font-size: 0.7rem; opacity: 0.6;" id="quick-tomorrow-date-label">--</span>
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label for="move-food-date-input">Or select custom date</label>
+          <input type="date" id="move-food-date-input" required style="width: 100%;">
+        </div>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-move" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="btn-confirm-move" class="btn btn-primary" style="flex: 1;">Copy Food</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="edit-food-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Edit Food Entry
+        </h3>
+      </div>
+      <div class="custom-modal-body">
+        <form id="edit-food-form" class="custom-form-body" style="margin-top: 12px;">
+          <div class="form-group">
+            <label for="edit-food-name-input">Food Name</label>
+            <input type="text" id="edit-food-name-input" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-food-brand-input">Brand</label>
+            <input type="text" id="edit-food-brand-input">
+          </div>
+          <div class="form-group">
+            <label for="edit-food-weight-input">Weight (grams)</label>
+            <div class="weight-input-container">
+              <input type="number" id="edit-food-weight-input" min="0.1" step="any" required pattern="[0-9]*" inputmode="numeric">
+              <span class="weight-unit">g</span>
+            </div>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--color-text-secondary); margin-bottom: 6px; font-weight: 600;">Nutrient Values</div>
+          <div class="form-grid-2x2">
+            <div class="form-group">
+              <label for="edit-food-calories-input">Calories (kcal)</label>
+              <input type="number" id="edit-food-calories-input" min="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="edit-food-protein-input">Protein (g)</label>
+              <input type="number" id="edit-food-protein-input" min="0" step="0.1" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="edit-food-carbs-input">Carbs (g)</label>
+              <input type="number" id="edit-food-carbs-input" min="0" step="0.1" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="edit-food-fats-input">Fats (g)</label>
+              <input type="number" id="edit-food-fats-input" min="0" step="0.1" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-edit" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="btn-save-edit" class="btn btn-success style-edit-save-btn" style="flex: 1;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weight Action Inspection Modal -->
+  <div id="weight-action-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #3b82f6;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Weight Entry Details
+        </h3>
+      </div>
+      <div class="custom-modal-body" style="padding: 16px 0;">
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+          <div style="font-size: 0.85rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Log Date</div>
+          <strong id="weight-modal-date" style="font-size: 1.1rem; color: #fff; font-family: 'Outfit', sans-serif;"></strong>
+        </div>
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px;">
+          <div style="font-size: 0.85rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Recorded Weight</div>
+          <strong id="weight-modal-val" style="font-size: 1.3rem; color: #3b82f6; font-family: 'Outfit', sans-serif;"></strong>
+        </div>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-weight-modal" class="btn btn-secondary" style="flex: 1;">Close</button>
+        <button id="btn-delete-weight-modal" class="btn btn-danger" style="flex: 1; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">Delete Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Weight Deletion Confirmation Modal -->
+  <div id="confirm-weight-delete-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 class="color-danger" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Confirm Delete
+        </h3>
+      </div>
+      <div class="custom-modal-body">
+        <p style="margin: 12px 0; font-size: 0.95rem; line-height: 1.5; color: var(--color-text-secondary);">
+          Are you sure you want to delete the weight record of <strong id="weight-delete-label" style="color: var(--color-text-primary);"></strong>?
+        </p>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-weight-delete" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="btn-confirm-weight-delete" class="btn btn-danger" style="flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Weight History Wipe Confirmation Modal -->
+  <div id="confirm-weight-wipe-modal" class="custom-modal-overlay hidden">
+    <div class="glass-card custom-modal-content">
+      <div class="custom-modal-header">
+        <h3 class="color-danger" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Wipe Weight History
+        </h3>
+      </div>
+      <div class="custom-modal-body">
+        <p style="margin: 12px 0; font-size: 0.95rem; line-height: 1.5; color: var(--color-text-secondary);">
+          <strong style="color: #ef4444; display: block; margin-bottom: 8px;">⚠️ CRITICAL WARNING:</strong>
+          This will permanently delete <strong style="color: var(--color-text-primary);">EVERY SINGLE weight log</strong> in your history, including manual logs and Renpho imports.
+        </p>
+        <p style="margin: 8px 0; font-size: 0.9rem; color: rgba(255,255,255,0.5);">
+          This action is absolute and CANNOT be undone.
+        </p>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-cancel-weight-wipe" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="btn-confirm-weight-wipe" class="btn btn-danger" style="flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">Wipe Everything</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Inline Sync Error Boundary for Modules -->
+  <script>
+    (function() {
+      const showCrashAlert = (name, err) => {
+        let errorBox = document.getElementById("crash-error-banner");
+        if (!errorBox) {
+          errorBox = document.createElement("div");
+          errorBox.id = "crash-error-banner";
+          errorBox.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: rgba(220, 53, 69, 0.98); color: #fff; padding: 20px; z-index: 100000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; border-bottom: 3px solid #b21f2d; text-shadow: 0 1px 2px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 25px rgba(0,0,0,0.6);";
+          
+          const closeBtn = document.createElement("button");
+          closeBtn.textContent = "✕";
+          closeBtn.style.cssText = "float: right; background: none; border: none; color: white; font-size: 26px; cursor: pointer; margin-left: 20px; font-weight: bold; line-height: 1;";
+          closeBtn.onclick = () => errorBox.remove();
+          
+          errorBox.appendChild(closeBtn);
+          const title = document.createElement("strong");
+          title.textContent = name;
+          title.style.display = "block";
+          title.style.fontSize = "16px";
+          title.style.marginBottom = "8px";
+          errorBox.appendChild(title);
+          
+          document.body.prepend(errorBox);
+        }
+        const errorMsg = document.createElement("div");
+        errorMsg.textContent = (err.message || err) + "\n" + (err.stack || "");
+        errorMsg.style.whiteSpace = "pre-wrap";
+        errorMsg.style.marginTop = "8px";
+        errorMsg.style.fontFamily = "monospace";
+        errorMsg.style.fontSize = "13px";
+        errorMsg.style.background = "rgba(0,0,0,0.2)";
+        errorMsg.style.padding = "10px";
+        errorMsg.style.borderRadius = "5px";
+        errorBox.appendChild(errorMsg);
+      };
+
+      // 1. Check if running locally via file:// protocol
+      if (window.location.protocol === "file:") {
+        console.log("[Info] Running locally via file:// protocol.");
+        
+        // Show a helpful, dismissible top banner that doesn't block interaction
+        setTimeout(() => {
+          let infoBox = document.getElementById("file-protocol-tip");
+          if (!infoBox) {
+            infoBox = document.createElement("div");
+            infoBox.id = "file-protocol-tip";
+            infoBox.style.cssText = "background: rgba(13, 110, 253, 0.95); color: #fff; padding: 12px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; text-align: center; border-bottom: 2px solid #0a58ca; z-index: 9999; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.3); line-height: 1.5;";
+            
+            const closeBtn = document.createElement("button");
+            closeBtn.textContent = "✕";
+            closeBtn.style.cssText = "float: right; background: none; border: none; color: white; font-size: 16px; cursor: pointer; font-weight: bold; margin-left: 15px; line-height: 1;";
+            closeBtn.onclick = () => infoBox.remove();
+            
+            infoBox.appendChild(closeBtn);
+            const textSpan = document.createElement("span");
+            textSpan.innerHTML = "💡 <strong>Direct Explorer Launch Active:</strong> You can double-click this app anytime! All manual lookups, custom food logs, weight entries, calorie cycling, and charts work perfectly. <em>(Camera barcode scanning requires running the server via server.ps1 due to browser camera security policies).</em>";
+            infoBox.appendChild(textSpan);
+            
+            document.body.prepend(infoBox);
+          }
+        }, 1000);
+      }
+
+      // 2. Use capturing phase error listener (3rd argument true) to capture script/resource load errors
+      window.addEventListener("error", function(event) {
+        if (event.target && (event.target.tagName === "SCRIPT" || event.target.tagName === "LINK")) {
+          const src = event.target.src || event.target.href || "unknown source";
+          showCrashAlert(
+            "⚠️ Critical Resource Load Failure",
+            "Failed to load: " + src + "\n\nThis can happen if a script file is missing, name-mismatched, or deleted. Please check if the file exists in the directory."
+          );
+        } else {
+          // Standard JavaScript exceptions
+          showCrashAlert("⚠️ Uncaught Application Error", event.error || event.message);
+        }
+      }, true);
+
+      window.addEventListener("unhandledrejection", function(event) {
+        showCrashAlert("⚠️ Unhandled Promise Rejection", event.reason);
+      });
+
+      console.log("[Diagnostics] Advanced Capturing Error Boundary & Protocol Guard registered.");
+    })();
+  </script>
+
+  <!-- Application Scripts (Non-module standard scripts to allow double-clicking file:// directly) -->
+  <script src="state.js"></script>
+  <script src="database.js"></script>
+  <script src="scanner.js"></script>
+  <script src="charts.js"></script>
+  <script src="controllers/calendar.js"></script>
+  <script src="controllers/dashboard.js"></script>
+  <script src="controllers/food.js"></script>
+  <script src="controllers/food_selector.js"></script>
+  <script src="controllers/recipe.js"></script>
+  <script src="controllers/settings.js"></script>
+  <script src="controllers/strategy.js"></script>
+  <script src="controllers/weight.js"></script>
+  <script src="controllers/weight_detail.js"></script>
+  <script src="controllers/scanner_view.js"></script>
+  <script src="router.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+

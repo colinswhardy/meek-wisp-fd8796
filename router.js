@@ -104,6 +104,13 @@ window.appRouter = {
     }
 
     const previousTab = AppState.activeTab;
+    
+    // Close food selector preview card to protect DOM state before navigating away
+    if (previousTab === "food_selector" && tabName !== "food_selector") {
+      if (window.FoodSelectorController && typeof window.FoodSelectorController.closePreview === "function") {
+        window.FoodSelectorController.closePreview();
+      }
+    }
     const targetGroup = this.getNavbarTabForPanel(tabName);
 
     // Reset weight history controller's fresh navigation flag to recalibrate comfortable zoom
