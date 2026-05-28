@@ -897,6 +897,7 @@ window.FoodSelectorController = {
     const resultsEl = document.getElementById("online-search-results");
     
     if (!resultsEl) return;
+    this.closePreview();
     
     if (loadingEl) {
       loadingEl.classList.remove("hidden");
