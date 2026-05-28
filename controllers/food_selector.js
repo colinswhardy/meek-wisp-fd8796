@@ -931,7 +931,7 @@ window.FoodSelectorController = {
       if (!basePath.endsWith("/")) {
         basePath += "/";
       }
-      const serviceUrl = window.location.origin + basePath + "services/ai.js";
+      const serviceUrl = window.location.origin + basePath + "services/ai.js?v=" + Date.now();
       console.log(`[FoodSelector] Dynamically importing AI Service from absolute path: ${serviceUrl}`);
       
       const module = await import(serviceUrl);
