@@ -1,0 +1,16 @@
+# Agent Rules & Coding Guidelines
+
+Whenever you are initialized to perform work in this workspace, you must adhere strictly to these rules:
+
+## 🗺️ Codebase Map Protocol
+
+1. **Read the Map First**: Before modifying any files or scanning the directory, open and read [codebase_map.md](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/codebase_map.md). It contains the exact line number indexes and maps for large files (`index.html`, `styles.css`) and controllers.
+2. **Targeted Reading**: Use the line numbers specified in the map to read only the specific section (plus a small buffer) of the target file instead of reading entire massive files.
+3. **End-of-Task Targeted Updates**: At the end of every code modification task, you must perform a targeted, in-place edit of [codebase_map.md](file:///c:/Users/Colin's%20PC/.gemini/antigravity/scratch/colins-charts-macros/codebase_map.md) to update the line numbers of any sections that were added, removed, or shifted. Do not perform a full-file overwrite; use precise code-replacement edits.
+4. **No Chat Summaries for Updates**: When updating the codebase map, do not write a chat summary explaining the map edits—simply apply the update to the file quietly to conserve output tokens.
+
+## 🎨 Styling & Component Standards
+
+* **Aesthetic Quality**: Follow premium dark-mode HSL color palettes and glassmorphism cards. Avoid raw colors (like generic red or blue).
+* **Autofocus Form Fields**: When transitioning to tabs with form elements (like Weight or Food Selector), ensure the primary input is focused and selected automatically.
+* **Proportional Scaling**: If a user edits the weight of a food log, ensure the calories and all macronutrients scale proportionally.
