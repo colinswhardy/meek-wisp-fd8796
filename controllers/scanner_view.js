@@ -304,14 +304,20 @@ window.ScannerViewController = {
       this.currentFetchedProduct[context] = product;
       
       // Populate elements
-      document.getElementById(`preview-food-name-${context}`).textContent = product.name;
-      document.getElementById(`preview-food-brand-${context}`).textContent = product.brand;
+      const nameEl = document.getElementById(`preview-food-name-${context}`);
+      if (nameEl) nameEl.textContent = product.name;
+      const brandEl = document.getElementById(`preview-food-brand-${context}`);
+      if (brandEl) brandEl.textContent = product.brand;
       
       const rawNutrients = this.getNutrients(product);
-      document.getElementById(`preview-100g-kcal-${context}`).textContent = rawNutrients.calories;
-      document.getElementById(`preview-100g-protein-${context}`).textContent = rawNutrients.protein;
-      document.getElementById(`preview-100g-carbs-${context}`).textContent = rawNutrients.carbs;
-      document.getElementById(`preview-100g-fats-${context}`).textContent = rawNutrients.fats;
+      const kcalEl = document.getElementById(`preview-100g-kcal-${context}`);
+      if (kcalEl) kcalEl.textContent = rawNutrients.calories;
+      const proteinEl = document.getElementById(`preview-100g-protein-${context}`);
+      if (proteinEl) proteinEl.textContent = rawNutrients.protein;
+      const carbsEl = document.getElementById(`preview-100g-carbs-${context}`);
+      if (carbsEl) carbsEl.textContent = rawNutrients.carbs;
+      const fatsEl = document.getElementById(`preview-100g-fats-${context}`);
+      if (fatsEl) fatsEl.textContent = rawNutrients.fats;
 
       // Populate portion select dropdown
       const portionSelect = document.getElementById(`food-portion-unit-${context}`);
@@ -501,10 +507,14 @@ window.ScannerViewController = {
     const netC = Math.max(0, c - fib);
     const kcal = Math.round(p * 4 + netC * 4 + f * 9);
 
-    document.getElementById(`scaled-kcal-${context}`).textContent = kcal;
-    document.getElementById(`scaled-protein-${context}`).textContent = `${p}g`;
-    document.getElementById(`scaled-carbs-${context}`).textContent = `${c}g`;
-    document.getElementById(`scaled-fats-${context}`).textContent = `${f}g`;
+    const kcalEl = document.getElementById(`scaled-kcal-${context}`);
+    if (kcalEl) kcalEl.textContent = kcal;
+    const proteinEl = document.getElementById(`scaled-protein-${context}`);
+    if (proteinEl) proteinEl.textContent = `${p}g`;
+    const carbsEl = document.getElementById(`scaled-carbs-${context}`);
+    if (carbsEl) carbsEl.textContent = `${c}g`;
+    const fatsEl = document.getElementById(`scaled-fats-${context}`);
+    if (fatsEl) fatsEl.textContent = `${f}g`;
     const fiberEl = document.getElementById(`scaled-fiber-${context}`);
     if (fiberEl) fiberEl.textContent = `${fib}g`;
   },

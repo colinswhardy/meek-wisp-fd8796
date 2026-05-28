@@ -196,13 +196,18 @@ window.RecipeBuilderController = {
   },
 
   updateRecipeTotals(kcal = 0, protein = 0, carbs = 0, fats = 0, fiber = 0, weight = 0) {
-    document.getElementById("recipe-total-kcal").textContent = Math.round(kcal);
-    document.getElementById("recipe-total-protein").textContent = `${protein.toFixed(1)}g`;
-    document.getElementById("recipe-total-carbs").textContent = `${carbs.toFixed(1)}g`;
-    document.getElementById("recipe-total-fats").textContent = `${fats.toFixed(1)}g`;
+    const kcalEl = document.getElementById("recipe-total-kcal");
+    if (kcalEl) kcalEl.textContent = Math.round(kcal);
+    const proteinEl = document.getElementById("recipe-total-protein");
+    if (proteinEl) proteinEl.textContent = `${protein.toFixed(1)}g`;
+    const carbsEl = document.getElementById("recipe-total-carbs");
+    if (carbsEl) carbsEl.textContent = `${carbs.toFixed(1)}g`;
+    const fatsEl = document.getElementById("recipe-total-fats");
+    if (fatsEl) fatsEl.textContent = `${fats.toFixed(1)}g`;
     const fiberEl = document.getElementById("recipe-total-fiber");
     if (fiberEl) fiberEl.textContent = `${fiber.toFixed(1)}g`;
-    document.getElementById("recipe-total-weight").textContent = `${weight.toFixed(0)}g`;
+    const weightEl = document.getElementById("recipe-total-weight");
+    if (weightEl) weightEl.textContent = `${weight.toFixed(0)}g`;
   },
 
   saveRecipe() {

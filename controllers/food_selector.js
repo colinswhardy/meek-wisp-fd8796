@@ -753,10 +753,14 @@ window.FoodSelectorController = {
     const netC = Math.max(0, c - fib);
     const kcal = Math.round(p * 4 + netC * 4 + f * 9);
 
-    document.getElementById("selector-scaled-kcal").textContent = kcal;
-    document.getElementById("selector-scaled-protein").textContent = `${p}g`;
-    document.getElementById("selector-scaled-carbs").textContent = `${c}g`;
-    document.getElementById("selector-scaled-fats").textContent = `${f}g`;
+    const scaledKcalEl = document.getElementById("selector-scaled-kcal");
+    if (scaledKcalEl) scaledKcalEl.textContent = kcal;
+    const scaledProteinEl = document.getElementById("selector-scaled-protein");
+    if (scaledProteinEl) scaledProteinEl.textContent = `${p}g`;
+    const scaledCarbsEl = document.getElementById("selector-scaled-carbs");
+    if (scaledCarbsEl) scaledCarbsEl.textContent = `${c}g`;
+    const scaledFatsEl = document.getElementById("selector-scaled-fats");
+    if (scaledFatsEl) scaledFatsEl.textContent = `${f}g`;
     const fiberEl = document.getElementById("selector-scaled-fiber");
     if (fiberEl) fiberEl.textContent = `${fib}g`;
   },
@@ -1111,6 +1115,7 @@ window.FoodSelectorController = {
   },
 
   renderHybridResults(localItems, globalItems, isRemotePending) {
+    this.closePreview();
     const container = document.getElementById("online-search-results");
     if (!container) return;
     
