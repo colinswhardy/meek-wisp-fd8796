@@ -171,7 +171,7 @@ export const AIEstimatorService = {
    * @returns {Promise<Object>} Formatted nutrition data
    */
   async estimateMacrosDirect(foodQuery, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const prompt = `Act as an expert clinical dietitian and nutritional database compiler. Estimate the macronutrient content per 100g serving for the food query: "${foodQuery}". Provide estimates based on standard USDA nutrient averages.`;
 
@@ -179,29 +179,29 @@ export const AIEstimatorService = {
       contents: [{
         parts: [{ text: prompt }]
       }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
+      generation_config: {
+        response_mime_type: "application/json",
+        response_schema: {
+          type: "object",
           properties: {
             food_name: {
-              type: "STRING",
+              type: "string",
               description: "Standardized descriptive name of the food item, capitalized."
             },
             estimated_calories: {
-              type: "INTEGER",
+              type: "integer",
               description: "Total estimated energy in kcal per 100g serving."
             },
             protein_g: {
-              type: "INTEGER",
+              type: "integer",
               description: "Estimated protein in grams per 100g serving, rounded to the nearest integer."
             },
             carbs_g: {
-              type: "INTEGER",
+              type: "integer",
               description: "Estimated total carbohydrates in grams per 100g serving, rounded to the nearest integer."
             },
             fat_g: {
-              type: "INTEGER",
+              type: "integer",
               description: "Estimated total fat in grams per 100g serving, rounded to the nearest integer."
             }
           },
