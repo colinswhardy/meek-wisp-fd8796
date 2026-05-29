@@ -209,6 +209,13 @@ window.FoodSelectorController = {
       });
     }
 
+    const btnFoodSelectStrategy = document.getElementById("btn-food-selector-strategy");
+    if (btnFoodSelectStrategy) {
+      btnFoodSelectStrategy.addEventListener("click", () => {
+        this.openSelector("daily_log");
+      });
+    }
+
     // Recipe history lookup button
     const btnRecipeHist = document.getElementById("btn-recipe-history-lookup");
     if (btnRecipeHist) {
@@ -566,6 +573,26 @@ window.FoodSelectorController = {
     this.closePreview();
     this.renderRecipesList();
   },
+
+  async removeStapleFood(food) {
+    if (!confirm(`Are you sure you want to remove "${food.name}" from your Staples and Favorite Foods?`)) return;
+    
+    try {
+      await window.FoodDatabase.removeFoodFromCache(food.food_id);
+      AppState.showToast(`Removed "${food.name}" from Staples & Favorites.`);
+      this.closePreview();
+      
+      // Re-trigger search to update results view immediately
+      const input = document.getElementById("online-search-input");
+      if (input) {
+        this.handleSearchInput();
+      }
+    } catch (err) {
+      console.error("[FoodSelector] Failed to remove staple food:", err);
+      AppState.showToast("Failed to remove food item.");
+    }
+  },
+
 
   renderHistoryList() {
     this.closePreview();
@@ -1080,6 +1107,7 @@ window.FoodSelectorController = {
     
     // Clamping: If query length is less than 3 characters, search local cache ONLY and skip external API requests
     if (query.length < 3) {
+      this.closePreview();
       if (loadingEl) loadingEl.classList.add("hidden");
       const localResults = window.FoodDatabase.searchLocalCache(query);
       this.renderHybridResults(localResults, [], false);
@@ -1093,35 +1121,41 @@ window.FoodSelectorController = {
       if (loadingText) loadingText.textContent = "Searching databases…";
     }
     
-    // We DO NOT clear the results container immediately to prevent layout shifts.
+    // Close preview on new query to guarantee fresh state
+    this.closePreview();
+
+    // 1. Instant Local Rendering: Perform instant local search and render immediately (stage 1)
+    const localResults = window.FoodDatabase.searchLocalCache(query);
+    this.renderHybridResults(localResults, [], true); // isRemotePending = true
     
+    // 2. Debounced Remote Search: Queue the network request
     const algoliaConfig = AppState.data.settings.algoliaConfig;
     if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
       this.algoliaTimeout = setTimeout(async () => {
         this.algoliaAbortController = new AbortController();
-        const localResults = window.FoodDatabase.searchLocalCache(query);
+        const currentLocal = window.FoodDatabase.searchLocalCache(query);
         
         try {
           console.log(`[Search] Querying Algolia for: "${query}"...`);
           const algoliaResults = await window.FoodDatabase.queryAlgolia(query, this.algoliaAbortController.signal);
           
-          this.renderHybridResults(localResults, algoliaResults, false);
+          this.renderHybridResults(currentLocal, algoliaResults, false);
         } catch (err) {
           if (err.name === 'AbortError') {
             console.log(`[Search] Algolia request aborted for query: "${query}"`);
           } else {
             console.warn("[Search] Algolia search failed:", err);
-            this.triggerLegacyFallbackSearch(query, localResults);
+            this.triggerLegacyFallbackSearch(query, currentLocal);
           }
         } finally {
           if (loadingEl) loadingEl.classList.add("hidden");
         }
-      }, 250); // 250ms Debounce for instant index searches (Algolia)
+      }, 250); // 250ms Debounce for Algolia
     } else {
-      // 400ms tuned debounce specifically for slow legacy fallback search (USDA + OFF) to avoid intermediate queries
+      // 400ms Debounce for USDA/OFF Fallback
       this.algoliaTimeout = setTimeout(async () => {
-        const localResults = window.FoodDatabase.searchLocalCache(query);
-        this.triggerLegacyFallbackSearch(query, localResults);
+        const currentLocal = window.FoodDatabase.searchLocalCache(query);
+        this.triggerLegacyFallbackSearch(query, currentLocal);
       }, 400);
     }
   },
@@ -1145,9 +1179,21 @@ window.FoodSelectorController = {
   },
 
   renderHybridResults(localItems, globalItems, isRemotePending) {
-    this.closePreview();
     const container = document.getElementById("online-search-results");
     if (!container) return;
+    
+    // Establish permanent/structural sub-containers within online-search-results
+    let localSection = document.getElementById("local-search-results-section");
+    let globalSection = document.getElementById("global-search-results-section");
+    
+    if (!localSection || !globalSection) {
+      container.innerHTML = `
+        <div id="local-search-results-section"></div>
+        <div id="global-search-results-section"></div>
+      `;
+      localSection = document.getElementById("local-search-results-section");
+      globalSection = document.getElementById("global-search-results-section");
+    }
     
     const localKeys = new Set(localItems.map(item => item.food_id));
     const filteredGlobal = globalItems.filter(item => {
@@ -1155,19 +1201,90 @@ window.FoodSelectorController = {
       return !localKeys.has(globalKey);
     });
     
-    if (localItems.length === 0 && filteredGlobal.length === 0) {
-      if (isRemotePending) {
-        // Still actively searching databases, empty container so only the single loading indicator is shown
-        container.innerHTML = "";
-        return;
-      }
-
+    // Save focused element state to preserve focus non-destructively
+    const activeEl = document.activeElement;
+    const isWeightInputFocused = activeEl && activeEl.id === "selector-weight-input";
+    let selectionStart = 0;
+    let selectionEnd = 0;
+    if (isWeightInputFocused) {
+      selectionStart = activeEl.selectionStart;
+      selectionEnd = activeEl.selectionEnd;
+    }
+    
+    const previewCard = document.getElementById("selector-preview-card");
+    const activeItem = this.selectedFoodItem;
+    
+    // 1. Render Local Section
+    // Temporarily detach previewCard if it's currently nested inside the localSection
+    if (previewCard && localSection.contains(previewCard)) {
+      const panel = document.getElementById("panel-food-selector");
+      if (panel) panel.appendChild(previewCard);
+    }
+    
+    localSection.innerHTML = "";
+    
+    if (localItems.length > 0) {
+      const localHeader = document.createElement("div");
+      localHeader.className = "search-category-header";
+      localHeader.innerHTML = `<span>✨ Staple & Favorite Foods</span>`;
+      localSection.appendChild(localHeader);
+      
+      localItems.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, true);
+        const foodId = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
+        const activeFoodId = activeItem ? (activeItem.food_id || (activeItem.name + "||" + (activeItem.brand || "Generic")).toLowerCase()) : null;
+        
+        if (activeFoodId && activeFoodId === foodId) {
+          itemEl.classList.add("selector-active");
+          localSection.appendChild(itemEl);
+          if (previewCard) {
+            itemEl.after(previewCard);
+            previewCard.classList.remove("hidden");
+          }
+        } else {
+          localSection.appendChild(itemEl);
+        }
+      });
+    }
+    
+    // 2. Render Global Section
+    // Temporarily detach previewCard if it's currently nested inside the globalSection
+    if (previewCard && globalSection.contains(previewCard)) {
+      const panel = document.getElementById("panel-food-selector");
+      if (panel) panel.appendChild(previewCard);
+    }
+    
+    globalSection.innerHTML = "";
+    
+    if (filteredGlobal.length > 0) {
+      const globalHeader = document.createElement("div");
+      globalHeader.className = "search-category-header";
+      globalHeader.innerHTML = `<span>🌐 Global Database Results</span>`;
+      globalSection.appendChild(globalHeader);
+      
+      filteredGlobal.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, false);
+        const foodId = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
+        const activeFoodId = activeItem ? (activeItem.food_id || (activeItem.name + "||" + (activeItem.brand || "Generic")).toLowerCase()) : null;
+        
+        if (activeFoodId && activeFoodId === foodId) {
+          itemEl.classList.add("selector-active");
+          globalSection.appendChild(itemEl);
+          if (previewCard) {
+            itemEl.after(previewCard);
+            previewCard.classList.remove("hidden");
+          }
+        } else {
+          globalSection.appendChild(itemEl);
+        }
+      });
+    } else if (!isRemotePending && localItems.length === 0) {
       const input = document.getElementById("online-search-input");
       const query = input ? input.value.trim() : "";
-      
       const fbConfig = AppState.data.settings.firebaseConfig;
+      
       if (fbConfig && fbConfig.enabled && query) {
-        container.innerHTML = `
+        globalSection.innerHTML = `
           <div class="empty-state" style="padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); animation: fadeIn var(--transition-fast);">
             <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
               <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
@@ -1184,39 +1301,25 @@ window.FoodSelectorController = {
           btnAI.addEventListener("click", () => this.triggerAIEstimation(query));
         }
       } else {
-        container.innerHTML = `
+        globalSection.innerHTML = `
           <div class="empty-state">
             <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
           </div>
         `;
       }
-      return;
+    } else if (isRemotePending && localItems.length === 0) {
+      globalSection.innerHTML = "";
     }
     
-    container.innerHTML = "";
-    
-    if (localItems.length > 0) {
-      const localHeader = document.createElement("div");
-      localHeader.className = "search-category-header";
-      localHeader.innerHTML = `<span>✨ Staple & Favorite Foods</span>`;
-      container.appendChild(localHeader);
-      
-      localItems.forEach(food => {
-        const itemEl = this.createSearchResultRow(food, true);
-        container.appendChild(itemEl);
-      });
-    }
-    
-    if (filteredGlobal.length > 0) {
-      const globalHeader = document.createElement("div");
-      globalHeader.className = "search-category-header";
-      globalHeader.innerHTML = `<span>🌐 Global Database Results</span>`;
-      container.appendChild(globalHeader);
-      
-      filteredGlobal.forEach(food => {
-        const itemEl = this.createSearchResultRow(food, false);
-        container.appendChild(itemEl);
-      });
+    // Restore focus and cursor selection state non-destructively
+    if (isWeightInputFocused) {
+      const weightInput = document.getElementById("selector-weight-input");
+      if (weightInput) {
+        weightInput.focus();
+        try {
+          weightInput.setSelectionRange(selectionStart, selectionEnd);
+        } catch (e) {}
+      }
     }
   },
 
@@ -1244,6 +1347,9 @@ window.FoodSelectorController = {
     const item = document.createElement("div");
     item.className = "meal-item clickable-selector-item";
     item.style.cursor = "pointer";
+    if (isLocal) {
+      item.title = "Long hold to remove from Staples & Favorites";
+    }
     item.innerHTML = `
       <div class="meal-info">
         <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
@@ -1259,9 +1365,69 @@ window.FoodSelectorController = {
       </div>
     `;
 
-    item.addEventListener("click", () => {
-      this.selectFoodItem(food, "online", item);
-    });
+    if (isLocal) {
+      let holdTimer = null;
+      let isLongPress = false;
+      let hasMoved = false;
+
+      const startHold = (e) => {
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        isLongPress = false;
+        hasMoved = false;
+        
+        // Premium scale/opacity transition on hold
+        item.style.transition = "transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease";
+        item.style.transform = "scale(0.98)";
+        item.style.opacity = "0.75";
+        item.style.backgroundColor = "rgba(239, 68, 68, 0.08)"; // subtle red warning tint
+
+        holdTimer = setTimeout(() => {
+          isLongPress = true;
+          item.style.transform = "scale(1)";
+          item.style.opacity = "1";
+          item.style.backgroundColor = "";
+          this.removeStapleFood(food);
+        }, 800);
+      };
+
+      const cancelHold = () => {
+        item.style.transform = "scale(1)";
+        item.style.opacity = "1";
+        item.style.backgroundColor = "";
+        if (holdTimer) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+        }
+      };
+
+      const handleMove = () => {
+        hasMoved = true;
+        cancelHold();
+      };
+
+      item.addEventListener('mousedown', startHold);
+      item.addEventListener('touchstart', startHold, { passive: true });
+
+      item.addEventListener('mouseup', cancelHold);
+      item.addEventListener('mouseleave', cancelHold);
+      item.addEventListener('touchend', cancelHold);
+      item.addEventListener('touchcancel', cancelHold);
+      item.addEventListener('touchmove', handleMove, { passive: true });
+
+      item.addEventListener("click", (e) => {
+        if (isLongPress) {
+          e.preventDefault();
+          e.stopPropagation();
+          isLongPress = false;
+          return;
+        }
+        this.selectFoodItem(food, "online", item);
+      });
+    } else {
+      item.addEventListener("click", () => {
+        this.selectFoodItem(food, "online", item);
+      });
+    }
 
     return item;
   }

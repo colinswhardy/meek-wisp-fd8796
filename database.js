@@ -296,6 +296,35 @@ window.FoodDatabase = {
   },
 
   /**
+   * Deletes a food item from the IndexedDB cache and in-memory localCache.
+   */
+  async removeFoodFromCache(foodId) {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        console.warn("[LocalDB] Database not initialized. Skipping deletion.");
+        resolve();
+        return;
+      }
+
+      const transaction = this.db.transaction("cached_foods", "readwrite");
+      const store = transaction.objectStore("cached_foods");
+      const request = store.delete(foodId);
+
+      request.onsuccess = () => {
+        this.localCache = this.localCache.filter(item => item.food_id !== foodId);
+        console.log(`[LocalDB] Successfully removed food item: ${foodId} from cache.`);
+        resolve();
+      };
+
+      request.onerror = (e) => {
+        console.error("[LocalDB] Failed to delete food item from cache:", e);
+        reject(e);
+      };
+    });
+  },
+
+
+  /**
    * Synchronously queries the in-memory local cache.
    */
   searchLocalCache(query) {

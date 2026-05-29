@@ -64,6 +64,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   initController("AppState", AppState);
   initController("appRouter", appRouter);
   initController("CalendarSelectorController", CalendarSelectorController);
+  initController("DashboardController", DashboardController);
   
   // Tab-specific controllers initialization
   initController("ScannerViewController", ScannerViewController);
@@ -163,4 +164,61 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Listen to pointerdown on document to bypass mobile touch delay completely
   document.addEventListener('pointerdown', handleGlobalPointerDown, { passive: true });
+
+  // 5. Scroll focused card container to the top of the screen (just below header)
+  window.scrollToAlignWithTop = function(element) {
+    if (!element) return;
+    const header = document.querySelector(".app-header");
+    const headerHeight = header ? header.offsetHeight : 54;
+    const viewport = document.querySelector(".app-viewport");
+
+    setTimeout(() => {
+      const rect = element.getBoundingClientRect();
+      if (viewport && window.getComputedStyle(viewport).overflowY === "auto") {
+        const currentScrollTop = viewport.scrollTop;
+        const targetScroll = currentScrollTop + rect.top - headerHeight - 10;
+        viewport.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: "smooth"
+        });
+      } else {
+        const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+        const targetScroll = currentScrollTop + rect.top - headerHeight - 10;
+        window.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: "smooth"
+        });
+      }
+    }, 80);
+  };
+
+  document.addEventListener("focusin", (e) => {
+    const target = e.target;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") {
+      const container = target.closest(".glass-card, .scanner-activation-card, .custom-food-card, .weight-logger-card, .planner-card, .recipe-meta-card, .recipe-ingredients-card, .danger-zone-card");
+      if (container) {
+        window.scrollToAlignWithTop(container);
+      }
+    }
+  });
+
+  // 6. Keyboard visibility detector to toggle body class
+  const detectKeyboard = () => {
+    const isInputFocused = document.activeElement && 
+      (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") && 
+      !["checkbox", "radio", "button", "submit", "file"].includes(document.activeElement.type);
+      
+    const heightThreshold = window.screen.height * 0.75;
+    const isHeightShrunk = window.innerHeight < heightThreshold;
+
+    if (isInputFocused && isHeightShrunk) {
+      document.body.classList.add("keyboard-visible");
+    } else {
+      document.body.classList.remove("keyboard-visible");
+    }
+  };
+
+  window.addEventListener("resize", detectKeyboard);
+  document.addEventListener("focusin", () => setTimeout(detectKeyboard, 50));
+  document.addEventListener("focusout", () => setTimeout(detectKeyboard, 50));
 });

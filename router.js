@@ -99,7 +99,7 @@ window.appRouter = {
     if (!this.panels[tabName]) return;
     
     // Close camera scanner stream cleanly if leaving the active camera tabs
-    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food" || AppState.activeTab === "weight" || AppState.activeTab === "add_recipe") && tabName !== AppState.activeTab) {
+    if ((AppState.activeTab === "dashboard" || AppState.activeTab === "food" || AppState.activeTab === "weight" || AppState.activeTab === "strategy" || AppState.activeTab === "add_recipe") && tabName !== AppState.activeTab) {
       BarcodeScannerManager.stop();
     }
 

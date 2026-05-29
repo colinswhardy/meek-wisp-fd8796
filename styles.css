@@ -519,6 +519,11 @@ body {
   color: var(--color-text-secondary);
 }
 
+.meals-list .empty-state {
+  padding: 16px 20px;
+  gap: 0;
+}
+
 /* Barcode Scanner UI */
 .scanner-activation-card {
   text-align: center;
@@ -529,7 +534,8 @@ body {
 
 /* Standard bottom padding for panels with bottom-pinned capsule scanner cards */
 #panel-food,
-#panel-weight {
+#panel-weight,
+#panel-strategy {
   padding-bottom: 140px !important;
 }
 
@@ -2503,10 +2509,11 @@ select:focus {
   transform: scale(0.96);
 }
 
-/* Condensed Barcode Scanner Card specifically on Dashboard, Food and Weight Tabs */
+/* Condensed Barcode Scanner Card specifically on Dashboard, Food, Weight and Strategy Tabs */
 #scanner-view-container-dashboard,
 #scanner-view-container-food,
-#scanner-view-container-weight {
+#scanner-view-container-weight,
+#scanner-view-container-strategy {
   padding: 10px 16px !important;
   gap: 8px;
   margin-bottom: 12px;
@@ -3073,16 +3080,17 @@ select:focus {
    Dashboard Floating / Persistent Barcode Scanner & Add Food Button
    ========================================================================== */
 
-/* Persistent/Floating Barcode Scanner Container (Dashboard, Food and Weight Tabs) */
+/* Persistent/Floating Barcode Scanner Container (Dashboard, Food, Weight and Strategy Tabs) */
 #scanner-view-container-dashboard:not(.active-scanning),
 #scanner-view-container-food:not(.active-scanning),
-#scanner-view-container-weight:not(.active-scanning) {
+#scanner-view-container-weight:not(.active-scanning),
+#scanner-view-container-strategy:not(.active-scanning) {
   position: fixed !important;
   bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important; /* Float right above tabs */
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: calc(100% - 32px) !important;
-  max-width: 428px !important;
+  width: 100% !important;
+  max-width: 460px !important; /* Matches exactly the navbar width bounds on desktop */
   z-index: 90 !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -3090,8 +3098,11 @@ select:focus {
   background: rgba(10, 15, 30, 0.85) !important; /* Premium dark blue-sapphire glass */
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 30px !important; /* Capsule shape */
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important; /* Remove rounded edges per user request */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
   display: flex !important;
   flex-direction: row !important;
@@ -3099,17 +3110,27 @@ select:focus {
   overflow: hidden !important; /* Clips child hover borders */
 }
 
+/* Hide persistent scan bars when keyboard is visible */
+body.keyboard-visible #scanner-view-container-dashboard,
+body.keyboard-visible #scanner-view-container-food,
+body.keyboard-visible #scanner-view-container-weight,
+body.keyboard-visible #scanner-view-container-strategy {
+  display: none !important;
+}
+
 /* Hide header on the dashboard/tabs in the persistent state */
 #scanner-view-container-dashboard:not(.active-scanning) .scanner-header,
 #scanner-view-container-food:not(.active-scanning) .scanner-header,
-#scanner-view-container-weight:not(.active-scanning) .scanner-header {
+#scanner-view-container-weight:not(.active-scanning) .scanner-header,
+#scanner-view-container-strategy:not(.active-scanning) .scanner-header {
   display: none !important;
 }
 
 /* Force flex alignment inside the persistent container */
 #scanner-view-container-dashboard:not(.active-scanning) .scanner-controls,
 #scanner-view-container-food:not(.active-scanning) .scanner-controls,
-#scanner-view-container-weight:not(.active-scanning) .scanner-controls {
+#scanner-view-container-weight:not(.active-scanning) .scanner-controls,
+#scanner-view-container-strategy:not(.active-scanning) .scanner-controls {
   display: flex !important;
   width: 100% !important;
   height: 100% !important;

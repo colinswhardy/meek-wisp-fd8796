@@ -37,17 +37,7 @@ window.AppState = {
         indexName: "foods"
       },
       usdaApiKey: "",
-      geminiApiKey: "",
-      firebaseConfig: {
-        enabled: false,
-        apiKey: "",
-        authDomain: "",
-        projectId: "",
-        storageBucket: "",
-        messagingSenderId: "",
-        appId: "",
-        recaptchaKey: ""
-      }
+      geminiApiKey: ""
     },
     profile: {
       sex: "male",
@@ -103,17 +93,7 @@ window.AppState = {
           indexName: "foods"
         },
         usdaApiKey: "",
-        geminiApiKey: "",
-        firebaseConfig: {
-          enabled: false,
-          apiKey: "",
-          authDomain: "",
-          projectId: "",
-          storageBucket: "",
-          messagingSenderId: "",
-          appId: "",
-          recaptchaKey: ""
-        }
+        geminiApiKey: ""
       },
       profile: {
         sex: "male",
@@ -232,31 +212,7 @@ window.AppState = {
         };
       }
 
-      // Migrate/initialize Firebase settings safely
-      if (!this.data.settings.firebaseConfig) {
-        this.data.settings.firebaseConfig = {
-          enabled: false,
-          apiKey: "",
-          authDomain: "",
-          projectId: "",
-          storageBucket: "",
-          messagingSenderId: "",
-          appId: "",
-          recaptchaKey: ""
-        };
-      } else {
-        this.data.settings.firebaseConfig = {
-          enabled: this.data.settings.firebaseConfig.enabled || false,
-          apiKey: this.data.settings.firebaseConfig.apiKey || "",
-          authDomain: this.data.settings.firebaseConfig.authDomain || "",
-          projectId: this.data.settings.firebaseConfig.projectId || "",
-          storageBucket: this.data.settings.firebaseConfig.storageBucket || "",
-          messagingSenderId: this.data.settings.firebaseConfig.messagingSenderId || "",
-          appId: this.data.settings.firebaseConfig.appId || "",
-          recaptchaKey: this.data.settings.firebaseConfig.recaptchaKey || ""
-        };
-      }
-      
+
       // Migrate/initialize USDA API Key safely
       if (this.data.settings.usdaApiKey === undefined) {
         this.data.settings.usdaApiKey = "";

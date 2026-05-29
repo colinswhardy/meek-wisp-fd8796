@@ -568,7 +568,6 @@
         </div>
         <div class="meals-list" id="meals-list-container">
           <div class="empty-state">
-            <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
             <p>No food logged for this day yet.</p>
           </div>
         </div>
@@ -1033,6 +1032,175 @@
           </div>
         </div>
       </div>
+
+      <!-- Active Barcode Scanner Section (Strategy Tab) -->
+      <div class="glass-card scanner-activation-card" id="scanner-view-container-strategy">
+        <!-- Camera scanning display box -->
+        <div id="camera-scanner-strategy" class="camera-viewport hidden"></div>
+
+        <!-- Scan action triggers -->
+        <div class="scanner-controls">
+          <button id="btn-start-scan-strategy" class="btn-scan-dashboard-pill" style="flex: 1.6;">
+            <span class="pill-text">Scan Barcode</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-barcode-icon">
+              <path d="M3 5v14M6 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/>
+            </svg>
+          </button>
+          <button id="btn-stop-scan-strategy" class="btn btn-danger hidden">Stop Camera</button>
+          <button id="btn-food-selector-strategy" class="btn-add-food-pill" style="flex: 1;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="pill-search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Add Food</span>
+          </button>
+        </div>
+
+        <!-- Fallback manual barcode search -->
+        <div class="manual-barcode-input hidden" id="manual-barcode-input-strategy">
+          <span class="divider-text">OR ENTER MANUALLY</span>
+          <div class="input-inline">
+            <input type="number" id="manual-barcode-field-strategy" placeholder="Enter barcode number" pattern="[0-9]*" inputmode="numeric">
+            <button id="btn-lookup-barcode-strategy" class="btn btn-secondary">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Food Detail Card -->
+      <div class="glass-card food-preview-card hidden" id="food-detail-card-strategy">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 id="preview-food-name-strategy">Product Name</h3>
+            <p id="preview-food-brand-strategy">Brand</p>
+          </div>
+          <button id="btn-close-preview-strategy" class="btn-close">&times;</button>
+        </div>
+
+        <!-- Nutrient info per 100g badge displays -->
+        <div class="nutrition-pill-grid">
+          <div class="nutri-pill highlight-kcal">
+            <span id="preview-100g-kcal-strategy">0</span>
+            <label>kcal</label>
+          </div>
+          <div class="nutri-pill highlight-protein">
+            <span id="preview-100g-protein-strategy">0</span>
+            <label>Protein</label>
+          </div>
+          <div class="nutri-pill highlight-carbs">
+            <span id="preview-100g-carbs-strategy">0</span>
+            <label>Carbs</label>
+          </div>
+          <div class="nutri-pill highlight-fats">
+            <span id="preview-100g-fats-strategy">0</span>
+            <label>Fats</label>
+          </div>
+          <div class="nutri-label-100g">Values shown per 100g</div>
+        </div>
+
+        <!-- User serving size weight input & macro scaling display -->
+        <div class="serving-scaling-form">
+          <div class="form-group">
+            <label for="food-weight-input-strategy" id="food-weight-label-strategy">Weight Eaten</label>
+            <div style="display: flex; gap: 8px;">
+              <select id="food-portion-unit-strategy" style="flex: 1.5; padding: 0 14px; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; transition: all var(--transition-fast);">
+                <option value="g">Grams (g)</option>
+              </select>
+              <div class="weight-input-container" style="flex: 1;">
+                <input type="number" id="food-weight-input-strategy" min="0.01" step="any" value="100" pattern="[0-9]*" inputmode="decimal">
+                <span class="weight-unit" id="food-weight-unit-strategy">g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live scaling result -->
+          <div class="scaling-summary">
+            <div class="scale-item">
+              <label>Calories</label>
+              <strong id="scaled-kcal-strategy">0</strong>
+            </div>
+            <div class="scale-item">
+              <label>Protein</label>
+              <strong id="scaled-protein-strategy">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Carbs</label>
+              <strong id="scaled-carbs-strategy">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fats</label>
+              <strong id="scaled-fats-strategy">0g</strong>
+            </div>
+            <div class="scale-item">
+              <label>Fiber</label>
+              <strong id="scaled-fiber-strategy">0g</strong>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button id="btn-add-scaled-food-strategy" class="btn btn-success btn-lg btn-block">Add to Daily Calories</button>
+        </div>
+      </div>
+
+      <!-- Barcode Not Found / Local Registry Card -->
+      <div class="glass-card food-preview-card hidden" id="barcode-not-found-card-strategy">
+        <div class="food-details-header">
+          <div class="details-name">
+            <h3 class="color-warning" style="display: flex; align-items: center; gap: 6px; font-size: 1.1rem; margin: 0;">
+              <span>⚠️</span> Barcode Not Found
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+              Barcode <strong id="not-found-code-strategy"></strong> was not found.
+            </p>
+          </div>
+          <button id="btn-close-not-found-strategy" class="btn-close">&times;</button>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 10px 0 15px 0; line-height: 1.4;">
+          Register this item manually below. The app will save this barcode locally so it works instantly on all future scans!
+        </p>
+
+        <form id="not-found-register-form-strategy" class="custom-form-body">
+          <div class="form-group">
+            <label for="not-found-name-strategy">Product Name</label>
+            <input type="text" id="not-found-name-strategy" placeholder="e.g. 3% Whole Milk" required>
+          </div>
+          <div class="form-group">
+            <label for="not-found-brand-strategy">Brand / Manufacturer</label>
+            <input type="text" id="not-found-brand-strategy" placeholder="e.g. Local Dairy" value="Generic Brand">
+          </div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-serving-quantity-strategy">Serving Weight (g)</label>
+              <input type="number" id="not-found-serving-quantity-strategy" min="0.1" step="any" value="100" required>
+            </div>
+            <div class="form-group">
+              <label for="not-found-serving-name-strategy">Serving Unit (Optional)</label>
+              <input type="text" id="not-found-serving-name-strategy" placeholder="e.g. 1 scoop, 1 bar">
+            </div>
+          </div>
+          
+          <div class="nutri-label-100g" id="not-found-nutri-basis-label-strategy" style="margin-bottom: 4px; font-size: 0.8rem; color: var(--color-text-secondary);">Enter Nutrients per 100g</div>
+          <div class="form-grid-2x2" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="not-found-calories-strategy">Calories (kcal)</label>
+              <input type="number" id="not-found-calories-strategy" min="0" placeholder="0" required pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label for="not-found-protein-strategy">Protein (g)</label>
+              <input type="number" id="not-found-protein-strategy" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-carbs-strategy">Carbs (g)</label>
+              <input type="number" id="not-found-carbs-strategy" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="not-found-fats-strategy">Fats (g)</label>
+              <input type="number" id="not-found-fats-strategy" min="0" step="0.1" placeholder="0" required pattern="[0-9]*" inputmode="decimal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success btn-lg btn-block">Register & Save Food</button>
+        </form>
+      </div>
     </section>
 
     <!-- SUBPAGE: WEIGHT GOAL, CALORIE TARGET AND TIMELINES -->
@@ -1413,65 +1581,6 @@
               <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
                 <label for="algolia-indexname" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Index Name</label>
                 <input type="text" id="algolia-indexname" placeholder="foods" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <!-- Firebase AI Fallback Configuration -->
-      <div class="glass-card firebase-config-card" style="margin-top: 16px;">
-        <h3>AI Macro Estimator Configuration</h3>
-        <p class="card-subtitle">Connect a Firebase project to enable Gemini client-side fallback estimations</p>
-        
-        <form id="firebase-config-form" class="custom-form-body" onsubmit="event.preventDefault();">
-          <div class="pref-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex: 1; padding-right: 16px;">
-              <label class="pref-title" for="firebase-enabled" style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary); display: block; margin-bottom: 4px;">Enable Gemini AI Fallback</label>
-              <p class="pref-desc" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; line-height: 1.3;">Estimate nutrients using Gemini if online searches return zero hits</p>
-            </div>
-            <label class="switch-toggle">
-              <input type="checkbox" id="firebase-enabled">
-              <span class="slider-round"></span>
-            </label>
-          </div>
-
-          <div id="firebase-fields" class="hidden" style="animation: fadeIn var(--transition-fast); display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label for="firebase-apikey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Firebase API Key</label>
-              <input type="password" id="firebase-apikey" placeholder="AIzaSy..." style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-            </div>
-
-            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-projectid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Project ID</label>
-                <input type="text" id="firebase-projectid" placeholder="my-fitness-project" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-authdomain" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Auth Domain</label>
-                <input type="text" id="firebase-authdomain" placeholder="my-fitness-project.firebaseapp.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-            </div>
-
-            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-storagebucket" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Storage Bucket</label>
-                <input type="text" id="firebase-storagebucket" placeholder="my-fitness-project.appspot.com" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-senderid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Messaging Sender ID</label>
-                <input type="text" id="firebase-senderid" placeholder="e.g. 123456789012" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-            </div>
-
-            <div class="form-grid-2x2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-appid" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">App ID</label>
-                <input type="text" id="firebase-appid" placeholder="1:123456:web:abcd" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
-              </div>
-              <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="firebase-recaptchakey" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">reCAPTCHA Site Key</label>
-                <input type="text" id="firebase-recaptchakey" placeholder="For App Check security" style="padding: 0 12px; height: 44px; font-size: 0.9rem; border-radius: var(--radius-md); background: var(--bg-surface-secondary); border: 1px solid var(--border-glass); color: var(--color-text-primary); outline: none; box-sizing: border-box; width: 100%;">
               </div>
             </div>
           </div>
@@ -2420,4 +2529,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
