@@ -32,33 +32,38 @@ window.DashboardController = {
       eatenFiber += Number(meal.fiber) || 0;
     });
 
-    const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
-    const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+    const eatenNetCarbs = AppUtils.netCarbs(eatenCarbs, eatenFiber);
+    const eatenKcal = AppUtils.calculateCalories(eatenProtein, eatenCarbs, eatenFats, eatenFiber);
 
     const targetProtein = Number(goals.protein) || 150;
     const targetCarbs = Number(goals.carbs) || 250;
     const targetFats = Number(goals.fats) || 65;
-    const targetCalories = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
+    const targetCalories = AppUtils.calculateCalories(targetProtein, targetCarbs, targetFats, 0);
 
     // Update textual indicators
-    document.getElementById("val-calories-eaten").textContent = Math.round(eatenKcal).toLocaleString();
-    document.getElementById("val-calories-target").textContent = targetCalories.toLocaleString();
+    const eatenCalEl = document.getElementById("val-calories-eaten");
+    if (eatenCalEl) eatenCalEl.textContent = Math.round(eatenKcal).toLocaleString();
+    const targetCalEl = document.getElementById("val-calories-target");
+    if (targetCalEl) targetCalEl.textContent = targetCalories.toLocaleString();
 
     const remainingKcal = targetCalories - eatenKcal;
     const remainingEl = document.getElementById("val-calories-remaining");
-    remainingEl.textContent = Math.abs(Math.round(remainingKcal)).toLocaleString();
-    if (remainingKcal < 0) {
-      remainingEl.classList.add("color-danger");
-      const statLbl = document.getElementById("lbl-calories-remaining");
-      if (statLbl) statLbl.textContent = "Surplus";
-    } else {
-      remainingEl.classList.remove("color-danger");
-      const statLbl = document.getElementById("lbl-calories-remaining");
-      if (statLbl) statLbl.textContent = "Remaining";
+    if (remainingEl) {
+      remainingEl.textContent = Math.abs(Math.round(remainingKcal)).toLocaleString();
+      if (remainingKcal < 0) {
+        remainingEl.classList.add("color-danger");
+        const statLbl = document.getElementById("lbl-calories-remaining");
+        if (statLbl) statLbl.textContent = "Surplus";
+      } else {
+        remainingEl.classList.remove("color-danger");
+        const statLbl = document.getElementById("lbl-calories-remaining");
+        if (statLbl) statLbl.textContent = "Remaining";
+      }
     }
 
     const pctVal = targetCalories > 0 ? Math.round((eatenKcal / targetCalories) * 100) : 0;
-    document.getElementById("val-burn-status").textContent = `${pctVal}%`;
+    const burnStatusEl = document.getElementById("val-burn-status");
+    if (burnStatusEl) burnStatusEl.textContent = `${pctVal}%`;
 
     // Animate calorie bar
     const calBar = document.getElementById("bar-calories");

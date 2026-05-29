@@ -607,18 +607,24 @@ window.SettingsController = {
     return AppState.data.settings.unit === "lbs" ? 180 : 80;
   },
 
-  calculateTargetPlanner() {
     const sexEl = document.getElementById("profile-sex");
     if (!sexEl) return;
 
     const sex = sexEl.value;
-    const age = parseInt(document.getElementById("profile-age").value) || 30;
-    const heightFt = parseFloat(document.getElementById("profile-height-ft").value) || 5;
-    const heightIn = parseFloat(document.getElementById("profile-height-in").value) || 10;
-    const activity = document.getElementById("profile-activity").value;
-    const targetWeight = parseFloat(document.getElementById("profile-target-weight").value) || 170;
-    const weeklyRate = parseFloat(document.getElementById("profile-weekly-rate").value) || 1.0;
-    const startingWeightRaw = document.getElementById("profile-starting-weight").value;
+    const ageEl = document.getElementById("profile-age");
+    const age = ageEl ? (parseInt(ageEl.value) || 30) : 30;
+    const heightFtEl = document.getElementById("profile-height-ft");
+    const heightFt = heightFtEl ? (parseFloat(heightFtEl.value) || 5) : 5;
+    const heightInEl = document.getElementById("profile-height-in");
+    const heightIn = heightInEl ? (parseFloat(heightInEl.value) || 10) : 10;
+    const activityEl = document.getElementById("profile-activity");
+    const activity = activityEl ? activityEl.value : "light";
+    const targetWeightEl = document.getElementById("profile-target-weight");
+    const targetWeight = targetWeightEl ? (parseFloat(targetWeightEl.value) || 170) : 170;
+    const weeklyRateEl = document.getElementById("profile-weekly-rate");
+    const weeklyRate = weeklyRateEl ? (parseFloat(weeklyRateEl.value) || 1.0) : 1.0;
+    const startingWeightEl = document.getElementById("profile-starting-weight");
+    const startingWeightRaw = startingWeightEl ? startingWeightEl.value : "";
     const startingWeight = startingWeightRaw ? parseFloat(startingWeightRaw) : null;
 
     const currentUnit = AppState.data.settings.unit;
@@ -642,23 +648,7 @@ window.SettingsController = {
     const targetWeightKg = currentUnit === "lbs" ? targetWeight / 2.20462 : targetWeight;
     const heightCm = (heightFt * 12 + heightIn) * 2.54;
 
-    // BMR Calculation (Mifflin-St Jeor)
-    let bmr = 0;
-    if (sex === "male") {
-      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) + 5;
-    } else {
-      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) - 161;
-    }
-
-    // TDEE Multipliers
-    const activityMultipliers = {
-      sedentary: 1.2,
-      light: 1.375,
-      moderate: 1.55,
-      active: 1.725
-    };
-    const activityFactor = activityMultipliers[activity] || 1.2;
-    const tdee = bmr * activityFactor;
+    const tdee = AppUtils.calculateTDEE(sex, age, currentWeightKg, heightCm, activity);
 
     // Target Calorie adjustment (deficit/surplus)
     const weeklyRateLbs = currentUnit === "kg" ? weeklyRate * 2.20462 : weeklyRate;
@@ -690,9 +680,12 @@ window.SettingsController = {
     }
 
     // Display summary results
-    document.getElementById("planner-cal-result").textContent = targetCalories.toLocaleString();
-    document.getElementById("planner-tdee-result").textContent = `${Math.round(tdee).toLocaleString()} kcal`;
-    document.getElementById("planner-weeks-result").textContent = weeksToGoal > 0 ? `${weeksToGoal.toFixed(1)} Weeks` : "0 Weeks";
+    const plannerCalResult = document.getElementById("planner-cal-result");
+    if (plannerCalResult) plannerCalResult.textContent = targetCalories.toLocaleString();
+    const plannerTdeeResult = document.getElementById("planner-tdee-result");
+    if (plannerTdeeResult) plannerTdeeResult.textContent = `${Math.round(tdee).toLocaleString()} kcal`;
+    const plannerWeeksResult = document.getElementById("planner-weeks-result");
+    if (plannerWeeksResult) plannerWeeksResult.textContent = weeksToGoal > 0 ? `${weeksToGoal.toFixed(1)} Weeks` : "0 Weeks";
     const dateResultEl = document.getElementById("planner-date-result");
     if (dateResultEl) {
       dateResultEl.textContent = goalDateStr;
@@ -708,7 +701,9 @@ window.SettingsController = {
 
       if (weeklyRateLbs > 2.0) {
         isDangerous = true;
-        warningMsg = `Aggressive rate selected. Safe weight change rate is up to 2.0 lbs (${currentUnit === "kg" ? "0.9 kg" : "0.9 kg"} equivalent) per week.`;
+        warningMsg = currentUnit === "kg"
+          ? `Aggressive rate selected. Safe weight change rate is up to 0.9 kg (2.0 lbs equivalent) per week.`
+          : `Aggressive rate selected. Safe weight change rate is up to 2.0 lbs (0.9 kg equivalent) per week.`;
       }
 
       const minKcal = sex === "male" ? 1500 : 1200;
@@ -939,7 +934,7 @@ window.SettingsController = {
     }
 
     AppState.saveToStorage();
-    alert("Demo logs populated! Redirecting to Dashboard to view your macros.");
+    AppState.showToast("Demo logs populated!");
     appRouter.navigate("dashboard");
   },
 
@@ -960,7 +955,7 @@ window.SettingsController = {
       const text = e.target.result;
       const lines = text.split(/\r?\n/);
       if (lines.length < 2) {
-        alert("The selected file appears to be empty or has no weight data rows.");
+        AppState.showToast("The selected file appears to be empty or has no weight data rows.");
         return;
       }
 
@@ -1031,7 +1026,7 @@ window.SettingsController = {
       }
 
       if (timeIdx === -1 || weightIdx === -1) {
-        alert("Could not identify Date/Time and Weight columns in the CSV. Please make sure this is a Renpho CSV export.");
+        AppState.showToast("Could not identify Date/Time and Weight columns. Ensure this is a Renpho CSV export.");
         return;
       }
 
@@ -1081,17 +1076,17 @@ window.SettingsController = {
 
       if (importCount > 0) {
         AppState.saveToStorage();
-        alert(`Success! Imported ${importCount} weight records from Renpho.`);
+        AppState.showToast(`Success! Imported ${importCount} weight records.`);
         event.target.value = "";
         
         appRouter.refreshCurrentView();
       } else {
-        alert("No valid weight data points were found in the selected file.");
+        AppState.showToast("No valid weight data points found in selected file.");
       }
     };
 
     reader.onerror = () => {
-      alert("Error reading the CSV file.");
+      AppState.showToast("Error reading the CSV file.");
     };
 
     reader.readAsText(file);
@@ -1145,6 +1140,7 @@ window.SettingsController = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     AppState.showToast("Google Sheets CSV Exported!");
   },
 
@@ -1160,6 +1156,7 @@ window.SettingsController = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     AppState.showToast("JSON Database Backup downloaded!");
   },
 
@@ -1181,11 +1178,11 @@ window.SettingsController = {
             // Force hard reload of application to reload memory states cleanly
             window.location.reload();
           } else {
-            alert("Invalid backup file structure. Ensure this is a valid ColinsChartsMacros database export.");
+            AppState.showToast("Invalid backup structure. Verify database export file.");
           }
         }
       } catch (err) {
-        alert("Failed to parse the backup file: " + err.message);
+        AppState.showToast("Failed to parse backup file: " + err.message);
       } finally {
         event.target.value = ""; // Reset file selector
       }

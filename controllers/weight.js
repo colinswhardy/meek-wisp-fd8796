@@ -5,10 +5,13 @@
 
 window.WeightController = {
   init() {
-    document.getElementById("weight-log-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      this.logWeight();
-    });
+    const form = document.getElementById("weight-log-form");
+    if (form) {
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.logWeight();
+      });
+    }
 
     // Make the Weight History chart card navigate to the detail view
     const chartCard = document.querySelector("#panel-weight .chart-card");
@@ -30,9 +33,6 @@ window.WeightController = {
     document.body.appendChild(popup);
 
     // Position near click
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
     popup.style.left = `${event.clientX}px`;
     popup.style.top = `${event.clientY - 50}px`;
 
@@ -71,11 +71,16 @@ window.WeightController = {
     WeightChartManager.renderChart(AppState.data.weights, dateKey, unit);
   },
 
-  logWeight() {
-    const weightRaw = parseFloat(document.getElementById("weight-input").value);
+    const input = document.getElementById("weight-input");
+    if (!input) return;
+    const weightRaw = parseFloat(input.value);
     
-    if (isNaN(weightRaw) || weightRaw < 20 || weightRaw > 500) {
-      alert("Please log a valid weight measurement (20 to 500).");
+    const unit = AppState.data.settings.unit || "lbs";
+    const minWeight = unit === "kg" ? 10 : 20;
+    const maxWeight = unit === "kg" ? 300 : 650;
+    
+    if (isNaN(weightRaw) || weightRaw < minWeight || weightRaw > maxWeight) {
+      AppState.showToast(`Please log a valid weight measurement (${minWeight} to ${maxWeight} ${unit}).`);
       return;
     }
 
@@ -87,7 +92,7 @@ window.WeightController = {
     AppState.saveToStorage();
     
     // Clear the input field immediately after logging
-    document.getElementById("weight-input").value = "";
+    input.value = "";
     
     this.render();
     
@@ -118,16 +123,7 @@ window.WeightController = {
     const targetWeightKg = unit === "lbs" ? targetWeight / 2.20462 : targetWeight;
     const heightCm = (heightFt * 12 + heightIn) * 2.54;
 
-    // BMR via Mifflin-St Jeor
-    let bmr = 0;
-    if (sex === "male") {
-      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) + 5;
-    } else {
-      bmr = (10 * currentWeightKg) + (6.25 * heightCm) - (5 * age) - 161;
-    }
-
-    const activityMultipliers = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 };
-    const tdee = bmr * (activityMultipliers[activity] || 1.2);
+    const tdee = AppUtils.calculateTDEE(sex, age, currentWeightKg, heightCm, activity);
 
     // Calorie adjustment for deficit or surplus
     const weeklyRateLbs = unit === "kg" ? weeklyRate * 2.20462 : weeklyRate;

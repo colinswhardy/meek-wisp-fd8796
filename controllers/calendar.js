@@ -27,7 +27,14 @@ window.CalendarSelectorController = {
     const current = new Date(AppState.selectedDateISO + "T00:00:00");
     current.setDate(current.getDate() + offsetDays);
     
-    AppState.selectedDateISO = WeightChartManager.formatISODate(current);
+    if (window.WeightChartManager && typeof window.WeightChartManager.formatISODate === "function") {
+      AppState.selectedDateISO = WeightChartManager.formatISODate(current);
+    } else {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, "0");
+      const day = String(current.getDate()).padStart(2, "0");
+      AppState.selectedDateISO = `${year}-${month}-${day}`;
+    }
     
     this.updateLabel();
     appRouter.refreshCurrentView();

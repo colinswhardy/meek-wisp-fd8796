@@ -96,7 +96,7 @@ window.RecipeBuilderController = {
     const weight = parseFloat(document.getElementById("recipe-custom-weight").value);
 
     if (!name || isNaN(weight) || weight <= 0) {
-      alert("Please enter a valid ingredient name and weight.");
+      AppState.showToast("Please enter a valid ingredient name and weight.");
       return;
     }
 
@@ -164,8 +164,8 @@ window.RecipeBuilderController = {
       item.className = "meal-item";
       item.innerHTML = `
         <div class="meal-info">
-          <span class="meal-name">${ing.name}</span>
-          <span class="meal-sub">${ing.brand} • ${ing.weight}g</span>
+          <span class="meal-name">${escapeHTML(ing.name)}</span>
+          <span class="meal-sub">${escapeHTML(ing.brand)} • ${ing.weight}g</span>
           <div class="meal-macros">
             <span class="m-tag p">P: ${ing.nutrients.protein}g</span>
             <span class="m-tag c">C: ${ing.nutrients.carbs}g</span>
@@ -215,12 +215,12 @@ window.RecipeBuilderController = {
     const name = nameInput ? nameInput.value.trim() : "";
 
     if (!name) {
-      alert("Please enter a Recipe Name.");
+      AppState.showToast("Please enter a Recipe Name.");
       return;
     }
 
     if (this.ingredients.length === 0) {
-      alert("Please add at least one ingredient to save a recipe.");
+      AppState.showToast("Please add at least one ingredient to save a recipe.");
       return;
     }
 
@@ -240,7 +240,7 @@ window.RecipeBuilderController = {
       totalWeight += ing.weight;
     });
 
-    const recipeId = "recipe_" + Date.now();
+    const recipeId = "recipe_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
     const newRecipe = {
       id: recipeId,
       name: name,

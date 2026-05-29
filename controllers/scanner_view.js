@@ -4,6 +4,8 @@
  */
 
 window.ScannerViewController = {
+  isLookupInProgress: false,
+
   currentFetchedProduct: {
     dashboard: null,
     food: null,
@@ -63,10 +65,10 @@ window.ScannerViewController = {
 
     if (customProtein && customCarbs && customFats && customCalInput) {
       const updateCalculatedCalories = () => {
-        let p = parseFloat(customProtein.value) || 0;
-        let c = parseFloat(customCarbs.value) || 0;
-        let f = parseFloat(customFats.value) || 0;
-        let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+        const p = parseFloat(customProtein.value) || 0;
+        const c = parseFloat(customCarbs.value) || 0;
+        const f = parseFloat(customFats.value) || 0;
+        const kcal = AppUtils.calculateCalories(p, c, f, 0);
         customCalInput.value = kcal > 0 ? kcal : "";
       };
 
@@ -141,7 +143,8 @@ window.ScannerViewController = {
     const btnLookup = document.getElementById(`btn-lookup-barcode-${context}`);
     if (btnLookup) {
       btnLookup.addEventListener("click", () => {
-        const code = document.getElementById(`manual-barcode-field-${context}`).value;
+        const field = document.getElementById(`manual-barcode-field-${context}`);
+        const code = field ? field.value : "";
         if (code) {
           this.triggerProductLookup(context, code);
         }
@@ -242,6 +245,12 @@ window.ScannerViewController = {
   },
 
   async triggerProductLookup(context, barcode) {
+    if (this.isLookupInProgress) {
+      console.log("[Scanner] Lookup already in progress. Ignoring duplicate trigger.");
+      return;
+    }
+    this.isLookupInProgress = true;
+
     // If scanning was active, stop it cleanly
     if (BarcodeScannerManager.isScanning && BarcodeScannerManager.activeContext === context) {
       await BarcodeScannerManager.stop();
@@ -334,7 +343,7 @@ window.ScannerViewController = {
         portionSelect.innerHTML = "";
         let html = `<option value="g">Grams (g)</option>`;
         if (product.servingSize && product.servingQuantity) {
-          html += `<option value="serving">Serving (${product.servingSize})</option>`;
+          html += `<option value="serving">Serving (${escapeHTML(product.servingSize)})</option>`;
         }
         portionSelect.innerHTML = html;
         portionSelect.value = "g"; // Always default to grams
@@ -369,10 +378,15 @@ window.ScannerViewController = {
     } catch (err) {
       console.warn(`[Lookup] Product not found for barcode: ${barcode}`);
       
-      // Clear forms
-      document.getElementById(`not-found-code-${context}`).textContent = barcode;
-      document.getElementById(`not-found-name-${context}`).value = "";
-      document.getElementById(`not-found-brand-${context}`).value = "";
+      // Clear forms safely
+      const codeEl = document.getElementById(`not-found-code-${context}`);
+      if (codeEl) codeEl.textContent = barcode;
+      
+      const nameEl = document.getElementById(`not-found-name-${context}`);
+      if (nameEl) nameEl.value = "";
+      
+      const brandEl = document.getElementById(`not-found-brand-${context}`);
+      if (brandEl) brandEl.value = "";
       
       const servingQtyInput = document.getElementById(`not-found-serving-quantity-${context}`);
       if (servingQtyInput) servingQtyInput.value = "100";
@@ -381,24 +395,23 @@ window.ScannerViewController = {
       const basisLabel = document.getElementById(`not-found-nutri-basis-label-${context}`);
       if (basisLabel) basisLabel.textContent = "Enter Nutrients per 100g";
 
-      document.getElementById(`not-found-calories-${context}`).value = "";
-      document.getElementById(`not-found-protein-${context}`).value = "";
-      document.getElementById(`not-found-carbs-${context}`).value = "";
-      document.getElementById(`not-found-fats-${context}`).value = "";
+      const calInput = document.getElementById(`not-found-calories-${context}`);
+      if (calInput) calInput.value = "";
+      const proteinInput = document.getElementById(`not-found-protein-${context}`);
+      if (proteinInput) proteinInput.value = "";
+      const carbsInput = document.getElementById(`not-found-carbs-${context}`);
+      if (carbsInput) carbsInput.value = "";
+      const fatsInput = document.getElementById(`not-found-fats-${context}`);
+      if (fatsInput) fatsInput.value = "";
 
       // Auto-compute calories for manual registration form
-      const proteinInput = document.getElementById(`not-found-protein-${context}`);
-      const carbsInput = document.getElementById(`not-found-carbs-${context}`);
-      const fatsInput = document.getElementById(`not-found-fats-${context}`);
-      const calsInput = document.getElementById(`not-found-calories-${context}`);
-
-      if (proteinInput && carbsInput && fatsInput && calsInput) {
+      if (proteinInput && carbsInput && fatsInput && calInput) {
         const updateCalculatedCalories = () => {
-          let p = parseFloat(proteinInput.value) || 0;
-          let c = parseFloat(carbsInput.value) || 0;
-          let f = parseFloat(fatsInput.value) || 0;
-          let kcal = Math.round((p * 4) + (c * 4) + (f * 9));
-          calsInput.value = kcal > 0 ? kcal : "";
+          const p = parseFloat(proteinInput.value) || 0;
+          const c = parseFloat(carbsInput.value) || 0;
+          const f = parseFloat(fatsInput.value) || 0;
+          const kcal = AppUtils.calculateCalories(p, c, f, 0);
+          calInput.value = kcal > 0 ? kcal : "";
         };
 
         // Bind auto compute on input
@@ -424,6 +437,7 @@ window.ScannerViewController = {
         }
       }
     } finally {
+      this.isLookupInProgress = false;
       if (inputField) {
         inputField.disabled = false;
         inputField.value = "";
@@ -436,9 +450,12 @@ window.ScannerViewController = {
   },
 
   registerCustomBarcode(context) {
-    const barcode = document.getElementById(`not-found-code-${context}`).textContent;
-    const name = document.getElementById(`not-found-name-${context}`).value.trim();
-    const brand = document.getElementById(`not-found-brand-${context}`).value.trim() || "Generic Brand";
+    const barcodeEl = document.getElementById(`not-found-code-${context}`);
+    const barcode = barcodeEl ? barcodeEl.textContent : "";
+    const nameEl = document.getElementById(`not-found-name-${context}`);
+    const name = nameEl ? nameEl.value.trim() : "";
+    const brandEl = document.getElementById(`not-found-brand-${context}`);
+    const brand = brandEl ? brandEl.value.trim() : "Generic Brand";
     
     const servingQtyEl = document.getElementById(`not-found-serving-quantity-${context}`);
     const servingQuantity = servingQtyEl ? (parseFloat(servingQtyEl.value) || 100) : 100;
@@ -446,12 +463,16 @@ window.ScannerViewController = {
     const servingNameEl = document.getElementById(`not-found-serving-name-${context}`);
     const servingSize = servingNameEl ? servingNameEl.value.trim() : "";
 
-    const rawKcal = Number(document.getElementById(`not-found-calories-${context}`).value);
-    const rawProtein = Number(document.getElementById(`not-found-protein-${context}`).value);
-    const rawCarbs = Number(document.getElementById(`not-found-carbs-${context}`).value);
-    const rawFats = Number(document.getElementById(`not-found-fats-${context}`).value);
+    const calsInput = document.getElementById(`not-found-calories-${context}`);
+    const rawKcal = calsInput ? Number(calsInput.value) : 0;
+    const proteinInput = document.getElementById(`not-found-protein-${context}`);
+    const rawProtein = proteinInput ? Number(proteinInput.value) : 0;
+    const carbsInput = document.getElementById(`not-found-carbs-${context}`);
+    const rawCarbs = carbsInput ? Number(carbsInput.value) : 0;
+    const fatsInput = document.getElementById(`not-found-fats-${context}`);
+    const rawFats = fatsInput ? Number(fatsInput.value) : 0;
     if (!barcode || !name) {
-      alert("Please fill out barcode and product name.");
+      AppState.showToast("Please fill out barcode and product name.");
       return;
     }
 
@@ -510,8 +531,7 @@ window.ScannerViewController = {
     const c = parseFloat((raw.carbs * factor).toFixed(1));
     const f = parseFloat((raw.fats * factor).toFixed(1));
     const fib = parseFloat(((raw.fiber || 0) * factor).toFixed(1));
-    const netC = Math.max(0, c - fib);
-    const kcal = Math.round(p * 4 + netC * 4 + f * 9);
+    const kcal = AppUtils.calculateCalories(p, c, f, fib);
 
     const kcalEl = document.getElementById(`scaled-kcal-${context}`);
     if (kcalEl) kcalEl.textContent = kcal;
@@ -531,7 +551,7 @@ window.ScannerViewController = {
 
     let weight = parseFloat(document.getElementById(`food-weight-input-${context}`).value);
     if (isNaN(weight) || weight <= 0) {
-      alert("Please enter a valid amount.");
+      AppState.showToast("Please enter a valid amount.");
       return;
     }
 
@@ -549,8 +569,7 @@ window.ScannerViewController = {
     const c = parseFloat((raw.carbs * factor).toFixed(1));
     const f = parseFloat((raw.fats * factor).toFixed(1));
     const fib = parseFloat(((raw.fiber || 0) * factor).toFixed(1));
-    const netC = Math.max(0, c - fib);
-    const kcal = Math.round(p * 4 + netC * 4 + f * 9);
+    const kcal = AppUtils.calculateCalories(p, c, f, fib);
 
     if (context === "recipe") {
       // Add as ingredient to the Recipe Builder

@@ -8,6 +8,7 @@ window.FoodSelectorController = {
   selectedFoodItem: null, // current selected item in preview card
   selectedFoodType: null, // "recipe" or "history"
   activeTab: "search", // "recipes", "history", or "search"
+  legacyAbortController: null,
 
   setTabActive(tabName) {
     this.closePreview();
@@ -407,13 +408,13 @@ window.FoodSelectorController = {
       eatenFiber += Number(meal.fiber) || 0;
     });
 
-    const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
-    const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+    const eatenNetCarbs = AppUtils.netCarbs(eatenCarbs, eatenFiber);
+    const eatenKcal = AppUtils.calculateCalories(eatenProtein, eatenCarbs, eatenFats, eatenFiber);
 
     const targetProtein = Number(goals.protein) || 150;
     const targetCarbs = Number(goals.carbs) || 250;
     const targetFats = Number(goals.fats) || 65;
-    const targetCalories = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
+    const targetCalories = AppUtils.calculateCalories(targetProtein, targetCarbs, targetFats, 0);
 
     const remainingKcal = targetCalories - eatenKcal;
 
@@ -534,7 +535,7 @@ window.FoodSelectorController = {
       item.style.cursor = "pointer";
       item.innerHTML = `
         <div class="meal-info">
-          <span class="meal-name" style="font-weight: 600;">${rec.name}</span>
+          <span class="meal-name" style="font-weight: 600;">${escapeHTML(rec.name)}</span>
           <span class="meal-sub">${rec.ingredients.length} ingredients • ${rec.totalWeight.toFixed(0)}g</span>
           <div class="meal-macros">
             <span class="m-tag p">P: ${rec.nutrients.protein}g</span>
@@ -544,11 +545,16 @@ window.FoodSelectorController = {
         </div>
         <div class="meal-kcal-block" style="align-items: flex-end;">
           <span class="meal-kcal" style="font-size: 1.1rem;">${rec.nutrients.calories} <span style="font-size:0.75rem">kcal</span></span>
-          <button class="btn-delete-recipe-stored" aria-label="Delete recipe from database" style="background: none; border: none; color: rgba(255,255,255,0.3); padding: 4px; border-radius: 4px; margin-top: 4px;" onclick="event.stopPropagation(); FoodSelectorController.deleteStoredRecipe('${rec.id}')">
+          <button class="btn-delete-recipe-stored" aria-label="Delete recipe from database" style="background: none; border: none; color: rgba(255,255,255,0.3); padding: 4px; border-radius: 4px; margin-top: 4px;">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
       `;
+
+      item.querySelector(".btn-delete-recipe-stored").addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.deleteStoredRecipe(rec.id);
+      });
 
       item.addEventListener("click", () => {
         this.selectFoodItem(rec, "recipe", item);
@@ -568,12 +574,12 @@ window.FoodSelectorController = {
   },
 
   renderHistoryList() {
-    this.closePreview();
     const container = document.getElementById("selector-history-list");
     if (!container) return;
 
     const historyItems = this.getFoodHistory();
-    const searchVal = document.getElementById("history-search-input").value.toLowerCase().trim();
+    const searchInput = document.getElementById("history-search-input");
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
     const filtered = historyItems.filter(item => {
       return item.name.toLowerCase().includes(searchVal) || item.brand.toLowerCase().includes(searchVal);
@@ -597,8 +603,8 @@ window.FoodSelectorController = {
 
       item.innerHTML = `
         <div class="meal-info">
-          <span class="meal-name" style="font-weight: 600;">${food.name}</span>
-          <span class="meal-sub">${food.brand} • per 100g${lastLoggedStr}</span>
+          <span class="meal-name" style="font-weight: 600;">${escapeHTML(food.name)}</span>
+          <span class="meal-sub">${escapeHTML(food.brand)} • per 100g${lastLoggedStr}</span>
           <div class="meal-macros">
             <span class="m-tag p">P: ${food.nutrients.protein}g</span>
             <span class="m-tag c">C: ${food.nutrients.carbs}g</span>
@@ -672,7 +678,7 @@ window.FoodSelectorController = {
       } else {
         let html = `<option value="g">Grams (g)</option>`;
         if (food.servingSize && food.servingQuantity) {
-          html += `<option value="serving">Serving (${food.servingSize})</option>`;
+          html += `<option value="serving">Serving (${escapeHTML(food.servingSize)})</option>`;
         }
         portionSelect.innerHTML = html;
         portionSelect.value = "g"; // Always default to grams
@@ -701,7 +707,7 @@ window.FoodSelectorController = {
       if (fatsEl) fatsEl.textContent = nutrients.fats;
       if (baseWeightEl) baseWeightEl.textContent = "Values shown per 100g";
       
-      if (weightLabel) weightLabel.textContent = this.activeContext === "recipe_ingredient" ? "Weight Eaten" : "Weight Eaten";
+      if (weightLabel) weightLabel.textContent = "Weight Eaten";
       if (weightUnit) weightUnit.textContent = "g";
       if (weightInput) {
         weightInput.value = food.servingQuantity ? food.servingQuantity : 100;
@@ -788,7 +794,7 @@ window.FoodSelectorController = {
     let inputVal = weightInput ? parseFloat(weightInput.value) : (type === "recipe" ? 1 : (food.servingQuantity || 100));
 
     if (isNaN(inputVal) || inputVal <= 0) {
-      alert("Please enter a valid amount.");
+      AppState.showToast("Please enter a valid amount.");
       return;
     }
 
@@ -907,6 +913,8 @@ window.FoodSelectorController = {
 
 
   async triggerAIEstimation(query) {
+    if (this.isAIEstimationInProgress) return;
+    this.isAIEstimationInProgress = true;
     const loadingEl = document.getElementById("online-search-loading");
     const resultsEl = document.getElementById("online-search-results");
     
@@ -982,7 +990,7 @@ window.FoodSelectorController = {
       resultsEl.innerHTML = `
         <div class="empty-state" style="padding: 24px; text-align: center;">
           <p style="color: var(--color-danger); font-weight: 600; margin-bottom: 8px;">AI Estimation Failed</p>
-          <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; margin-bottom: 16px;">${err.message}</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; margin-bottom: 16px;">${escapeHTML(err.message)}</p>
           <button id="btn-ai-retry" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
             <span>🔄 Retry Gemini Search</span>
           </button>
@@ -993,6 +1001,7 @@ window.FoodSelectorController = {
         btnRetry.addEventListener("click", () => this.triggerAIEstimation(query));
       }
     } finally {
+      this.isAIEstimationInProgress = false;
       if (loadingEl) {
         loadingEl.classList.add("hidden");
         const loadingText = loadingEl.querySelector("p") || loadingEl;
@@ -1022,6 +1031,10 @@ window.FoodSelectorController = {
     if (this.algoliaAbortController) {
       this.algoliaAbortController.abort();
       this.algoliaAbortController = null;
+    }
+    if (this.legacyAbortController) {
+      this.legacyAbortController.abort();
+      this.legacyAbortController = null;
     }
     
     if (loadingEl) {
@@ -1079,6 +1092,10 @@ window.FoodSelectorController = {
     if (this.algoliaAbortController) {
       this.algoliaAbortController.abort();
       this.algoliaAbortController = null;
+    }
+    if (this.legacyAbortController) {
+      this.legacyAbortController.abort();
+      this.legacyAbortController = null;
     }
     
     // Clamping: If query length is less than 3 characters, search local cache ONLY and skip external API requests
@@ -1140,15 +1157,24 @@ window.FoodSelectorController = {
     const loadingEl = document.getElementById("online-search-loading");
     if (loadingEl) loadingEl.classList.remove("hidden");
     
+    if (this.legacyAbortController) {
+      this.legacyAbortController.abort();
+    }
+    this.legacyAbortController = new AbortController();
+    
     try {
       console.log(`[Search] Routing legacy fallback pipeline for: "${query}"`);
-      const rawResults = await window.FoodDatabase.searchFoods(query);
+      const rawResults = await window.FoodDatabase.searchFoods(query, this.legacyAbortController.signal);
       const onlineResults = rawResults.filter(item => item.source !== "Algolia");
       
       this.renderHybridResults(localResults, onlineResults, false);
     } catch (err) {
-      console.warn("[Search] Legacy fallback failed:", err);
-      this.renderHybridResults(localResults, [], false);
+      if (err.name === 'AbortError') {
+        console.log(`[Search] Legacy request aborted for query: "${query}"`);
+      } else {
+        console.warn("[Search] Legacy fallback failed:", err);
+        this.renderHybridResults(localResults, [], false);
+      }
     } finally {
       if (loadingEl) loadingEl.classList.add("hidden");
     }
@@ -1265,7 +1291,7 @@ window.FoodSelectorController = {
             <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
               <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
             </svg>
-            <p style="font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px 0;">No results found for "${query}"</p>
+            <p style="font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px 0;">No results found for "${escapeHTML(query)}"</p>
             <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 16px 0; line-height: 1.4;">Would you like Gemini AI to estimate nutritional macros for this food?</p>
             <button id="btn-ai-estimate" class="btn btn-block btn-iconic" style="background: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); font-weight: 600; padding: 12px 16px; border-radius: var(--radius-md); transition: all 0.2s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
               <span>✨ Ask AI to Estimate Macros</span>
@@ -1325,8 +1351,8 @@ window.FoodSelectorController = {
     item.style.cursor = "pointer";
     item.innerHTML = `
       <div class="meal-info">
-        <span class="meal-name" style="font-weight: 600;">${food.name}${sourceBadge}</span>
-        <span class="meal-sub">${food.brand || "Generic"} &bull; per 100g</span>
+        <span class="meal-name" style="font-weight: 600;">${escapeHTML(food.name)}${sourceBadge}</span>
+        <span class="meal-sub">${escapeHTML(food.brand || "Generic")} &bull; per 100g</span>
         <div class="meal-macros">
           <span class="m-tag p">P: ${nutrients.protein}g</span>
           <span class="m-tag c">C: ${nutrients.carbs}g</span>

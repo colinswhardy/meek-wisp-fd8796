@@ -159,20 +159,9 @@ window.WeightDetailController = {
         return { x: elapsedDays, y: p.weight };
       });
 
-      const n = points.length;
-      let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-      for (let i = 0; i < n; i++) {
-        sumX += points[i].x; 
-        sumY += points[i].y;
-        sumXY += points[i].x * points[i].y; 
-        sumXX += points[i].x * points[i].x;
-      }
-      const denominator = n * sumXX - sumX * sumX;
+      const { slope, intercept } = AppUtils.calculateLinearRegression(points);
       
-      if (denominator !== 0) {
-        const slope = (n * sumXY - sumX * sumY) / denominator;
-        const intercept = (sumY - slope * sumX) / n;
-        
+      if (slope !== 0 || intercept !== 0) {
         regressionDataset = datesInRange.map(date => {
           const elapsedDays = (date.getTime() - firstDateMs) / (1000 * 60 * 60 * 24);
           return parseFloat((slope * elapsedDays + intercept).toFixed(1));
@@ -381,27 +370,15 @@ window.WeightDetailController = {
         pointsInWindow.sort((a, b) => a.x - b.x);
         
         // Compute linear regression slope
-        const n = pointsInWindow.length;
-        let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-        for (let i = 0; i < n; i++) {
-          sumX += pointsInWindow[i].x;
-          sumY += pointsInWindow[i].y;
-          sumXY += pointsInWindow[i].x * pointsInWindow[i].y;
-          sumXX += pointsInWindow[i].x * pointsInWindow[i].x;
-        }
-        const denominator = n * sumXX - sumX * sumX;
+        const { slope: slopePerDay } = AppUtils.calculateLinearRegression(pointsInWindow);
+        const slopePerWeek = slopePerDay * 7;
         
-        if (denominator !== 0) {
-          const slopePerDay = (n * sumXY - sumX * sumY) / denominator;
-          const slopePerWeek = slopePerDay * 7;
-          
-          // Determine if trend direction is progressing towards target weight
-          const isLosingGoal = current > targetWeight;
-          const isProgressing = isLosingGoal ? (slopePerWeek < 0) : (slopePerWeek > 0);
-          
-          if (isProgressing) {
-            weeklyRate = Math.abs(slopePerWeek);
-          }
+        // Determine if trend direction is progressing towards target weight
+        const isLosingGoal = current > targetWeight;
+        const isProgressing = isLosingGoal ? (slopePerWeek < 0) : (slopePerWeek > 0);
+        
+        if (isProgressing) {
+          weeklyRate = Math.abs(slopePerWeek);
         }
       }
     }

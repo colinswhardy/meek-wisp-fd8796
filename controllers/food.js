@@ -4,7 +4,41 @@
  */
 
 window.FoodController = {
+  dragState: {
+    activeMeal: null,
+    clone: null,
+    autoScrollInterval: null,
+    currentDragOverBlock: null,
+    handlePointerMove: null,
+    handlePointerUp: null
+  },
+
+  cleanupDrag() {
+    if (this.dragState.autoScrollInterval) {
+      clearInterval(this.dragState.autoScrollInterval);
+      this.dragState.autoScrollInterval = null;
+    }
+    if (this.dragState.clone) {
+      this.dragState.clone.remove();
+      this.dragState.clone = null;
+    }
+    if (this.dragState.handlePointerMove) {
+      window.removeEventListener("pointermove", this.dragState.handlePointerMove);
+      this.dragState.handlePointerMove = null;
+    }
+    if (this.dragState.handlePointerUp) {
+      window.removeEventListener("pointerup", this.dragState.handlePointerUp);
+      window.removeEventListener("pointercancel", this.dragState.handlePointerUp);
+      this.dragState.handlePointerUp = null;
+    }
+    document.querySelectorAll(".meal-item-drag-clone").forEach(el => el.remove());
+    document.body.classList.remove("drag-active-mode");
+    this.dragState.activeMeal = null;
+    this.dragState.currentDragOverBlock = null;
+  },
+
   render() {
+    this.cleanupDrag();
     const dateKey = AppState.selectedDateISO;
     const meals = AppState.data.meals[dateKey] || [];
     
@@ -106,8 +140,8 @@ window.FoodController = {
         item.className = "meal-item";
         item.innerHTML = `
           <div class="meal-info">
-            <span class="meal-name">${meal.name}</span>
-            <span class="meal-sub">${meal.brand} • ${meal.weight}g${timeDisplay}</span>
+            <span class="meal-name">${escapeHTML(meal.name)}</span>
+            <span class="meal-sub">${escapeHTML(meal.brand)} • ${meal.weight}g${timeDisplay}</span>
             <div class="meal-macros">
               <span class="m-tag p">P: ${meal.protein}g</span>
               <span class="m-tag c">C: ${meal.carbs}g</span>
@@ -178,10 +212,90 @@ window.FoodController = {
             });
             document.body.appendChild(clone);
 
+            // Clean up any stale drag state before setting new
+            window.FoodController.cleanupDrag();
+
+            // Save references to controller drag state
+            window.FoodController.dragState.clone = clone;
+            window.FoodController.dragState.activeMeal = meal;
+
             // Bind move and release listeners globally to window
-            window.addEventListener("pointermove", handlePointerMove, { passive: false });
-            window.addEventListener("pointerup", handlePointerUp);
-            window.addEventListener("pointercancel", handlePointerUp);
+            window.FoodController.dragState.handlePointerMove = (moveEv) => {
+              if (!isDragging) {
+                if (Math.hypot(moveEv.clientX - startX, moveEv.clientY - startY) > 8) {
+                  cancelPress();
+                }
+                return;
+              }
+
+              moveEv.preventDefault();
+              lastClientY = moveEv.clientY;
+
+              if (clone) {
+                clone.style.left = `${moveEv.clientX - offsetX}px`;
+                clone.style.top = `${moveEv.clientY - offsetY}px`;
+              }
+
+              // Hit testing drop blocks
+              const element = document.elementFromPoint(moveEv.clientX, moveEv.clientY);
+              const hourBlock = element ? element.closest(".hour-block-container") : null;
+
+              if (hourBlock !== currentDragOverBlock) {
+                if (currentDragOverBlock) {
+                  currentDragOverBlock.classList.remove("drag-over");
+                }
+                currentDragOverBlock = hourBlock;
+                window.FoodController.dragState.currentDragOverBlock = hourBlock;
+                if (currentDragOverBlock) {
+                  currentDragOverBlock.classList.add("drag-over");
+                }
+              }
+            };
+
+            window.FoodController.dragState.handlePointerUp = (upEv) => {
+              cancelPress();
+
+              if (!isDragging) return;
+              isDragging = false;
+              wasDragged = true;
+
+              window.FoodController.cleanupDrag();
+
+              if (currentDragOverBlock) {
+                currentDragOverBlock.classList.remove("drag-over");
+                const targetHour = parseInt(currentDragOverBlock.getAttribute("data-hour"));
+                const currentTimestamp = AppState.getMealTimestamp(meal) || Date.now();
+                const currentDate = new Date(currentTimestamp);
+                const currentHour = currentDate.getHours();
+
+                if (currentHour !== targetHour) {
+                  currentDate.setHours(targetHour);
+                  meal.loggedAt = currentDate.getTime();
+
+                  AppState.saveToStorage();
+
+                  if (window.DashboardController && typeof window.DashboardController.render === "function") {
+                    window.DashboardController.render();
+                  }
+                  AppState.showToast(`Moved to ${formatHourBlockHeader(targetHour)}`);
+                }
+              }
+
+              const listContainer = document.getElementById("meals-list-container");
+              if (listContainer) {
+                listContainer.classList.remove("meals-drag-active");
+              }
+              document.body.classList.remove("drag-active-mode");
+
+              item.classList.remove("dragging-original");
+
+              // Force full UI re-render of this page
+              window.FoodController.render();
+            };
+
+            window.addEventListener("pointermove", window.FoodController.dragState.handlePointerMove, { passive: false });
+            window.addEventListener("pointerup", window.FoodController.dragState.handlePointerUp);
+            window.addEventListener("pointercancel", window.FoodController.dragState.handlePointerUp);
 
             startAutoScrollChecking();
           }, 500);
@@ -197,87 +311,6 @@ window.FoodController = {
           item.removeEventListener("pointercancel", handlePointerUpLocal);
         };
 
-        const handlePointerMove = (e) => {
-          if (!isDragging) {
-            if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) {
-              cancelPress();
-            }
-            return;
-          }
-
-          e.preventDefault();
-          lastClientY = e.clientY;
-
-          if (clone) {
-            clone.style.left = `${e.clientX - offsetX}px`;
-            clone.style.top = `${e.clientY - offsetY}px`;
-          }
-
-          // Hit testing drop blocks
-          const element = document.elementFromPoint(e.clientX, e.clientY);
-          const hourBlock = element ? element.closest(".hour-block-container") : null;
-
-          if (hourBlock !== currentDragOverBlock) {
-            if (currentDragOverBlock) {
-              currentDragOverBlock.classList.remove("drag-over");
-            }
-            currentDragOverBlock = hourBlock;
-            if (currentDragOverBlock) {
-              currentDragOverBlock.classList.add("drag-over");
-            }
-          }
-        };
-
-        const handlePointerUp = (e) => {
-          cancelPress();
-
-          if (!isDragging) return;
-          isDragging = false;
-          wasDragged = true;
-
-          stopAutoScrollChecking();
-
-          if (currentDragOverBlock) {
-            currentDragOverBlock.classList.remove("drag-over");
-            const targetHour = parseInt(currentDragOverBlock.getAttribute("data-hour"));
-            const currentTimestamp = AppState.getMealTimestamp(meal) || Date.now();
-            const currentDate = new Date(currentTimestamp);
-            const currentHour = currentDate.getHours();
-
-            if (currentHour !== targetHour) {
-              currentDate.setHours(targetHour);
-              meal.loggedAt = currentDate.getTime();
-
-              AppState.saveToStorage();
-
-              if (window.DashboardController && typeof window.DashboardController.render === "function") {
-                window.DashboardController.render();
-              }
-              AppState.showToast(`Moved to ${formatHourBlockHeader(targetHour)}`);
-            }
-          }
-
-          const listContainer = document.getElementById("meals-list-container");
-          if (listContainer) {
-            listContainer.classList.remove("meals-drag-active");
-          }
-          document.body.classList.remove("drag-active-mode");
-
-          if (clone) {
-            clone.remove();
-            clone = null;
-          }
-
-          item.classList.remove("dragging-original");
-
-          window.removeEventListener("pointermove", handlePointerMove);
-          window.removeEventListener("pointerup", handlePointerUp);
-          window.removeEventListener("pointercancel", handlePointerUp);
-
-          // Force full UI re-render of this page
-          window.FoodController.render();
-        };
-
         const cancelPress = () => {
           if (pressTimer) {
             clearTimeout(pressTimer);
@@ -287,13 +320,15 @@ window.FoodController = {
         };
 
         const startAutoScrollChecking = () => {
-          if (autoScrollInterval) clearInterval(autoScrollInterval);
+          if (window.FoodController.dragState.autoScrollInterval) {
+            clearInterval(window.FoodController.dragState.autoScrollInterval);
+          }
           const scrollThreshold = 80;
           const maxScrollSpeed = 15;
           const viewport = document.querySelector(".app-viewport");
           if (!viewport) return;
 
-          autoScrollInterval = setInterval(() => {
+          window.FoodController.dragState.autoScrollInterval = setInterval(() => {
             const rect = viewport.getBoundingClientRect();
             if (lastClientY < rect.top + scrollThreshold) {
               const ratio = (rect.top + scrollThreshold - lastClientY) / scrollThreshold;
@@ -306,9 +341,9 @@ window.FoodController = {
         };
 
         const stopAutoScrollChecking = () => {
-          if (autoScrollInterval) {
-            clearInterval(autoScrollInterval);
-            autoScrollInterval = null;
+          if (window.FoodController.dragState.autoScrollInterval) {
+            clearInterval(window.FoodController.dragState.autoScrollInterval);
+            window.FoodController.dragState.autoScrollInterval = null;
           }
         };
 
@@ -478,7 +513,7 @@ window.FoodController = {
 
     const performAction = (targetDate) => {
       if (!targetDate) {
-        alert("Please select a target date.");
+        AppState.showToast("Please select a target date.");
         return;
       }
 
@@ -676,11 +711,11 @@ window.FoodController = {
       const newWeight = parseFloat(weightInput.value);
 
       if (!newName) {
-        alert("Please enter a valid food name.");
+        AppState.showToast("Please enter a valid food name.");
         return;
       }
       if (isNaN(newWeight) || newWeight <= 0) {
-        alert("Please enter a valid weight.");
+        AppState.showToast("Please enter a valid weight.");
         return;
       }
 
@@ -742,13 +777,13 @@ window.FoodController = {
         eatenFiber += Number(m.fiber) || 0;
       });
 
-      const eatenNetCarbs = Math.max(0, eatenCarbs - eatenFiber);
-      const eatenKcal = Math.round(eatenProtein * 4 + eatenNetCarbs * 4 + eatenFats * 9);
+      const eatenNetCarbs = AppUtils.netCarbs(eatenCarbs, eatenFiber);
+      const eatenKcal = AppUtils.calculateCalories(eatenProtein, eatenCarbs, eatenFats, eatenFiber);
 
       const targetProtein = Number(goals.protein) || 150;
       const targetCarbs = Number(goals.carbs) || 250;
       const targetFats = Number(goals.fats) || 65;
-      const targetKcal = Math.round(targetProtein * 4 + targetCarbs * 4 + targetFats * 9);
+      const targetKcal = AppUtils.calculateCalories(targetProtein, targetCarbs, targetFats, 0);
       const pct = targetKcal > 0 ? Math.min(Math.round((eatenKcal / targetKcal) * 100), 120) : 0;
       
       let label = "";
