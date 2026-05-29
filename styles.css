@@ -3110,10 +3110,18 @@ select:focus {
   border-right: none !important;
   border-radius: 0 !important; /* Remove rounded edges per user request */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
-  display: flex !important;
+  display: none !important;
   flex-direction: row !important;
   align-items: center !important;
   overflow: hidden !important; /* Clips child hover borders */
+}
+
+/* Show persistent scanner bars only on their active main pages */
+#scanner-view-container-dashboard:not(.active-scanning).active-scanner-bar,
+#scanner-view-container-food:not(.active-scanning).active-scanner-bar,
+#scanner-view-container-weight:not(.active-scanning).active-scanner-bar,
+#scanner-view-container-strategy:not(.active-scanning).active-scanner-bar {
+  display: flex !important;
 }
 
 /* Hide persistent scan bars when keyboard is visible */

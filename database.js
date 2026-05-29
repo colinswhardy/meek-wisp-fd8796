@@ -13,6 +13,28 @@ window.FoodDatabase = {
     return (configKey && configKey.trim()) ? configKey.trim() : "DEMO_KEY";
   },
 
+  parseUsdaNutrients(foodNutrients) {
+    const nutrients = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
+    if (foodNutrients && Array.isArray(foodNutrients)) {
+      foodNutrients.forEach(n => {
+        const nameLower = (n.nutrientName || "").toLowerCase();
+        const val = n.value || 0;
+        if (nameLower.includes("energy") && ((n.unitName || "").toUpperCase() === "KCAL" || nameLower.includes("kcal"))) {
+          nutrients.calories = Math.round(val);
+        } else if (nameLower === "protein") {
+          nutrients.protein = parseFloat(Number(val).toFixed(1));
+        } else if (nameLower.includes("carbohydrate")) {
+          nutrients.carbs = parseFloat(Number(val).toFixed(1));
+        } else if (nameLower.includes("lipid") || nameLower === "fat" || nameLower === "total fat" || nameLower === "total lipid (fat)") {
+          nutrients.fats = parseFloat(Number(val).toFixed(1));
+        } else if (nameLower.includes("fiber")) {
+          nutrients.fiber = parseFloat(Number(val).toFixed(1));
+        }
+      });
+    }
+    return nutrients;
+  },
+
   /**
    * Normalizes a local cached food object to ensure it has a nutrients structure.
    */
@@ -183,13 +205,24 @@ window.FoodDatabase = {
         store.put(food);
       }
       
-      await new Promise((resolve) => {
-        transaction.oncomplete = resolve;
+      await new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          localStorage.setItem("colins_food_cache_seeded", "true");
+          resolve();
+        };
+        transaction.onerror = (err) => {
+          console.error("[LocalDB] Seed transaction error:", err);
+          reject(err);
+        };
+        transaction.onabort = (err) => {
+          console.error("[LocalDB] Seed transaction aborted:", err);
+          reject(err);
+        };
       });
+      console.log(`[LocalDB] Seeding complete! Cached ${list.length} staple foods.`);
+    } else {
+      localStorage.setItem("colins_food_cache_seeded", "true");
     }
-    
-    localStorage.setItem("colins_food_cache_seeded", "true");
-    console.log(`[LocalDB] Seeding complete! Cached ${list.length} staple foods.`);
     
     // Reload into memory
     const transaction = this.db.transaction("cached_foods", "readonly");
@@ -407,23 +440,7 @@ window.FoodDatabase = {
           const fdcFood = data.foods[0];
           console.log(`[Database] Found in USDA FoodData Central: ${fdcFood.description}`);
           
-          const nutrients = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
-          if (fdcFood.foodNutrients) {
-            fdcFood.foodNutrients.forEach(n => {
-              const nameLower = n.nutrientName.toLowerCase();
-              if (nameLower.includes("energy") && (n.unitName === "KCAL" || nameLower.includes("kcal"))) {
-                nutrients.calories = Math.round(n.value);
-              } else if (nameLower === "protein") {
-                nutrients.protein = parseFloat(Number(n.value).toFixed(1));
-              } else if (nameLower.includes("carbohydrate")) {
-                nutrients.carbs = parseFloat(Number(n.value).toFixed(1));
-              } else if (nameLower.includes("lipid") || nameLower === "fat" || nameLower === "total fat" || nameLower === "total lipid (fat)") {
-                nutrients.fats = parseFloat(Number(n.value).toFixed(1));
-              } else if (nameLower.includes("fiber")) {
-                nutrients.fiber = parseFloat(Number(n.value).toFixed(1));
-              }
-            });
-          }
+          const nutrients = this.parseUsdaNutrients(fdcFood.foodNutrients);
           
           const servingSize = fdcFood.householdServingFullText || (fdcFood.servingSize ? `${fdcFood.servingSize} ${fdcFood.servingSizeUnit || 'g'}` : null);
           const servingQuantity = fdcFood.servingSize ? parseFloat(fdcFood.servingSize) : null;
@@ -648,21 +665,53 @@ window.FoodDatabase = {
    * Helper function to calculate the Levenshtein distance between two strings.
    * Enables robust client-side typo tolerance.
    */
-  levenshteinDistance(str1, str2) {
-    const track = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-    for (let i = 0; i <= str1.length; i += 1) track[0][i] = i;
-    for (let j = 0; j <= str2.length; j += 1) track[j][0] = j;
-    for (let j = 1; j <= str2.length; j += 1) {
-      for (let i = 1; i <= str1.length; i += 1) {
-        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        track[j][i] = Math.min(
-          track[j][i - 1] + 1, // deletion
-          track[j - 1][i] + 1, // insertion
-          track[j - 1][i - 1] + indicator // substitution
-        );
-      }
+  levenshteinDistance(str1, str2, maxDistance = 2) {
+    if (Math.abs(str1.length - str2.length) > maxDistance) {
+      return maxDistance + 1; // Early exit based on length difference
     }
-    return track[str2.length][str1.length];
+
+    let len1 = str1.length;
+    let len2 = str2.length;
+
+    // Ensure len1 >= len2 to minimize space
+    if (len1 < len2) {
+      const tempStr = str1; str1 = str2; str2 = tempStr;
+      const tempLen = len1; len1 = len2; len2 = tempLen;
+    }
+
+    let prevRow = Array(len2 + 1);
+    let currRow = Array(len2 + 1);
+
+    for (let i = 0; i <= len2; i++) {
+      prevRow[i] = i;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      currRow[0] = i;
+      let minVal = currRow[0];
+
+      for (let j = 1; j <= len2; j++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        currRow[j] = Math.min(
+          currRow[j - 1] + 1,        // Insertion
+          prevRow[j] + 1,            // Deletion
+          prevRow[j - 1] + indicator // Substitution
+        );
+        minVal = Math.min(minVal, currRow[j]);
+      }
+
+      // Early termination check
+      if (minVal > maxDistance) {
+        return maxDistance + 1;
+      }
+
+      // Swap rows
+      const temp = prevRow;
+      prevRow = currRow;
+      currRow = temp;
+    }
+
+    return prevRow[len2];
   },
 
   /**
@@ -797,7 +846,7 @@ window.FoodDatabase = {
    * @param {string} query  Free-text food name, e.g. "cooked chicken breast"
    * @returns {Promise<Array>} Array of { name, brand, source, nutrients: {calories, protein, carbs, fats, fiber} }
    */
-  async searchFoods(query) {
+  async searchFoods(query, signal) {
     if (!query || !query.trim()) return [];
     const q = query.trim().toLowerCase();
 
@@ -857,30 +906,13 @@ window.FoodDatabase = {
     const usdaPromise = (async () => {
       try {
         const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query.trim())}&api_key=${this.getUsdaApiKey()}&pageSize=20`;
-        const resp = await fetch(usdaUrl);
+        const resp = await fetch(usdaUrl, { signal });
         if (resp.ok) {
           const data = await resp.json();
           const usdaFoods = [];
           if (data.foods && data.foods.length > 0) {
             data.foods.forEach(food => {
-              const nutrients = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
-              if (food.foodNutrients) {
-                food.foodNutrients.forEach(n => {
-                  const nameLower = (n.nutrientName || "").toLowerCase();
-                  const val = n.value || 0;
-                  if (nameLower.includes("energy") && (n.unitName === "KCAL" || nameLower.includes("kcal"))) {
-                    nutrients.calories = Math.round(val);
-                  } else if (nameLower === "protein") {
-                    nutrients.protein = parseFloat(Number(val).toFixed(1));
-                  } else if (nameLower.includes("carbohydrate")) {
-                    nutrients.carbs = parseFloat(Number(val).toFixed(1));
-                  } else if (nameLower.includes("lipid") || nameLower === "fat" || nameLower === "total fat" || nameLower === "total lipid (fat)") {
-                    nutrients.fats = parseFloat(Number(val).toFixed(1));
-                  } else if (nameLower.includes("fiber")) {
-                    nutrients.fiber = parseFloat(Number(val).toFixed(1));
-                  }
-                });
-              }
+              const nutrients = this.parseUsdaNutrients(food.foodNutrients);
               if (nutrients.calories > 0 || nutrients.protein > 0) {
                 const servingSize = food.householdServingFullText || (food.servingSize ? `${food.servingSize} ${food.servingSizeUnit || 'g'}` : null);
                 const servingQuantity = food.servingSize ? parseFloat(food.servingSize) : null;
@@ -908,7 +940,8 @@ window.FoodDatabase = {
       try {
         const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity`;
         const resp = await fetch(offUrl, {
-          headers: { 'User-Agent': 'ColinsChartsMacros - Web - Version 1.0 - https://aurafit.app' }
+          headers: { 'User-Agent': 'ColinsChartsMacros - Web - Version 1.0 - https://aurafit.app' },
+          signal
         });
         if (resp.ok) {
           const data = await resp.json();

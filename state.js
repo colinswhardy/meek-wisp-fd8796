@@ -55,6 +55,7 @@ window.AppState = {
   selectedDateISO: "", // Current active date YYYY-MM-DD
   activeTab: "dashboard",
   toastTimeout: null,
+  toastFadeTimeout: null,
 
   init() {
     this.selectedDateISO = this.getTodayISODate();
@@ -111,6 +112,9 @@ window.AppState = {
 
   deepClone(val) {
     if (val === null || val === undefined) return val;
+    if (val instanceof Date) {
+      return new Date(val.getTime());
+    }
     if (Array.isArray(val)) {
       return val.map(item => this.deepClone(item));
     }
@@ -126,7 +130,7 @@ window.AppState = {
     return val;
   },
 
-  reconcileSchema(defaultSchema, sourceData) {
+  reconcileSchema(defaultSchema, sourceData, isRoot = false) {
     const result = this.deepClone(defaultSchema);
     
     if (sourceData && typeof sourceData === "object" && !Array.isArray(sourceData)) {
@@ -139,13 +143,17 @@ window.AppState = {
             const defaultVal = result[key];
             if (defaultVal && typeof defaultVal === "object" && !Array.isArray(defaultVal) &&
                 sourceVal && typeof sourceVal === "object" && !Array.isArray(sourceVal)) {
-              result[key] = this.reconcileSchema(defaultVal, sourceVal);
+              result[key] = this.reconcileSchema(defaultVal, sourceVal, false);
             } else {
               result[key] = this.deepClone(sourceVal);
             }
           } else {
-            // Keep unrecognized/extra keys (e.g. from removed or future features) to prevent data loss
-            result[key] = this.deepClone(sourceVal);
+            if (isRoot) {
+              console.log(`[Schema Hygiene] Pruned unrecognized root schema key: ${key}`);
+            } else {
+              // Keep unrecognized/extra keys (e.g. from future features) to prevent data loss on sub-objects
+              result[key] = this.deepClone(sourceVal);
+            }
           }
         }
       }
@@ -232,7 +240,7 @@ window.AppState = {
         const parsed = JSON.parse(saved);
         
         // Reconcile schema structure recursively using clean default as base
-        this.data = this.reconcileSchema(this.getDefaultSchema(), parsed);
+        this.data = this.reconcileSchema(this.getDefaultSchema(), parsed, true);
         
         // Run migrations to sanitize any old schema models
         this.runMigrations();
@@ -250,7 +258,7 @@ window.AppState = {
     if (!hasCoreData) return false;
     
     // Reconcile backup schema recursively using clean default as base
-    this.data = this.reconcileSchema(this.getDefaultSchema(), parsed);
+    this.data = this.reconcileSchema(this.getDefaultSchema(), parsed, true);
     
     // Run migrations immediately on the merged data
     this.runMigrations();
@@ -261,7 +269,61 @@ window.AppState = {
   },
 
   saveToStorage() {
-    localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    } catch (err) {
+      if (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 1014) {
+        console.error("[Storage] LocalStorage quota exceeded!", err);
+        this.showToast("⚠️ Storage full! Attempting to free space...");
+        this.pruneOldData();
+      } else {
+        console.error("[Storage] Failed to save data to localStorage:", err);
+      }
+    }
+  },
+
+  pruneOldData() {
+    try {
+      console.log("[Storage] Attempting to prune old meals to free up space...");
+      // Prune meals/weights older than 6 months
+      const sixMonthsAgo = Date.now() - (6 * 30 * 24 * 60 * 60 * 1000);
+      let prunedMeals = 0;
+      let prunedWeights = 0;
+
+      if (this.data.meals) {
+        Object.keys(this.data.meals).forEach(dateISO => {
+          const date = new Date(dateISO + "T00:00:00");
+          if (!isNaN(date.getTime()) && date.getTime() < sixMonthsAgo) {
+            delete this.data.meals[dateISO];
+            prunedMeals++;
+          }
+        });
+      }
+
+      if (this.data.weights) {
+        Object.keys(this.data.weights).forEach(dateISO => {
+          const date = new Date(dateISO + "T00:00:00");
+          if (!isNaN(date.getTime()) && date.getTime() < sixMonthsAgo) {
+            delete this.data.weights[dateISO];
+            prunedWeights++;
+          }
+        });
+      }
+
+      if (prunedMeals > 0 || prunedWeights > 0) {
+        console.log(`[Storage] Pruned ${prunedMeals} meal days and ${prunedWeights} weight logs.`);
+        try {
+          localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+          this.showToast(`✨ Automatically freed space by pruning logs older than 6 months.`);
+        } catch (e) {
+          this.showToast("⚠️ Storage full! Please manually clear data in Settings.");
+        }
+      } else {
+        this.showToast("⚠️ Storage full! Please delete some custom recipes or clear mock data.");
+      }
+    } catch (e) {
+      console.error("[Storage] Pruning failed:", e);
+    }
   },
 
   getTodayISODate() {
@@ -350,16 +412,23 @@ window.AppState = {
     toast.classList.remove("hidden");
     toast.classList.add("show");
 
-    // Clear any existing timeout on the toast
+    // Clear any existing timeouts on the toast
     if (this.toastTimeout) {
       clearTimeout(this.toastTimeout);
+      this.toastTimeout = null;
+    }
+    if (this.toastFadeTimeout) {
+      clearTimeout(this.toastFadeTimeout);
+      this.toastFadeTimeout = null;
     }
 
     this.toastTimeout = setTimeout(() => {
       toast.classList.remove("show");
-      setTimeout(() => {
+      this.toastFadeTimeout = setTimeout(() => {
         toast.classList.add("hidden");
+        this.toastFadeTimeout = null;
       }, 300); // Wait for transition fade-out
+      this.toastTimeout = null;
     }, 2500);
   },
 
@@ -404,4 +473,15 @@ window.AppState = {
     const dateStr = date.toLocaleDateString("en-US", options);
     return `${dateStr} at ${timeStr}`;
   }
+};
+
+// Global HTML escaping utility to prevent XSS across the application
+window.escapeHTML = function(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 };

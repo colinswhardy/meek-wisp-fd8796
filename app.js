@@ -91,20 +91,59 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Track and monitor active midnight resets while app is running
   let lastCheckedDate = AppState.getTodayISODate();
-  setInterval(() => {
-    try {
-      const todayStr = AppState.getTodayISODate();
-      if (todayStr !== lastCheckedDate) {
-        console.log("[Rollover] Midnight crossed. Refreshing calendar context...");
-        lastCheckedDate = todayStr;
-        AppState.selectedDateISO = todayStr;
-        CalendarSelectorController.updateLabel();
-        appRouter.refreshCurrentView();
+  let rolloverInterval = null;
+
+  const startRolloverCheck = () => {
+    if (rolloverInterval) return;
+    rolloverInterval = setInterval(() => {
+      try {
+        const todayStr = AppState.getTodayISODate();
+        if (todayStr !== lastCheckedDate) {
+          console.log("[Rollover] Midnight crossed. Refreshing calendar context...");
+          lastCheckedDate = todayStr;
+          AppState.selectedDateISO = todayStr;
+          CalendarSelectorController.updateLabel();
+          appRouter.refreshCurrentView();
+        }
+      } catch (err) {
+        console.error("[Rollover Error]", err);
       }
-    } catch (err) {
-      console.error("[Rollover Error]", err);
+    }, 30000); // Clock check once every 30 seconds
+  };
+
+  const stopRolloverCheck = () => {
+    if (rolloverInterval) {
+      clearInterval(rolloverInterval);
+      rolloverInterval = null;
     }
-  }, 30000); // Clock check once every 30 seconds
+  };
+
+  // Start checking initially
+  startRolloverCheck();
+
+  // Suspend checking when the tab is backgrounded to conserve power, and check immediately on wake
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      console.log("[Rollover] Tab backgrounded. Suspending clock checking interval.");
+      stopRolloverCheck();
+    } else {
+      console.log("[Rollover] Tab foregrounded. Resuming clock checking interval.");
+      // Check immediately in case rollover crossed while backgrounded
+      try {
+        const todayStr = AppState.getTodayISODate();
+        if (todayStr !== lastCheckedDate) {
+          console.log("[Rollover] Midnight crossed while backgrounded. Refreshing context...");
+          lastCheckedDate = todayStr;
+          AppState.selectedDateISO = todayStr;
+          CalendarSelectorController.updateLabel();
+          appRouter.refreshCurrentView();
+        }
+      } catch (err) {
+        console.error("[Rollover Error on Wake]", err);
+      }
+      startRolloverCheck();
+    }
+  });
 
   // Low-latency visual "clickable box" gesture accelerator
   const handleGlobalPointerDown = (e) => {

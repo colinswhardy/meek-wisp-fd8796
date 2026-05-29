@@ -32,6 +32,17 @@ window.appRouter = {
     };
     this.navItems = document.querySelectorAll(".app-navbar .nav-item");
 
+    // Move barcode scanner containers to the root of .app-viewport so that they do not animate, slide, or blink on tab switches
+    const viewport = document.querySelector(".app-viewport");
+    if (viewport) {
+      ["dashboard", "food", "weight", "strategy"].forEach((context) => {
+        const scanner = document.getElementById(`scanner-view-container-${context}`);
+        if (scanner) {
+          viewport.appendChild(scanner);
+        }
+      });
+    }
+
     this.navItems.forEach((btn) => {
       btn.addEventListener("click", () => {
         const tab = btn.getAttribute("data-tab");
@@ -153,6 +164,18 @@ window.appRouter = {
         this.panels[key].classList.add("active");
       } else {
         this.panels[key].classList.remove("active");
+      }
+    });
+
+    // Toggle barcode scanner containers visibility based on active main tab
+    ["dashboard", "food", "weight", "strategy"].forEach((context) => {
+      const scanner = document.getElementById(`scanner-view-container-${context}`);
+      if (scanner) {
+        if (context === tabName) {
+          scanner.classList.add("active-scanner-bar");
+        } else {
+          scanner.classList.remove("active-scanner-bar");
+        }
       }
     });
 

@@ -38,7 +38,7 @@
             Clear Cache & Force Update
           </button>
           <div style="margin-top: 18px; font-size: 0.75rem; color: rgba(255,255,255,0.4);">
-            Secure Context: \${window.isSecureContext ? "Yes" : "No"} | Version: v11
+            Secure Context: ${window.isSecureContext ? "Yes" : "No"} | Version: v11
           </div>
         </div>
         <style>
@@ -100,11 +100,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
   
   <!-- Libraries (CDNs) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -2511,6 +2511,7 @@
   </script>
 
   <!-- Application Scripts (Non-module standard scripts to allow double-clicking file:// directly) -->
+  <script src="utils.js"></script>
   <script src="state.js"></script>
   <script src="database.js"></script>
   <script src="scanner.js"></script>

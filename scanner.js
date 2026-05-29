@@ -102,7 +102,7 @@ window.BarcodeScannerManager = {
       if (onErrorCallback) {
         onErrorCallback(err);
       } else {
-        alert("Camera access denied or unavailable. Please enter the barcode manually.");
+        AppState.showToast("Camera access denied or unavailable. Please enter the barcode manually.");
       }
     } finally {
       this.transitioning = false;

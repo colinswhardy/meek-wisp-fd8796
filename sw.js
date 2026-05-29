@@ -1,8 +1,9 @@
-const CACHE_NAME = "colins-charts-macros-v18";
+const CACHE_NAME = "colins-charts-macros-v19";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
-  "./styles.css?v=12",
+  "./styles.css?v=13",
+  "./utils.js",
   "./app.js",
   "./state.js",
   "./router.js",
@@ -23,8 +24,8 @@ const ASSETS_TO_CACHE = [
   "./icon-192.png",
   "./icon-512.png",
   "./screenshot.png",
-  "https://cdn.jsdelivr.net/npm/chart.js",
-  "https://unpkg.com/html5-qrcode"
+  "https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"
 ];
 
 // Install Event - Caching all core assets using async/await
@@ -59,7 +60,13 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   // Skip external API calls (should always be live)
-  if (event.request.url.includes("openfoodfacts.org") || event.request.url.includes("api.nal.usda.gov")) {
+  if (
+    event.request.url.includes("openfoodfacts.org") ||
+    event.request.url.includes("api.nal.usda.gov") ||
+    event.request.url.includes("generativelanguage.googleapis.com") ||
+    event.request.url.includes("algolia.net") ||
+    event.request.url.includes("upcitemdb.com")
+  ) {
     return;
   }
 

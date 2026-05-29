@@ -36,7 +36,7 @@ window.WeightChartManager = {
     });
 
     // 2. Map weight values (null if not logged)
-    const actualWeights = dateKeys.map(key => allWeightLogs[key] || null);
+    const actualWeights = dateKeys.map(key => allWeightLogs[key] !== undefined ? allWeightLogs[key] : null);
 
     // 3. Calculate Stats: Average and Net Weekly Change
     const loggedWeights = actualWeights.filter(w => w !== null);
@@ -176,25 +176,7 @@ window.WeightChartManager = {
       return Array(datesInRange.length).fill(null);
     }
 
-    // Calculate sums
-    const n = points.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-    
-    for (let i = 0; i < n; i++) {
-      const p = points[i];
-      sumX += p.x;
-      sumY += p.y;
-      sumXY += p.x * p.y;
-      sumXX += p.x * p.x;
-    }
-
-    const denominator = n * sumXX - sumX * sumX;
-    if (denominator === 0) {
-      return Array(datesInRange.length).fill(null);
-    }
-
-    const slope = (n * sumXY - sumX * sumY) / denominator;
-    const intercept = (sumY - slope * sumX) / n;
+    const { slope, intercept } = AppUtils.calculateLinearRegression(points);
 
     // Evaluate trendline for every day in the range
     return datesInRange.map((date) => {
