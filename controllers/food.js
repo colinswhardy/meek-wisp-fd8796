@@ -27,7 +27,6 @@ window.FoodController = {
     if (meals.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="48" height="48" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           <p>No food logged for this day yet.</p>
         </div>
       `;

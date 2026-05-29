@@ -247,44 +247,6 @@ window.SettingsController = {
       }
     });
 
-    // 11b. Firebase AI Config bindings
-    const fbEnabled = document.getElementById("firebase-enabled");
-    const fbFields = document.getElementById("firebase-fields");
-    const fbApiKey = document.getElementById("firebase-apikey");
-    const fbProjectId = document.getElementById("firebase-projectid");
-    const fbAuthDomain = document.getElementById("firebase-authdomain");
-    const fbStorageBucket = document.getElementById("firebase-storagebucket");
-    const fbSenderId = document.getElementById("firebase-senderid");
-    const fbAppId = document.getElementById("firebase-appid");
-    const fbRecaptchaKey = document.getElementById("firebase-recaptchakey");
-
-    const saveFirebaseConfig = () => {
-      const config = AppState.data.settings.firebaseConfig;
-      if (!config) return;
-      config.enabled = fbEnabled ? fbEnabled.checked : false;
-      config.apiKey = fbApiKey ? fbApiKey.value.trim() : "";
-      config.projectId = fbProjectId ? fbProjectId.value.trim() : "";
-      config.authDomain = fbAuthDomain ? fbAuthDomain.value.trim() : "";
-      config.storageBucket = fbStorageBucket ? fbStorageBucket.value.trim() : "";
-      config.messagingSenderId = fbSenderId ? fbSenderId.value.trim() : "";
-      config.appId = fbAppId ? fbAppId.value.trim() : "";
-      config.recaptchaKey = fbRecaptchaKey ? fbRecaptchaKey.value.trim() : "";
-
-      AppState.saveToStorage();
-
-      if (fbFields) {
-        if (config.enabled) fbFields.classList.remove("hidden");
-        else fbFields.classList.add("hidden");
-      }
-    };
-
-    [fbEnabled, fbApiKey, fbProjectId, fbAuthDomain, fbStorageBucket, fbSenderId, fbAppId, fbRecaptchaKey].forEach(el => {
-      if (el) {
-        el.addEventListener("input", saveFirebaseConfig);
-        el.addEventListener("change", saveFirebaseConfig);
-      }
-    });
-
     // USDA API Key Config binding
     const usdaApiKeyInput = document.getElementById("usda-api-key-input");
     if (usdaApiKeyInput) {
@@ -535,34 +497,6 @@ window.SettingsController = {
       if (algoliaFields) {
         if (algoliaConfig.enabled) algoliaFields.classList.remove("hidden");
         else algoliaFields.classList.add("hidden");
-      }
-    }
-
-    // --- Firebase AI Config Populating ---
-    const fbConfig = AppState.data.settings.firebaseConfig;
-    if (fbConfig) {
-      const fbEnabled = document.getElementById("firebase-enabled");
-      const fbFields = document.getElementById("firebase-fields");
-      const fbApiKey = document.getElementById("firebase-apikey");
-      const fbProjectId = document.getElementById("firebase-projectid");
-      const fbAuthDomain = document.getElementById("firebase-authdomain");
-      const fbStorageBucket = document.getElementById("firebase-storagebucket");
-      const fbSenderId = document.getElementById("firebase-senderid");
-      const fbAppId = document.getElementById("firebase-appid");
-      const fbRecaptchaKey = document.getElementById("firebase-recaptchakey");
-
-      if (fbEnabled) fbEnabled.checked = fbConfig.enabled || false;
-      if (fbApiKey) fbApiKey.value = fbConfig.apiKey || "";
-      if (fbProjectId) fbProjectId.value = fbConfig.projectId || "";
-      if (fbAuthDomain) fbAuthDomain.value = fbConfig.authDomain || "";
-      if (fbStorageBucket) fbStorageBucket.value = fbConfig.storageBucket || "";
-      if (fbSenderId) fbSenderId.value = fbConfig.messagingSenderId || "";
-      if (fbAppId) fbAppId.value = fbConfig.appId || "";
-      if (fbRecaptchaKey) fbRecaptchaKey.value = fbConfig.recaptchaKey || "";
-
-      if (fbFields) {
-        if (fbConfig.enabled) fbFields.classList.remove("hidden");
-        else fbFields.classList.add("hidden");
       }
     }
 

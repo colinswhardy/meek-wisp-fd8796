@@ -4,6 +4,16 @@
  */
 
 window.DashboardController = {
+  init() {
+    const wtAnalyticsCard = document.getElementById("dashboard-weight-analytics");
+    if (wtAnalyticsCard) {
+      wtAnalyticsCard.addEventListener("click", () => {
+        appRouter.navigate("weight_history_detail");
+      });
+      wtAnalyticsCard.style.cursor = "pointer";
+    }
+  },
+
   render() {
     const dateKey = AppState.selectedDateISO;
     const meals = AppState.data.meals[dateKey] || [];

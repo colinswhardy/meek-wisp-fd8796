@@ -8,7 +8,8 @@ window.ScannerViewController = {
     dashboard: null,
     food: null,
     recipe: null,
-    weight: null
+    weight: null,
+    strategy: null
   },
 
   getNutrients(product) {
@@ -34,6 +35,10 @@ window.ScannerViewController = {
         if (isHidden) {
           customForm.classList.remove("hidden");
           customCard.classList.add("active");
+          
+          if (window.scrollToAlignWithTop) {
+            window.scrollToAlignWithTop(customCard);
+          }
           
           // Auto-focus the first custom food entry field immediately
           const customName = document.getElementById("custom-name");
@@ -78,11 +83,12 @@ window.ScannerViewController = {
       });
     }
 
-    // Initialize listeners for four contexts
+    // Initialize listeners for five contexts
     this.initContext("dashboard");
     this.initContext("food");
     this.initContext("recipe");
     this.initContext("weight");
+    this.initContext("strategy");
   },
 
   initContext(context) {

@@ -1083,6 +1083,7 @@ window.FoodSelectorController = {
     
     // Clamping: If query length is less than 3 characters, search local cache ONLY and skip external API requests
     if (query.length < 3) {
+      this.closePreview();
       if (loadingEl) loadingEl.classList.add("hidden");
       const localResults = window.FoodDatabase.searchLocalCache(query);
       this.renderHybridResults(localResults, [], false);
@@ -1096,35 +1097,41 @@ window.FoodSelectorController = {
       if (loadingText) loadingText.textContent = "Searching databases…";
     }
     
-    // We DO NOT clear the results container immediately to prevent layout shifts.
+    // Close preview on new query to guarantee fresh state
+    this.closePreview();
+
+    // 1. Instant Local Rendering: Perform instant local search and render immediately (stage 1)
+    const localResults = window.FoodDatabase.searchLocalCache(query);
+    this.renderHybridResults(localResults, [], true); // isRemotePending = true
     
+    // 2. Debounced Remote Search: Queue the network request
     const algoliaConfig = AppState.data.settings.algoliaConfig;
     if (algoliaConfig && algoliaConfig.enabled && algoliaConfig.appId) {
       this.algoliaTimeout = setTimeout(async () => {
         this.algoliaAbortController = new AbortController();
-        const localResults = window.FoodDatabase.searchLocalCache(query);
+        const currentLocal = window.FoodDatabase.searchLocalCache(query);
         
         try {
           console.log(`[Search] Querying Algolia for: "${query}"...`);
           const algoliaResults = await window.FoodDatabase.queryAlgolia(query, this.algoliaAbortController.signal);
           
-          this.renderHybridResults(localResults, algoliaResults, false);
+          this.renderHybridResults(currentLocal, algoliaResults, false);
         } catch (err) {
           if (err.name === 'AbortError') {
             console.log(`[Search] Algolia request aborted for query: "${query}"`);
           } else {
             console.warn("[Search] Algolia search failed:", err);
-            this.triggerLegacyFallbackSearch(query, localResults);
+            this.triggerLegacyFallbackSearch(query, currentLocal);
           }
         } finally {
           if (loadingEl) loadingEl.classList.add("hidden");
         }
-      }, 250); // 250ms Debounce for instant index searches (Algolia)
+      }, 250); // 250ms Debounce for Algolia
     } else {
-      // 400ms tuned debounce specifically for slow legacy fallback search (USDA + OFF) to avoid intermediate queries
+      // 400ms Debounce for USDA/OFF Fallback
       this.algoliaTimeout = setTimeout(async () => {
-        const localResults = window.FoodDatabase.searchLocalCache(query);
-        this.triggerLegacyFallbackSearch(query, localResults);
+        const currentLocal = window.FoodDatabase.searchLocalCache(query);
+        this.triggerLegacyFallbackSearch(query, currentLocal);
       }, 400);
     }
   },
@@ -1148,9 +1155,21 @@ window.FoodSelectorController = {
   },
 
   renderHybridResults(localItems, globalItems, isRemotePending) {
-    this.closePreview();
     const container = document.getElementById("online-search-results");
     if (!container) return;
+    
+    // Establish permanent/structural sub-containers within online-search-results
+    let localSection = document.getElementById("local-search-results-section");
+    let globalSection = document.getElementById("global-search-results-section");
+    
+    if (!localSection || !globalSection) {
+      container.innerHTML = `
+        <div id="local-search-results-section"></div>
+        <div id="global-search-results-section"></div>
+      `;
+      localSection = document.getElementById("local-search-results-section");
+      globalSection = document.getElementById("global-search-results-section");
+    }
     
     const localKeys = new Set(localItems.map(item => item.food_id));
     const filteredGlobal = globalItems.filter(item => {
@@ -1158,19 +1177,90 @@ window.FoodSelectorController = {
       return !localKeys.has(globalKey);
     });
     
-    if (localItems.length === 0 && filteredGlobal.length === 0) {
-      if (isRemotePending) {
-        // Still actively searching databases, empty container so only the single loading indicator is shown
-        container.innerHTML = "";
-        return;
-      }
-
+    // Save focused element state to preserve focus non-destructively
+    const activeEl = document.activeElement;
+    const isWeightInputFocused = activeEl && activeEl.id === "selector-weight-input";
+    let selectionStart = 0;
+    let selectionEnd = 0;
+    if (isWeightInputFocused) {
+      selectionStart = activeEl.selectionStart;
+      selectionEnd = activeEl.selectionEnd;
+    }
+    
+    const previewCard = document.getElementById("selector-preview-card");
+    const activeItem = this.selectedFoodItem;
+    
+    // 1. Render Local Section
+    // Temporarily detach previewCard if it's currently nested inside the localSection
+    if (previewCard && localSection.contains(previewCard)) {
+      const panel = document.getElementById("panel-food-selector");
+      if (panel) panel.appendChild(previewCard);
+    }
+    
+    localSection.innerHTML = "";
+    
+    if (localItems.length > 0) {
+      const localHeader = document.createElement("div");
+      localHeader.className = "search-category-header";
+      localHeader.innerHTML = `<span>✨ Staple & Favorite Foods</span>`;
+      localSection.appendChild(localHeader);
+      
+      localItems.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, true);
+        const foodId = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
+        const activeFoodId = activeItem ? (activeItem.food_id || (activeItem.name + "||" + (activeItem.brand || "Generic")).toLowerCase()) : null;
+        
+        if (activeFoodId && activeFoodId === foodId) {
+          itemEl.classList.add("selector-active");
+          localSection.appendChild(itemEl);
+          if (previewCard) {
+            itemEl.after(previewCard);
+            previewCard.classList.remove("hidden");
+          }
+        } else {
+          localSection.appendChild(itemEl);
+        }
+      });
+    }
+    
+    // 2. Render Global Section
+    // Temporarily detach previewCard if it's currently nested inside the globalSection
+    if (previewCard && globalSection.contains(previewCard)) {
+      const panel = document.getElementById("panel-food-selector");
+      if (panel) panel.appendChild(previewCard);
+    }
+    
+    globalSection.innerHTML = "";
+    
+    if (filteredGlobal.length > 0) {
+      const globalHeader = document.createElement("div");
+      globalHeader.className = "search-category-header";
+      globalHeader.innerHTML = `<span>🌐 Global Database Results</span>`;
+      globalSection.appendChild(globalHeader);
+      
+      filteredGlobal.forEach(food => {
+        const itemEl = this.createSearchResultRow(food, false);
+        const foodId = food.food_id || (food.name + "||" + (food.brand || "Generic")).toLowerCase();
+        const activeFoodId = activeItem ? (activeItem.food_id || (activeItem.name + "||" + (activeItem.brand || "Generic")).toLowerCase()) : null;
+        
+        if (activeFoodId && activeFoodId === foodId) {
+          itemEl.classList.add("selector-active");
+          globalSection.appendChild(itemEl);
+          if (previewCard) {
+            itemEl.after(previewCard);
+            previewCard.classList.remove("hidden");
+          }
+        } else {
+          globalSection.appendChild(itemEl);
+        }
+      });
+    } else if (!isRemotePending && localItems.length === 0) {
       const input = document.getElementById("online-search-input");
       const query = input ? input.value.trim() : "";
+      const geminiApiKey = AppState.data.settings.geminiApiKey;
       
-      const fbConfig = AppState.data.settings.firebaseConfig;
-      if (fbConfig && fbConfig.enabled && query) {
-        container.innerHTML = `
+      if (geminiApiKey && geminiApiKey.trim() && query) {
+        globalSection.innerHTML = `
           <div class="empty-state" style="padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); animation: fadeIn var(--transition-fast);">
             <svg viewBox="0 0 24 24" width="40" height="40" stroke="#a78bfa" stroke-width="1.5" fill="none" style="margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3)); display: inline-block;">
               <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
@@ -1187,39 +1277,25 @@ window.FoodSelectorController = {
           btnAI.addEventListener("click", () => this.triggerAIEstimation(query));
         }
       } else {
-        container.innerHTML = `
+        globalSection.innerHTML = `
           <div class="empty-state">
             <p>No results found. Try a different search term, or log it manually using "Log Custom Food".</p>
           </div>
         `;
       }
-      return;
+    } else if (isRemotePending && localItems.length === 0) {
+      globalSection.innerHTML = "";
     }
     
-    container.innerHTML = "";
-    
-    if (localItems.length > 0) {
-      const localHeader = document.createElement("div");
-      localHeader.className = "search-category-header";
-      localHeader.innerHTML = `<span>✨ Staple & Favorite Foods</span>`;
-      container.appendChild(localHeader);
-      
-      localItems.forEach(food => {
-        const itemEl = this.createSearchResultRow(food, true);
-        container.appendChild(itemEl);
-      });
-    }
-    
-    if (filteredGlobal.length > 0) {
-      const globalHeader = document.createElement("div");
-      globalHeader.className = "search-category-header";
-      globalHeader.innerHTML = `<span>🌐 Global Database Results</span>`;
-      container.appendChild(globalHeader);
-      
-      filteredGlobal.forEach(food => {
-        const itemEl = this.createSearchResultRow(food, false);
-        container.appendChild(itemEl);
-      });
+    // Restore focus and cursor selection state non-destructively
+    if (isWeightInputFocused) {
+      const weightInput = document.getElementById("selector-weight-input");
+      if (weightInput) {
+        weightInput.focus();
+        try {
+          weightInput.setSelectionRange(selectionStart, selectionEnd);
+        } catch (e) {}
+      }
     }
   },
 
