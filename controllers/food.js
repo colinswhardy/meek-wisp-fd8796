@@ -34,90 +34,312 @@ window.FoodController = {
     }
 
     container.innerHTML = "";
-    // Draw items in reverse chronological log (newest at top)
-    const sortedMeals = [...meals].sort((a, b) => {
-      const tA = AppState.getMealTimestamp(a) || 0;
-      const tB = AppState.getMealTimestamp(b) || 0;
-      return tB - tA;
+
+    // 1-Hour Block Header Formatter
+    const formatHourBlockHeader = (hour) => {
+      const startHour = hour;
+      const endHour = (hour + 1) % 24;
+      
+      const formatHour = (h) => {
+        if (h === 0) return "12 AM";
+        if (h === 12) return "12 PM";
+        return h > 12 ? `${h - 12} PM` : `${h} AM`;
+      };
+      
+      return `${formatHour(startHour)} - ${formatHour(endHour)}`;
+    };
+
+    // Group meals by 24 hourly buckets (0 to 23)
+    const mealsByHour = {};
+    for (let h = 0; h < 24; h++) {
+      mealsByHour[h] = [];
+    }
+
+    meals.forEach((meal) => {
+      const timestamp = AppState.getMealTimestamp(meal) || Date.now();
+      const hour = new Date(timestamp).getHours();
+      mealsByHour[hour].push(meal);
     });
 
-    sortedMeals.forEach((meal) => {
-      const timestamp = AppState.getMealTimestamp(meal);
-      const timeStr = AppState.formatTimeOfDay(timestamp);
-      const timeDisplay = timeStr ? ` • ${timeStr}` : "";
+    // Sort meals inside each hour block latest first
+    for (let h = 0; h < 24; h++) {
+      mealsByHour[h].sort((a, b) => {
+        const tA = AppState.getMealTimestamp(a) || 0;
+        const tB = AppState.getMealTimestamp(b) || 0;
+        return tB - tA;
+      });
+    }
 
-      const item = document.createElement("div");
-      item.className = "meal-item";
-      item.innerHTML = `
-        <div class="meal-info">
-          <span class="meal-name">${meal.name}</span>
-          <span class="meal-sub">${meal.brand} • ${meal.weight}g${timeDisplay}</span>
-          <div class="meal-macros">
-            <span class="m-tag p">P: ${meal.protein}g</span>
-            <span class="m-tag c">C: ${meal.carbs}g</span>
-            <span class="m-tag f">F: ${meal.fats}g</span>
+    // Render 1-hour blocks from 23 (11 PM - 12 AM) down to 0 (12 AM - 1 AM)
+    for (let h = 23; h >= 0; h--) {
+      const mealsInBlock = mealsByHour[h];
+      const blockKcal = mealsInBlock.reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
+      const blockCount = mealsInBlock.length;
+      const isEmpty = blockCount === 0;
+
+      const blockContainer = document.createElement("div");
+      blockContainer.className = `hour-block-container${isEmpty ? " is-empty" : ""}`;
+      blockContainer.setAttribute("data-hour", h);
+
+      blockContainer.innerHTML = `
+        <div class="hour-block-header">
+          <div class="hour-block-title-group">
+            <svg class="hour-clock-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="hour-block-title">${formatHourBlockHeader(h)}</span>
           </div>
+          <span class="hour-block-summary">${blockCount} item${blockCount === 1 ? '' : 's'} • ${blockKcal} kcal</span>
         </div>
-        <div class="meal-kcal-block">
-          <span class="meal-kcal">${meal.calories} <span style="font-size:0.75rem">kcal</span></span>
-          <button class="btn-delete-meal" aria-label="Delete food entry">
-            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          </button>
+        <div class="hour-block-meals-list"></div>
+        <div class="empty-hour-placeholder">
+          <span>Drop here to move to ${formatHourBlockHeader(h)}</span>
         </div>
       `;
 
-      let pressTimer = null;
-      let isLongPress = false;
+      const mealsListContainer = blockContainer.querySelector(".hour-block-meals-list");
 
-      const startPress = (e) => {
-        // If it's a right click or clicking the delete button, ignore
-        if (e.type === "mousedown" && e.button !== 0) return;
-        if (e.target.closest(".btn-delete-meal")) return;
+      mealsInBlock.forEach((meal) => {
+        const timestamp = AppState.getMealTimestamp(meal);
+        const timeStr = AppState.formatTimeOfDay(timestamp);
+        const timeDisplay = timeStr ? ` • ${timeStr}` : "";
 
-        isLongPress = false;
-        item.classList.add("long-pressing");
+        const item = document.createElement("div");
+        item.className = "meal-item";
+        item.innerHTML = `
+          <div class="meal-info">
+            <span class="meal-name">${meal.name}</span>
+            <span class="meal-sub">${meal.brand} • ${meal.weight}g${timeDisplay}</span>
+            <div class="meal-macros">
+              <span class="m-tag p">P: ${meal.protein}g</span>
+              <span class="m-tag c">C: ${meal.carbs}g</span>
+              <span class="m-tag f">F: ${meal.fats}g</span>
+            </div>
+          </div>
+          <div class="meal-kcal-block">
+            <span class="meal-kcal">${meal.calories} <span style="font-size:0.75rem">kcal</span></span>
+            <button class="btn-delete-meal" aria-label="Delete food entry">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
+          </div>
+        `;
 
-        pressTimer = setTimeout(() => {
-          isLongPress = true;
+        // Modern Unified PointerEvents Drag-and-Drop system
+        let pressTimer = null;
+        let isDragging = false;
+        let wasDragged = false;
+        let startX = 0, startY = 0;
+        let rect = null;
+        let offsetX = 0, offsetY = 0;
+        let clone = null;
+        let currentDragOverBlock = null;
+        let autoScrollInterval = null;
+        let lastClientY = 0;
+
+        const handlePointerDown = (e) => {
+          if (e.button !== 0 && e.type === "mousedown") return;
+          if (e.target.closest(".btn-delete-meal")) return;
+
+          startX = e.clientX;
+          startY = e.clientY;
+          rect = item.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+
+          isDragging = false;
+          wasDragged = false;
+          item.classList.add("long-pressing");
+
+          if (pressTimer) clearTimeout(pressTimer);
+
+          pressTimer = setTimeout(() => {
+            isDragging = true;
+            item.classList.remove("long-pressing");
+            item.classList.add("dragging-original");
+
+            if (navigator.vibrate) navigator.vibrate(50);
+
+            // Activate dragging state visual overlays
+            const listContainer = document.getElementById("meals-list-container");
+            if (listContainer) {
+              listContainer.classList.add("meals-drag-active");
+            }
+            document.body.classList.add("drag-active-mode");
+
+            // Build floating drag-preview clone
+            clone = item.cloneNode(true);
+            clone.classList.remove("dragging-original");
+            clone.classList.add("meal-item-drag-clone");
+            
+            Object.assign(clone.style, {
+              position: "fixed",
+              left: `${rect.left}px`,
+              top: `${rect.top}px`,
+              width: `${rect.width}px`,
+              height: `${rect.height}px`
+            });
+            document.body.appendChild(clone);
+
+            // Bind move and release listeners globally to window
+            window.addEventListener("pointermove", handlePointerMove, { passive: false });
+            window.addEventListener("pointerup", handlePointerUp);
+            window.addEventListener("pointercancel", handlePointerUp);
+
+            startAutoScrollChecking();
+          }, 500);
+
+          // Add temporary release listeners locally to handle premature tap cancel
+          item.addEventListener("pointerup", handlePointerUpLocal);
+          item.addEventListener("pointercancel", handlePointerUpLocal);
+        };
+
+        const handlePointerUpLocal = () => {
+          cancelPress();
+          item.removeEventListener("pointerup", handlePointerUpLocal);
+          item.removeEventListener("pointercancel", handlePointerUpLocal);
+        };
+
+        const handlePointerMove = (e) => {
+          if (!isDragging) {
+            if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) {
+              cancelPress();
+            }
+            return;
+          }
+
+          e.preventDefault();
+          lastClientY = e.clientY;
+
+          if (clone) {
+            clone.style.left = `${e.clientX - offsetX}px`;
+            clone.style.top = `${e.clientY - offsetY}px`;
+          }
+
+          // Hit testing drop blocks
+          const element = document.elementFromPoint(e.clientX, e.clientY);
+          const hourBlock = element ? element.closest(".hour-block-container") : null;
+
+          if (hourBlock !== currentDragOverBlock) {
+            if (currentDragOverBlock) {
+              currentDragOverBlock.classList.remove("drag-over");
+            }
+            currentDragOverBlock = hourBlock;
+            if (currentDragOverBlock) {
+              currentDragOverBlock.classList.add("drag-over");
+            }
+          }
+        };
+
+        const handlePointerUp = (e) => {
+          cancelPress();
+
+          if (!isDragging) return;
+          isDragging = false;
+          wasDragged = true;
+
+          stopAutoScrollChecking();
+
+          if (currentDragOverBlock) {
+            currentDragOverBlock.classList.remove("drag-over");
+            const targetHour = parseInt(currentDragOverBlock.getAttribute("data-hour"));
+            const currentTimestamp = AppState.getMealTimestamp(meal) || Date.now();
+            const currentDate = new Date(currentTimestamp);
+            const currentHour = currentDate.getHours();
+
+            if (currentHour !== targetHour) {
+              currentDate.setHours(targetHour);
+              meal.loggedAt = currentDate.getTime();
+
+              AppState.saveToStorage();
+
+              if (window.DashboardController && typeof window.DashboardController.render === "function") {
+                window.DashboardController.render();
+              }
+              AppState.showToast(`Moved to ${formatHourBlockHeader(targetHour)}`);
+            }
+          }
+
+          const listContainer = document.getElementById("meals-list-container");
+          if (listContainer) {
+            listContainer.classList.remove("meals-drag-active");
+          }
+          document.body.classList.remove("drag-active-mode");
+
+          if (clone) {
+            clone.remove();
+            clone = null;
+          }
+
+          item.classList.remove("dragging-original");
+
+          window.removeEventListener("pointermove", handlePointerMove);
+          window.removeEventListener("pointerup", handlePointerUp);
+          window.removeEventListener("pointercancel", handlePointerUp);
+
+          // Force full UI re-render of this page
+          window.FoodController.render();
+        };
+
+        const cancelPress = () => {
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
           item.classList.remove("long-pressing");
-          this.showMoveModal(meal);
-        }, 600); // 600ms hold time
-      };
+        };
 
-      const cancelPress = (e) => {
-        if (pressTimer) {
-          clearTimeout(pressTimer);
-          pressTimer = null;
-        }
-        item.classList.remove("long-pressing");
-      };
+        const startAutoScrollChecking = () => {
+          if (autoScrollInterval) clearInterval(autoScrollInterval);
+          const scrollThreshold = 80;
+          const maxScrollSpeed = 15;
+          const viewport = document.querySelector(".app-viewport");
+          if (!viewport) return;
 
-      // Touch hold / Long press event listeners
-      item.addEventListener("mousedown", startPress);
-      item.addEventListener("touchstart", startPress, { passive: true });
+          autoScrollInterval = setInterval(() => {
+            const rect = viewport.getBoundingClientRect();
+            if (lastClientY < rect.top + scrollThreshold) {
+              const ratio = (rect.top + scrollThreshold - lastClientY) / scrollThreshold;
+              viewport.scrollTop -= maxScrollSpeed * Math.min(Math.max(ratio, 0.1), 1);
+            } else if (lastClientY > rect.bottom - scrollThreshold) {
+              const ratio = (lastClientY - (rect.bottom - scrollThreshold)) / scrollThreshold;
+              viewport.scrollTop += maxScrollSpeed * Math.min(Math.max(ratio, 0.1), 1);
+            }
+          }, 16);
+        };
 
-      item.addEventListener("mouseup", cancelPress);
-      item.addEventListener("touchend", cancelPress);
-      item.addEventListener("touchmove", cancelPress);
-      item.addEventListener("touchcancel", cancelPress);
-      item.addEventListener("mouseleave", cancelPress);
+        const stopAutoScrollChecking = () => {
+          if (autoScrollInterval) {
+            clearInterval(autoScrollInterval);
+            autoScrollInterval = null;
+          }
+        };
 
-      // Tap / Click handler
-      item.addEventListener("click", (e) => {
-        if (isLongPress) {
-          isLongPress = false;
-          return;
-        }
-        if (e.target.closest(".btn-delete-meal")) {
-          e.stopPropagation();
-          this.showDeleteConfirmation(meal);
-          return;
-        }
-        this.showEditModal(meal);
+        // Bind core touch/mouse events to unified PointerEvents
+        item.style.touchAction = "none";
+        item.addEventListener("pointerdown", handlePointerDown);
+
+        // Click / Tap listener
+        item.addEventListener("click", (e) => {
+          if (wasDragged) {
+            wasDragged = false;
+            e.stopPropagation();
+            e.preventDefault();
+            return;
+          }
+          if (isDragging) {
+            return;
+          }
+          if (e.target.closest(".btn-delete-meal")) {
+            e.stopPropagation();
+            this.showDeleteConfirmation(meal);
+            return;
+          }
+          this.showEditModal(meal);
+        });
+
+        mealsListContainer.appendChild(item);
       });
 
-      container.appendChild(item);
-    });
+      container.appendChild(blockContainer);
+    }
   },
 
   deleteMeal(mealId) {

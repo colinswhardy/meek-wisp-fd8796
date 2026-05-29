@@ -194,6 +194,9 @@ window.WeightDetailController = {
       if (minVal === maxVal) { minVal -= 5; maxVal += 5; }
     }
 
+    const yRange = maxVal - minVal;
+    const dynamicStepSize = yRange <= 10 ? 0.5 : (yRange <= 20 ? 1.0 : (yRange <= 50 ? 5.0 : 10.0));
+
     const canvas = document.getElementById("weightDetailChart");
     if (!canvas) return;
 
@@ -289,6 +292,7 @@ window.WeightDetailController = {
             ticks: {
               color: "#909bb2",
               font: { family: "Inter", size: 11 },
+              stepSize: dynamicStepSize,
               callback: function(value) { return value.toFixed(1); }
             }
           }
