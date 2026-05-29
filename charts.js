@@ -142,8 +142,9 @@ window.WeightChartManager = {
                 family: "Inter",
                 size: 11
               },
+              stepSize: 0.5,
               callback: function(value) {
-                return value.toFixed(0);
+                return value.toFixed(1);
               }
             }
           }

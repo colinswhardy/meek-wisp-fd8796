@@ -1238,7 +1238,7 @@ input:focus {
   border-top: 1px solid var(--border-glass);
   display: flex;
   justify-content: space-around;
-  padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px)) 6px; /* Support iPhone bottom safe inset margin */
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px; /* Support iPhone bottom safe inset margin */
   z-index: 100;
 }
 
@@ -1258,9 +1258,9 @@ input:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
-  padding: 4px;
+  padding: 2px;
   transition: var(--transition-fast);
 }
 
@@ -2521,40 +2521,46 @@ select:focus {
 
 #scanner-view-container-dashboard .scanner-header h3,
 #scanner-view-container-food .scanner-header h3,
-#scanner-view-container-weight .scanner-header h3 {
+#scanner-view-container-weight .scanner-header h3,
+#scanner-view-container-strategy .scanner-header h3 {
   margin: 0;
 }
 
 #scanner-view-container-dashboard .scanner-header p,
 #scanner-view-container-food .scanner-header p,
-#scanner-view-container-weight .scanner-header p {
+#scanner-view-container-weight .scanner-header p,
+#scanner-view-container-strategy .scanner-header p {
   margin: 2px 0 4px 0;
   font-size: 0.8rem;
 }
 
 #scanner-view-container-dashboard .btn-scan-dashboard,
 #scanner-view-container-food .btn-scan-dashboard,
-#scanner-view-container-weight .btn-scan-dashboard {
+#scanner-view-container-weight .btn-scan-dashboard,
+#scanner-view-container-strategy .btn-scan-dashboard {
   padding: 10px 16px;
   font-size: 0.95rem;
 }
 
 #scanner-view-container-dashboard .btn-add-food-small,
 #scanner-view-container-food .btn-add-food-small,
-#scanner-view-container-weight .btn-add-food-small {
+#scanner-view-container-weight .btn-add-food-small,
+#scanner-view-container-strategy .btn-add-food-small {
   padding: 10px 16px;
   font-size: 0.95rem;
 }
 
 #scanner-view-container-dashboard .manual-barcode-input,
 #scanner-view-container-food .manual-barcode-input,
-#scanner-view-container-weight .manual-barcode-input {
+#scanner-view-container-weight .manual-barcode-input,
+#scanner-view-container-strategy .manual-barcode-input {
   margin-top: 4px;
 }
 
 #scanner-view-container-dashboard .divider-text,
 #scanner-view-container-food .divider-text,
-#scanner-view-container-weight .divider-text {
+#scanner-view-container-weight .divider-text,
+#scanner-view-container-strategy .divider-text {
   margin: 2px 0;
 }
 
@@ -3086,7 +3092,7 @@ select:focus {
 #scanner-view-container-weight:not(.active-scanning),
 #scanner-view-container-strategy:not(.active-scanning) {
   position: fixed !important;
-  bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important; /* Float right above tabs */
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important; /* Float right above tabs */
   left: 50% !important;
   transform: translateX(-50%) !important;
   width: 100% !important;
@@ -3876,4 +3882,138 @@ body.keyboard-visible #scanner-view-container-strategy {
   align-items: center;
   gap: 6px;
 }
+
+/* --------------------------------------------------------------------------
+   1-Hour Grouping & Drag-and-Drop Reorganization Styles
+   -------------------------------------------------------------------------- */
+
+.hour-block-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(10, 15, 30, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.hour-block-container.is-empty {
+  display: none; /* Hidden by default */
+}
+
+/* In drag mode, show all empty blocks */
+.meals-drag-active .hour-block-container.is-empty {
+  display: flex !important;
+  opacity: 0.85;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.01);
+  animation: fadeIn 0.25s ease;
+}
+
+.hour-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hour-block-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hour-clock-icon {
+  color: var(--color-protein);
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.3));
+}
+
+.hour-block-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.hour-block-summary {
+  font-size: 0.78rem;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.hour-block-meals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 20px;
+  transition: min-height 0.2s ease;
+}
+
+.meals-drag-active .hour-block-meals-list {
+  min-height: 50px; /* Expand targets slightly to facilitate easier dropping */
+}
+
+.empty-hour-placeholder {
+  display: none;
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.01);
+  transition: all var(--transition-fast);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.meals-drag-active .hour-block-container.is-empty .empty-hour-placeholder {
+  display: flex;
+}
+
+/* Drag over highlight styles */
+.hour-block-container.drag-over {
+  border-color: var(--color-protein) !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+  transform: scale(1.01);
+}
+
+.hour-block-container.drag-over .empty-hour-placeholder {
+  border-color: var(--color-protein);
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--color-text-primary);
+}
+
+/* Active drag element cloning styling */
+.meal-item-drag-clone {
+  position: fixed !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 15px rgba(59, 130, 246, 0.4) !important;
+  background: rgba(10, 15, 30, 0.95) !important;
+  border: 1px solid var(--color-protein) !important;
+  transform: scale(1.05) !important;
+  opacity: 0.95 !important;
+  box-sizing: border-box;
+}
+
+/* Locks body scrolling in active drag mode */
+body.drag-active-mode {
+  overflow: hidden !important;
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.meal-item.dragging-original {
+  opacity: 0.3 !important;
+  border-style: dashed !important;
+}
+
 
