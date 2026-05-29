@@ -71,6 +71,7 @@ window.WeightController = {
     WeightChartManager.renderChart(AppState.data.weights, dateKey, unit);
   },
 
+  logWeight() {
     const input = document.getElementById("weight-input");
     if (!input) return;
     const weightRaw = parseFloat(input.value);

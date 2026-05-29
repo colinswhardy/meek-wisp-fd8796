@@ -607,6 +607,7 @@ window.SettingsController = {
     return AppState.data.settings.unit === "lbs" ? 180 : 80;
   },
 
+  calculateTargetPlanner() {
     const sexEl = document.getElementById("profile-sex");
     if (!sexEl) return;
 
