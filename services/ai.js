@@ -1,11 +1,11 @@
 /**
  * ColinsChartsMacros - AI Fallback Estimator Service
- * Handles client-side direct Google Gemini API requests or client-side Firebase Vertex AI estimations.
+ * Handles client-side direct Google Gemini API requests or client-side Firebase AI Logic estimations.
  */
 
 let firebaseApp = null;
 let appCheck = null;
-let vertexAI = null;
+let aiBackend = null;
 let generativeModel = null;
 
 export const AIEstimatorService = {
@@ -28,9 +28,9 @@ export const AIEstimatorService = {
       console.log("[AIEstimator] Dynamically importing Firebase client-side SDKs...");
       
       // Dynamic imports of modular CDN packages
-      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js");
-      const { getVertexAI, getGenerativeModel } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-vertex-ai-preview.js");
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js");
+      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js");
+      const { getAI, getGenerativeModel, GoogleAIBackend } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-ai.js");
 
       // 1. Initialize Firebase App
       const firebaseConfig = {
@@ -65,9 +65,9 @@ export const AIEstimatorService = {
         console.warn("[AIEstimator] reCAPTCHA Site Key is missing. App Check is bypassing production verification.");
       }
 
-      // 3. Initialize Vertex AI
-      console.log("[AIEstimator] Initializing Vertex AI in Firebase...");
-      vertexAI = getVertexAI(firebaseApp);
+      // 3. Initialize Firebase AI Logic
+      console.log("[AIEstimator] Initializing Firebase AI Logic...");
+      aiBackend = getAI(firebaseApp, { backend: new GoogleAIBackend() });
 
       // Define strict JSON Schema for Gemini
       const responseSchema = {
@@ -98,15 +98,15 @@ export const AIEstimatorService = {
       };
 
       // 4. Instantiate Generative Model with Structured Outputs
-      generativeModel = getGenerativeModel(vertexAI, {
-        model: "gemini-1.5-flash",
+      generativeModel = getGenerativeModel(aiBackend, {
+        model: "gemini-2.0-flash",
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: responseSchema
         }
       });
 
-      console.log("[AIEstimator] Vertex AI initialized successfully.");
+      console.log("[AIEstimator] Firebase AI Logic initialized successfully.");
     } catch (err) {
       firebaseApp = null; // Clear on error so we can retry
       console.error("[AIEstimator] Failed to initialize Firebase Vertex AI:", err);
@@ -171,7 +171,7 @@ export const AIEstimatorService = {
    * @returns {Promise<Object>} Formatted nutrition data
    */
   async estimateMacrosDirect(foodQuery, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const prompt = `Act as an expert clinical dietitian and nutritional database compiler. Estimate the macronutrient content per 100g serving for the food query: "${foodQuery}". Provide estimates based on standard USDA nutrient averages.`;
 
